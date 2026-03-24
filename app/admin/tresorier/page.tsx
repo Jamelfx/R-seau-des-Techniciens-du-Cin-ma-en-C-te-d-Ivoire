@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -15,7 +16,7 @@ import {
   Wallet, TrendingUp, TrendingDown, Users, FileText, 
   Download, Calendar, Search, CheckCircle, Clock,
   AlertCircle, CreditCard, PiggyBank, Receipt, ArrowUpRight, ArrowDownRight,
-  Plus, Upload, Eye, Send, History, Calculator
+  Plus, Upload, Eye, Send, History, Calculator, LogOut
 } from "lucide-react"
 
 // Mock data
@@ -50,6 +51,7 @@ const monthlyStats = [
 ]
 
 export default function TreasurerDashboard() {
+  const router = useRouter()
   const [selectedPeriod, setSelectedPeriod] = useState("month")
   const [searchQuery, setSearchQuery] = useState("")
   const [showExpenseModal, setShowExpenseModal] = useState(false)
@@ -97,6 +99,14 @@ export default function TreasurerDashboard() {
     }
   }
 
+  const handleLogout = () => {
+    router.push("/admin")
+  }
+
+  const handleSendReminderAll = () => {
+    alert(`Rappels envoyés à ${pendingCotisations.length} membres`)
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -137,6 +147,10 @@ export default function TreasurerDashboard() {
               <Button onClick={() => setShowExpenseModal(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nouvelle dépense
+              </Button>
+              <Button variant="outline" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Déconnexion
               </Button>
             </div>
           </div>
@@ -322,9 +336,9 @@ export default function TreasurerDashboard() {
                           <span className="text-2xl font-bold text-primary">{formatCurrency(stats.cotisationMensuelle)}</span>
                         </div>
                       </div>
-                      <Button variant="outline" className="w-full">
-                        <Calculator className="h-4 w-4 mr-2" />
-                        Générer les relances automatiques
+                      <Button variant="outline" className="w-full" onClick={handleSendReminderAll}>
+                        <Send className="h-4 w-4 mr-2" />
+                        Envoyer rappels à tous
                       </Button>
                     </CardContent>
                   </Card>

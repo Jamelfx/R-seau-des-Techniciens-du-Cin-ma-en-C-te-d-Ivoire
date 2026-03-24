@@ -25,6 +25,7 @@ export function Header() {
     { name: t("nav.home"), href: "/" },
     { name: t("nav.about"), href: "/a-propos" },
     { name: t("nav.directory"), href: "/annuaire" },
+    { name: "À l'Affiche", href: "/a-laffiche", isHighlight: true },
     { name: t("nav.news"), href: "/actualites" },
     { name: t("nav.conventions"), href: "/conventions" },
     { name: t("nav.live"), href: "/direct", isLive: true },

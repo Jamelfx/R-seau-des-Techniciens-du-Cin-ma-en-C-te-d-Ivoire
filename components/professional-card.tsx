@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef } from "react"
-import { Clapperboard, Download, Printer } from "lucide-react"
+import { Download, Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 
@@ -10,7 +10,6 @@ interface ProfessionalCardProps {
     id: string
     name: string
     role: string
-    category: "A" | "B" | "C"
     title?: string
     photo?: string
   }
@@ -19,11 +18,21 @@ interface ProfessionalCardProps {
   name?: string
   role?: string
   function?: string
-  category?: "A" | "B" | "C" | string
   title?: string
   photo?: string
   showActions?: boolean
   size?: "sm" | "md" | "lg"
+}
+
+// Logo SVG Component
+function RetechciLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 40 40" className={className} fill="none">
+      <path d="M8 8L16 20L8 32H4L12 20L4 8H8Z" fill="#dc2626"/>
+      <path d="M12 8L20 20L12 32H8L16 20L8 8H12Z" fill="#dc2626"/>
+      <path d="M20 8L32 8V12H24V18H30V22H24V28H32V32H20V8Z" fill="#dc2626"/>
+    </svg>
+  )
 }
 
 export function ProfessionalCard({ 
@@ -32,7 +41,6 @@ export function ProfessionalCard({
   name: propName,
   role: propRole,
   function: propFunction,
-  category: propCategory,
   title: propTitle,
   photo: propPhoto,
   showActions = true, 
@@ -44,13 +52,14 @@ export function ProfessionalCard({
   const id = member?.id || memberId || "CI-0000-0000"
   const name = member?.name || propName || "Chargement..."
   const role = member?.role || propFunction || propRole || ""
-  const category = (member?.category || propCategory || "A") as "A" | "B" | "C"
   const title = member?.title || propTitle
   const photo = member?.photo || propPhoto
   
   // Generate unique QR code data URL based on member ID
   const generateQRCodeSVG = (data: string) => {
-    const hash = data.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+    // Defensive check for undefined or empty data
+    const safeData = data || "CI-0000-0000"
+    const hash = safeData.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
     const qrSize = 7
     const cells: boolean[][] = []
     
@@ -79,7 +88,7 @@ export function ProfessionalCard({
     return cells
   }
   
-  const qrCells = generateQRCodeSVG(id)
+  const qrCells = generateQRCodeSVG(id || "CI-0000-0000")
   
   // Early return if no valid data
   if (!name || name === "Chargement...") {
@@ -103,9 +112,9 @@ export function ProfessionalCard({
   }
   
   const textSizes = {
-    sm: { name: "text-lg", role: "text-xs", badge: "text-[10px] px-2 py-0.5", id: "text-[10px]" },
-    md: { name: "text-xl", role: "text-sm", badge: "text-xs px-3 py-1", id: "text-xs" },
-    lg: { name: "text-2xl", role: "text-base", badge: "text-sm px-4 py-1.5", id: "text-sm" }
+    sm: { name: "text-lg", role: "text-xs", badge: "text-[10px] px-2 py-0.5", id: "text-[10px]", org: "text-[7px]" },
+    md: { name: "text-xl", role: "text-sm", badge: "text-xs px-3 py-1", id: "text-xs", org: "text-[8px]" },
+    lg: { name: "text-2xl", role: "text-base", badge: "text-sm px-4 py-1.5", id: "text-sm", org: "text-[9px]" }
   }
   
   const handlePrint = () => {
@@ -160,18 +169,21 @@ export function ProfessionalCard({
                   z-index: 1;
                   margin-bottom: 20px;
                 }
-                .icon {
-                  width: 32px;
-                  height: 32px;
-                  color: #dc2626;
+                .logo-container {
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
                 }
-                .category {
-                  background: rgba(255,255,255,0.1);
-                  border: 1px solid rgba(255,255,255,0.2);
-                  padding: 4px 12px;
-                  border-radius: 20px;
-                  font-size: 11px;
-                  font-weight: 500;
+                .logo {
+                  width: 28px;
+                  height: 28px;
+                }
+                .org-name {
+                  font-size: 7px;
+                  line-height: 1.2;
+                  color: rgba(255,255,255,0.8);
+                  max-width: 100px;
+                  text-align: right;
                 }
                 .photo-container {
                   width: 100px;
@@ -243,12 +255,14 @@ export function ProfessionalCard({
             <body>
               <div class="card">
                 <div class="header">
-                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 4h4v4H4zM16 4h4v4h-4zM4 16h4v4H4z"/>
-                    <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
-                    <rect x="8" y="8" width="8" height="8" rx="1"/>
-                  </svg>
-                  <span class="category">CATÉGORIE ${category}</span>
+                  <div class="logo-container">
+                    <svg class="logo" viewBox="0 0 40 40" fill="none">
+                      <path d="M8 8L16 20L8 32H4L12 20L4 8H8Z" fill="#dc2626"/>
+                      <path d="M12 8L20 20L12 32H8L16 20L8 8H12Z" fill="#dc2626"/>
+                      <path d="M20 8L32 8V12H24V18H30V22H24V28H32V32H20V8Z" fill="#dc2626"/>
+                    </svg>
+                  </div>
+                  <div class="org-name">Réseau des Techniciens du Cinéma en Côte d'Ivoire</div>
                 </div>
                 <div class="photo-container">
                   <img class="photo" src="${photo || '/placeholder.svg'}" alt="${name}" />
@@ -299,12 +313,12 @@ export function ProfessionalCard({
           }}
         />
         
-        {/* Header */}
+        {/* Header with Logo and Organization Name */}
         <div className="relative z-10 flex justify-between items-start p-4">
-          <Clapperboard className="w-8 h-8 text-red-600" />
-          <span className={`${textSizes[size].badge} rounded-full bg-white/10 border border-white/20 text-white/90 font-medium`}>
-            CATÉGORIE {category}
-          </span>
+          <RetechciLogo className={size === "sm" ? "w-6 h-6" : size === "md" ? "w-8 h-8" : "w-10 h-10"} />
+          <p className={`${textSizes[size].org} text-white/80 text-right leading-tight max-w-[100px]`}>
+            Réseau des Techniciens du Cinéma en Côte d&apos;Ivoire
+          </p>
         </div>
         
         {/* Photo */}

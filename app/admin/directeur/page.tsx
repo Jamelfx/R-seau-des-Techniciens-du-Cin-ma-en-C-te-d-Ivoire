@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -15,7 +16,7 @@ import {
   Users, Mail, FileText, CheckCircle, XCircle, Clock, 
   Search, Eye, MessageSquare, Building2, UserPlus,
   TrendingUp, Calendar, Bell, Send, Video, Settings,
-  Link2, Copy, Receipt, Plus, Shield
+  Link2, Copy, Receipt, Plus, Shield, LogOut, CalendarDays
 } from "lucide-react"
 import Image from "next/image"
 
@@ -46,7 +47,18 @@ const expenses = [
   { id: "3", description: "Frais SITECH préparation", amount: 250000, date: "2024-01-15", invoice: false },
 ]
 
+const convocationsReceived = [
+  { id: "1", title: "Assemblée Générale Annuelle", date: "2024-03-10", time: "10:00", location: "Sofitel Ivoire", convoquePar: "Président CA", status: "pending" },
+  { id: "2", title: "Conseil d'Administration Q1", date: "2024-02-15", time: "14:00", location: "Siège RETECHCI", convoquePar: "Président CA", status: "confirmed" },
+]
+
+const validatedMembers = [
+  { id: "1", name: "Paul Yao", email: "paul.y@email.com", validatedAt: "2024-01-12", linkSent: false },
+  { id: "2", name: "Marie Kouadio", email: "marie.k@email.com", validatedAt: "2024-01-10", linkSent: true },
+]
+
 export default function DirectorDashboard() {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteEmail, setInviteEmail] = useState("")
@@ -87,6 +99,21 @@ export default function DirectorDashboard() {
     return new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA'
   }
 
+  const handleLogout = () => {
+    router.push("/admin")
+  }
+
+  const handleRespondConvocation = (convId: string, response: "confirmed" | "declined") => {
+    console.log("Responding to convocation:", convId, response)
+    alert(`Réponse enregistrée: ${response === "confirmed" ? "Présent" : "Absent"}`)
+  }
+
+  const handleSendActivationLink = (email: string, name: string) => {
+    const activationLink = `https://retechci.ci/activation/${Date.now()}`
+    console.log("Sending activation link to:", email, activationLink)
+    alert(`Lien d'activation envoyé à ${name} (${email})\n\nLe membre pourra payer son adhésion (5 000 FCFA) et créer son compte.`)
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -117,6 +144,10 @@ export default function DirectorDashboard() {
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
                   4
                 </span>
+              </Button>
+              <Button variant="outline" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Déconnexion
               </Button>
             </div>
           </div>
@@ -180,6 +211,8 @@ export default function DirectorDashboard() {
           <Tabs defaultValue="memberships" className="space-y-6">
             <TabsList className="flex-wrap">
               <TabsTrigger value="memberships">Adhésions</TabsTrigger>
+              <TabsTrigger value="validated">Membres validés</TabsTrigger>
+              <TabsTrigger value="convocations">Convocations</TabsTrigger>
               <TabsTrigger value="members">Tous les membres</TabsTrigger>
               <TabsTrigger value="contacts">Messages</TabsTrigger>
               <TabsTrigger value="finances">Finances</TabsTrigger>
@@ -278,6 +311,151 @@ export default function DirectorDashboard() {
                         </div>
                       ))}
                     </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* Validated Members Tab - Send activation links */}
+            <TabsContent value="validated">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Membres validés par le Président</CardTitle>
+                  <CardDescription>Envoyez le lien de paiement et création de compte</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {validatedMembers.map((member) => (
+                      <div key={member.id} className="flex items-center gap-4 p-4 bg-secondary/30 rounded-xl">
+                        <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center">
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium text-foreground">{member.name}</h4>
+                          <p className="text-sm text-muted-foreground">{member.email}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Validé le {new Date(member.validatedAt).toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
+                        <div>
+                          {member.linkSent ? (
+                            <Badge className="bg-green-500/20 text-green-600">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Lien envoyé
+                            </Badge>
+                          ) : (
+                            <Button onClick={() => handleSendActivationLink(member.email, member.name)}>
+                              <Send className="h-4 w-4 mr-2" />
+                              Envoyer le lien d&apos;activation
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 p-4 bg-primary/5 rounded-xl border border-primary/20">
+                    <h4 className="font-medium mb-2">Processus d&apos;activation</h4>
+                    <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                      <li>Le membre reçoit le lien par email</li>
+                      <li>Il paie son adhésion (5 000 FCFA)</li>
+                      <li>Il crée son compte (email + mot de passe)</li>
+                      <li>Sa carte membre est générée automatiquement</li>
+                    </ol>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Convocations Tab */}
+            <TabsContent value="convocations">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Convocations reçues</CardTitle>
+                    <CardDescription>Réunions convoquées par le Président du CA</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {convocationsReceived.map((conv) => (
+                        <div key={conv.id} className="p-4 bg-secondary/30 rounded-xl">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <h4 className="font-bold">{conv.title}</h4>
+                              <p className="text-xs text-muted-foreground">Convoqué par: {conv.convoquePar}</p>
+                            </div>
+                            <Badge variant={conv.status === "confirmed" ? "default" : "outline"}>
+                              {conv.status === "confirmed" ? "Confirmé" : "En attente"}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                            <div className="flex items-center gap-1">
+                              <CalendarDays className="h-4 w-4" />
+                              {new Date(conv.date).toLocaleDateString('fr-FR')}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              {conv.time}
+                            </div>
+                          </div>
+                          {conv.status === "pending" && (
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                className="flex-1 bg-green-500 hover:bg-green-600"
+                                onClick={() => handleRespondConvocation(conv.id, "confirmed")}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Présent
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="flex-1"
+                                onClick={() => handleRespondConvocation(conv.id, "declined")}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Absent
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Convoquer une réunion</CardTitle>
+                    <CardDescription>Le Président sera informé de cette convocation</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label>Titre de la réunion</Label>
+                      <Input placeholder="Ex: Réunion préparation SITECH" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Date</Label>
+                        <Input type="date" />
+                      </div>
+                      <div>
+                        <Label>Heure</Label>
+                        <Input type="time" />
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Lieu</Label>
+                      <Input placeholder="Ex: Siège RETECHCI" />
+                    </div>
+                    <div>
+                      <Label>Ordre du jour</Label>
+                      <Textarea placeholder="Points à aborder..." />
+                    </div>
+                    <Button className="w-full">
+                      <Send className="h-4 w-4 mr-2" />
+                      Envoyer les convocations
+                    </Button>
                   </CardContent>
                 </Card>
               </div>

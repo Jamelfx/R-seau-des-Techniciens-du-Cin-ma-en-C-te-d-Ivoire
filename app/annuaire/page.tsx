@@ -8,7 +8,7 @@ import { useI18n } from "@/lib/i18n"
 import { Search, MapPin, Star, Mail, ChevronDown, ChevronUp, Phone, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import Image from "next/image"
@@ -549,6 +549,7 @@ export default function DirectoryPage() {
                         <DialogContent>
                           <DialogHeader>
                             <DialogTitle>Contacter {company.name}</DialogTitle>
+                            <DialogDescription>Envoyez une demande de contact au Directeur Exécutif du RETECHCI.</DialogDescription>
                           </DialogHeader>
                           <ContactDialog companyName={company.name} />
                         </DialogContent>
@@ -611,6 +612,7 @@ export default function DirectoryPage() {
                         <DialogContent>
                           <DialogHeader>
                             <DialogTitle>Contacter {service.name}</DialogTitle>
+                            <DialogDescription>Envoyez une demande de contact pour les costumes et accessoires.</DialogDescription>
                           </DialogHeader>
                           <ContactDialog serviceName={service.name} />
                         </DialogContent>
@@ -745,6 +747,7 @@ export default function DirectoryPage() {
                             <DialogContent>
                               <DialogHeader>
                                 <DialogTitle>Demander un repérage - {loc.name}</DialogTitle>
+                                <DialogDescription>Demandez un repérage pour vos besoins de tournage.</DialogDescription>
                               </DialogHeader>
                               <ContactDialog serviceName={loc.name} />
                             </DialogContent>
