@@ -21,12 +21,20 @@ import {
 
 // Mock data
 const transactions = [
-  { id: "1", type: "income", description: "Cotisation - Amadou Diarra", amount: 2000, date: "2024-01-15", status: "completed", memberId: "CI-2024-101" },
-  { id: "2", type: "income", description: "Cotisation - Fatou Keita", amount: 2000, date: "2024-01-14", status: "completed", memberId: "CI-2024-102" },
-  { id: "3", type: "expense", description: "Location salle réunion", amount: -50000, date: "2024-01-12", status: "completed", invoice: "FAC-2024-001" },
-  { id: "4", type: "income", description: "Inscription SITECH 2027 - Production ABC", amount: 75000, date: "2024-01-10", status: "completed" },
+  { id: "1", type: "income", description: "Cotisation - Amadou Diarra", amount: 2000, date: "2024-01-15", status: "completed", memberId: "CI-2024-101", paymentMethod: "Orange Money" },
+  { id: "2", type: "income", description: "Cotisation - Fatou Keita", amount: 2000, date: "2024-01-14", status: "completed", memberId: "CI-2024-102", paymentMethod: "MTN MoMo" },
+  { id: "3", type: "expense", description: "Location salle reunion", amount: -50000, date: "2024-01-12", status: "completed", invoice: "FAC-2024-001" },
+  { id: "4", type: "income", description: "Inscription SITECH 2027 - Production ABC", amount: 75000, date: "2024-01-10", status: "completed", paymentMethod: "Virement" },
   { id: "5", type: "expense", description: "Impression cartes membres", amount: -120000, date: "2024-01-08", status: "completed", invoice: "FAC-2024-002" },
-  { id: "6", type: "income", description: "Cotisation - Marc Zadi", amount: 2000, date: "2024-01-05", status: "pending", memberId: "CI-2024-003" },
+  { id: "6", type: "income", description: "Cotisation - Marc Zadi", amount: 2000, date: "2024-01-05", status: "pending", memberId: "CI-2024-003", paymentMethod: "Wave" },
+  { id: "7", type: "income", description: "Cotisation - Jamel Basiru", amount: 2000, date: "2024-01-16", status: "completed", memberId: "CI-2024-8842", paymentMethod: "Orange Money" },
+]
+
+// Recent online payments (from member dashboard)
+const recentOnlinePayments = [
+  { id: "P001", memberName: "Jamel Basiru", memberId: "CI-2024-8842", amount: 2000, date: "2024-01-16 14:32", method: "Orange Money", phone: "+225 07 XX XX XX", status: "completed" },
+  { id: "P002", memberName: "Aminata Kone", memberId: "CI-2024-1234", amount: 2000, date: "2024-01-16 11:15", method: "MTN MoMo", phone: "+225 05 XX XX XX", status: "completed" },
+  { id: "P003", memberName: "Kouadio Marc", memberId: "CI-2024-5678", amount: 2000, date: "2024-01-15 16:45", method: "Wave", phone: "+225 01 XX XX XX", status: "completed" },
 ]
 
 const pendingCotisations = [
@@ -211,21 +219,88 @@ export default function TreasurerDashboard() {
             </Card>
           </div>
 
-          <Tabs defaultValue="cotisations" className="space-y-6">
+          <Tabs defaultValue="online-payments" className="space-y-6">
             <TabsList>
+              <TabsTrigger value="online-payments" className="relative">
+                Paiements en ligne
+                <span className="ml-2 w-5 h-5 bg-green-500 text-white text-xs rounded-full flex items-center justify-center">
+                  {recentOnlinePayments.length}
+                </span>
+              </TabsTrigger>
               <TabsTrigger value="cotisations" className="relative">
-                Cotisations
+                En attente
                 {stats.pendingPayments > 0 && (
                   <span className="ml-2 w-5 h-5 bg-amber-500 text-white text-xs rounded-full flex items-center justify-center">
                     {stats.pendingPayments}
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="expenses">Dépenses</TabsTrigger>
+              <TabsTrigger value="expenses">Depenses</TabsTrigger>
               <TabsTrigger value="transactions">Transactions</TabsTrigger>
               <TabsTrigger value="members">Membres</TabsTrigger>
               <TabsTrigger value="reports">Rapports</TabsTrigger>
             </TabsList>
+
+            {/* Online Payments Tab */}
+            <TabsContent value="online-payments">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Wallet className="h-5 w-5 text-green-500" />
+                        Paiements en ligne recus
+                      </CardTitle>
+                      <CardDescription>Cotisations payees via l&apos;espace membre (Orange Money, MTN, Wave, etc.)</CardDescription>
+                    </div>
+                    <Badge className="bg-green-500/20 text-green-600 border-green-500/30 text-lg px-4 py-2">
+                      +{recentOnlinePayments.reduce((sum, p) => sum + p.amount, 0).toLocaleString('fr-FR')} FCFA
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {recentOnlinePayments.map((payment) => (
+                      <div key={payment.id} className="flex items-center gap-4 p-4 bg-green-500/5 border border-green-500/20 rounded-xl">
+                        <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
+                          <ArrowUpRight className="h-6 w-6 text-green-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-foreground">{payment.memberName}</h4>
+                            <span className="text-xs text-muted-foreground font-mono bg-secondary px-2 py-0.5 rounded">{payment.memberId}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                            <span className="flex items-center gap-1">
+                              <CreditCard className="h-3 w-3" />
+                              {payment.method}
+                            </span>
+                            <span>{payment.phone}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {payment.date}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-green-500">+{payment.amount.toLocaleString('fr-FR')} FCFA</p>
+                          <Badge className="bg-green-500/20 text-green-600 border-green-500/30 text-xs">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Confirme
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {recentOnlinePayments.length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Aucun paiement en ligne recent</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
             {/* Cotisations Tab */}
             <TabsContent value="cotisations">

@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { ProfessionalCard } from "@/components/professional-card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { 
   User, 
   CreditCard, 
@@ -26,7 +27,11 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  ImageIcon
+  ImageIcon,
+  Wallet,
+  Smartphone,
+  Building2,
+  Globe
 } from "lucide-react"
 import Image from "next/image"
 
@@ -59,11 +64,180 @@ const memberData = {
   ]
 }
 
+// Payment Dialog Component
+function PaymentDialog({ memberName, memberId }: { memberName: string; memberId: string }) {
+  const [selectedMethod, setSelectedMethod] = useState<string | null>(null)
+  const [step, setStep] = useState<"select" | "confirm" | "success">("select")
+  const [phone, setPhone] = useState("")
+  
+  const paymentMethods = [
+    { id: "orange", name: "Orange Money", icon: Smartphone, color: "bg-orange-500", description: "Paiement mobile Orange CI" },
+    { id: "mtn", name: "MTN Mobile Money", icon: Smartphone, color: "bg-yellow-500", description: "Paiement mobile MTN CI" },
+    { id: "moov", name: "Moov Money", icon: Smartphone, color: "bg-blue-500", description: "Paiement mobile Moov CI" },
+    { id: "wave", name: "Wave", icon: Wallet, color: "bg-cyan-500", description: "Paiement Wave" },
+    { id: "bank", name: "Virement Bancaire", icon: Building2, color: "bg-gray-500", description: "BCEAO / Banques locales" },
+    { id: "card", name: "Carte Bancaire", icon: CreditCard, color: "bg-purple-500", description: "Visa / Mastercard" },
+  ]
+
+  const handlePayment = () => {
+    if (selectedMethod && phone) {
+      setStep("confirm")
+    }
+  }
+
+  const confirmPayment = () => {
+    // In production, this would call a payment API
+    console.log("Payment confirmed:", { method: selectedMethod, phone, memberId, amount: 2000 })
+    setStep("success")
+  }
+
+  if (step === "success") {
+    return (
+      <div className="text-center py-8">
+        <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle className="h-10 w-10 text-green-500" />
+        </div>
+        <h3 className="text-xl font-bold text-foreground mb-2">Paiement reussi !</h3>
+        <p className="text-muted-foreground mb-4">
+          Votre cotisation de 2 000 FCFA a ete enregistree.
+        </p>
+        <div className="p-4 bg-secondary/30 rounded-xl text-left">
+          <p className="text-sm"><span className="text-muted-foreground">Membre:</span> {memberName}</p>
+          <p className="text-sm"><span className="text-muted-foreground">ID:</span> {memberId}</p>
+          <p className="text-sm"><span className="text-muted-foreground">Montant:</span> 2 000 FCFA</p>
+          <p className="text-sm"><span className="text-muted-foreground">Date:</span> {new Date().toLocaleDateString('fr-FR')}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (step === "confirm") {
+    const method = paymentMethods.find(m => m.id === selectedMethod)
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold mb-2">Confirmer le paiement</h3>
+          <p className="text-3xl font-bold text-primary">2 000 FCFA</p>
+          <p className="text-muted-foreground text-sm">Cotisation mensuelle</p>
+        </div>
+        <div className="p-4 bg-secondary/30 rounded-xl space-y-2">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Methode</span>
+            <span className="font-medium">{method?.name}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Numero</span>
+            <span className="font-medium">{phone}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Membre</span>
+            <span className="font-medium">{memberName}</span>
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" className="flex-1" onClick={() => setStep("select")}>
+            Retour
+          </Button>
+          <Button className="flex-1" onClick={confirmPayment}>
+            Confirmer le paiement
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center pb-4 border-b border-border">
+        <p className="text-3xl font-bold text-primary">2 000 FCFA</p>
+        <p className="text-muted-foreground text-sm">Cotisation mensuelle RETECHCI</p>
+      </div>
+
+      <div>
+        <Label className="text-sm font-medium mb-3 block">Choisissez votre moyen de paiement</Label>
+        <div className="grid grid-cols-2 gap-3">
+          {paymentMethods.map((method) => (
+            <button
+              key={method.id}
+              onClick={() => setSelectedMethod(method.id)}
+              className={`p-4 rounded-xl border-2 transition-all text-left ${
+                selectedMethod === method.id 
+                  ? "border-primary bg-primary/5" 
+                  : "border-border hover:border-primary/50"
+              }`}
+            >
+              <div className={`w-10 h-10 ${method.color} rounded-lg flex items-center justify-center mb-2`}>
+                <method.icon className="h-5 w-5 text-white" />
+              </div>
+              <p className="font-medium text-sm">{method.name}</p>
+              <p className="text-xs text-muted-foreground">{method.description}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {selectedMethod && selectedMethod !== "bank" && selectedMethod !== "card" && (
+        <div className="space-y-2">
+          <Label>Numero de telephone</Label>
+          <Input
+            type="tel"
+            placeholder="+225 XX XX XX XX XX"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        </div>
+      )}
+
+      {selectedMethod === "bank" && (
+        <div className="p-4 bg-secondary/30 rounded-xl text-sm space-y-2">
+          <p className="font-medium">Informations bancaires RETECHCI</p>
+          <p><span className="text-muted-foreground">Banque:</span> BCEAO Abidjan</p>
+          <p><span className="text-muted-foreground">IBAN:</span> CI93 XXXX XXXX XXXX XXXX</p>
+          <p><span className="text-muted-foreground">Reference:</span> COT-{memberId}</p>
+        </div>
+      )}
+
+      {selectedMethod === "card" && (
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label>Numero de carte</Label>
+            <Input placeholder="1234 5678 9012 3456" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Expiration</Label>
+              <Input placeholder="MM/AA" />
+            </div>
+            <div className="space-y-2">
+              <Label>CVV</Label>
+              <Input placeholder="123" type="password" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Button 
+        className="w-full" 
+        disabled={!selectedMethod || (!phone && selectedMethod !== "bank" && selectedMethod !== "card")}
+        onClick={handlePayment}
+      >
+        <Wallet className="h-4 w-4 mr-2" />
+        Payer 2 000 FCFA
+      </Button>
+
+      <p className="text-xs text-muted-foreground text-center">
+        Paiement securise. Votre recu sera envoye par email.
+      </p>
+    </div>
+  )
+}
+
 export default function MemberDashboard() {
   const [activeTab, setActiveTab] = useState("profile")
   const [isEditing, setIsEditing] = useState(false)
   const [profileData, setProfileData] = useState(memberData)
   const [newFilm, setNewFilm] = useState({ title: "", year: "", role: "" })
+  const [paymentOpen, setPaymentOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const workPhotoInputRef = useRef<HTMLInputElement>(null)
 
@@ -154,6 +328,26 @@ export default function MemberDashboard() {
                 <p className="text-sm text-muted-foreground">Cotisation</p>
                 {getStatusBadge(profileData.cotisationStatus)}
               </div>
+              <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-green-600 hover:bg-green-700">
+                    <Wallet className="h-4 w-4 mr-2" />
+                    Payer ma cotisation
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Paiement de cotisation</DialogTitle>
+                    <DialogDescription>
+                      Reglez votre cotisation mensuelle de 2 000 FCFA
+                    </DialogDescription>
+                  </DialogHeader>
+                  <PaymentDialog 
+                    memberName={`${profileData.prenoms} ${profileData.nom}`} 
+                    memberId={profileData.id} 
+                  />
+                </DialogContent>
+              </Dialog>
               <Button variant="outline" size="icon">
                 <Bell className="h-4 w-4" />
               </Button>

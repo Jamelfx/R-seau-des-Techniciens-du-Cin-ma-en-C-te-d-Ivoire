@@ -249,9 +249,9 @@ function CardDesigner() {
           </CardTitle>
           <CardDescription>Prévisualisation en temps réel</CardDescription>
         </CardHeader>
-        <CardContent className="flex justify-center">
+        <CardContent className="flex justify-center py-6">
           <div 
-            className="w-[280px] h-[440px] rounded-2xl overflow-hidden shadow-2xl"
+            className="w-[260px] rounded-2xl overflow-hidden shadow-2xl relative"
             style={{ 
               backgroundColor: cardConfig.backgroundColor,
               borderRadius: `${cardConfig.borderRadius}px`
@@ -259,43 +259,43 @@ function CardDesigner() {
           >
             {/* Card Header with gradient */}
             <div 
-              className="h-20 relative"
+              className="h-16 relative"
               style={{
                 background: `linear-gradient(135deg, ${cardConfig.gradientStart} 0%, ${cardConfig.gradientEnd} 100%)`
               }}
             >
               {/* Logo */}
-              <div className="absolute top-4 left-4 w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
-                <Clapperboard className="h-6 w-6" style={{ color: cardConfig.primaryColor }} />
+              <div className="absolute top-3 left-3 w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                <Clapperboard className="h-5 w-5" style={{ color: cardConfig.primaryColor }} />
               </div>
               {/* Org name */}
-              <div className="absolute top-4 right-4 text-right">
-                <p className="text-[8px] text-white/80 leading-tight">Réseau des Techniciens</p>
-                <p className="text-[8px] text-white/80 leading-tight">du Cinéma en Côte d&apos;Ivoire</p>
+              <div className="absolute top-3 right-3 text-right">
+                <p className="text-[7px] text-white/80 leading-tight">Reseau des Techniciens</p>
+                <p className="text-[7px] text-white/80 leading-tight">du Cinema en Cote d&apos;Ivoire</p>
               </div>
             </div>
 
             {/* Photo */}
-            <div className="flex justify-center -mt-12">
+            <div className="flex justify-center -mt-10">
               <div 
-                className="w-24 h-24 rounded-full overflow-hidden border-4"
+                className="w-20 h-20 rounded-full overflow-hidden border-4"
                 style={{ borderColor: cardConfig.primaryColor }}
               >
                 <div className="w-full h-full bg-gray-600 flex items-center justify-center">
-                  <User className="h-10 w-10 text-gray-400" />
+                  <User className="h-8 w-8 text-gray-400" />
                 </div>
               </div>
             </div>
 
             {/* Info */}
-            <div className="text-center mt-4 px-4">
-              <h3 className="text-xl font-bold text-white">Nom Membre</h3>
-              <p className="text-sm mt-1" style={{ color: cardConfig.primaryColor }}>
+            <div className="text-center mt-3 px-4">
+              <h3 className="text-lg font-bold text-white">Nom Membre</h3>
+              <p className="text-xs mt-1" style={{ color: cardConfig.primaryColor }}>
                 Fonction
               </p>
-              <div className="mt-3">
+              <div className="mt-2">
                 <span 
-                  className="inline-block px-3 py-1 rounded-full text-xs"
+                  className="inline-block px-2 py-0.5 rounded-full text-[10px]"
                   style={{ 
                     backgroundColor: `${cardConfig.primaryColor}20`,
                     color: cardConfig.primaryColor
@@ -308,17 +308,17 @@ function CardDesigner() {
 
             {/* ID Section */}
             <div 
-              className="absolute bottom-0 left-0 right-0 p-4"
+              className="mt-4 p-3"
               style={{ backgroundColor: cardConfig.secondaryColor }}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">ID Membre</p>
-                  <p className="text-sm font-mono text-white">CI-2024-XXXX</p>
+                  <p className="text-[9px] text-gray-400 uppercase tracking-wider">ID Membre</p>
+                  <p className="text-xs font-mono text-white">CI-2024-XXXX</p>
                 </div>
                 {cardConfig.showQRCode && (
-                  <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
-                    <div className="w-10 h-10 bg-gray-200 rounded" />
+                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                    <div className="w-8 h-8 bg-gray-200 rounded" />
                   </div>
                 )}
               </div>
