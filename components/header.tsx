@@ -50,10 +50,17 @@ export function Header() {
         <div className="flex items-center gap-2">
           <LanguageToggle />
           <ThemeToggle />
-          <Button variant="ghost" size="icon" className="rounded-full border border-border">
-            <User className="h-5 w-5" />
-            <span className="sr-only">Profil utilisateur</span>
-          </Button>
+          <Link href="/adhesion">
+            <Button variant="default" size="sm" className="hidden md:flex">
+              Adhérer
+            </Button>
+          </Link>
+          <Link href="/membre/dashboard">
+            <Button variant="ghost" size="icon" className="rounded-full border border-border">
+              <User className="h-5 w-5" />
+              <span className="sr-only">Espace membre</span>
+            </Button>
+          </Link>
           
           {/* Mobile menu button */}
           <Button
@@ -85,6 +92,13 @@ export function Header() {
                 {item.name}
               </Link>
             ))}
+            <Link
+              href="/adhesion"
+              className="flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80 py-2 border-t border-border pt-4 mt-2"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Rejoindre le RETECHCI
+            </Link>
           </nav>
         </div>
       )}
