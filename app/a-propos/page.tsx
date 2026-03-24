@@ -9,18 +9,18 @@ import Image from "next/image"
 
 // Bureau Exécutif members
 const bureauMembers = [
-  { name: "Jamel Basiru", role: "Président", image: "/team/jamel.jpg", hasImage: true },
-  { name: "Biata Yoane", role: "Vice-Présidente", image: "/team/biata.jpg", hasImage: true },
+  { name: "Jamel Basiru", role: "Directeur Exécutif", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=400&fit=crop", hasImage: true },
+  { name: "Biata Yoane", role: "Vice-Présidente", image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&h=400&fit=crop", hasImage: true },
   { name: "Backet Diarra", initials: "BD", role: "Secrétaire Général" },
-  { name: "Raymonde Lucas", image: "/team/raymonde.jpg", hasImage: true, role: "Trésorière" },
+  { name: "Raymonde Lucas", image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=300&h=400&fit=crop", hasImage: true, role: "Trésorière" },
   { name: "Vincent Goultau", initials: "VG", role: "Commissaire aux comptes" },
-  { name: "Orlane M'guessan", image: "/team/orlane.jpg", hasImage: true, role: "Chargée de Communication" },
+  { name: "Orlane M'guessan", image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&h=400&fit=crop", hasImage: true, role: "Chargée de Communication" },
   { name: "Ailith Brahins", initials: "AI", role: "Secrétaire Adjoint" },
 ]
 
 // Conseil d'Administration members
 const councilMembers = [
-  { name: "Jean Aristide Eloa", role: "Membre actif", hasImage: true },
+  { name: "Jean Aristide Eloa", role: "Président du CA", hasImage: true },
   { name: "Sanga'Oudol", role: "Membre actif" },
   { name: "Amalia Basora P.", role: "Membre actif" },
   { name: "Guy Toliviet", role: "Membre actif" },
@@ -35,6 +35,7 @@ const councilMembers = [
   { name: "Wily Benga", role: "Membre actif" },
 ]
 
+// Portrait rectangular card with rounded corners
 function MemberCard({ name, role, image, initials, hasImage }: {
   name: string
   role: string
@@ -43,38 +44,41 @@ function MemberCard({ name, role, image, initials, hasImage }: {
   hasImage?: boolean
 }) {
   return (
-    <div className="flex flex-col items-center">
-      <div className="relative w-full aspect-square bg-secondary rounded-lg overflow-hidden mb-3">
+    <div className="flex flex-col items-center group">
+      {/* Portrait rectangle card - 3:4 aspect ratio */}
+      <div className="relative w-full aspect-[3/4] bg-secondary rounded-2xl overflow-hidden mb-4 border-2 border-border group-hover:border-primary/50 transition-all duration-300">
         {hasImage && image ? (
           <Image
             src={image}
             alt={name}
             fill
-            className="object-cover grayscale hover:grayscale-0 transition-all duration-300"
+            className="object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
           />
         ) : hasImage ? (
           <div className="w-full h-full bg-gradient-to-br from-secondary to-muted flex items-center justify-center">
-            <span className="text-4xl font-bold text-muted-foreground">
+            <span className="text-5xl font-bold text-muted-foreground">
               {name.split(' ').map(n => n[0]).join('')}
             </span>
           </div>
         ) : (
-          <div className="w-full h-full bg-card flex items-center justify-center border border-border">
-            <span className="text-4xl font-bold text-muted-foreground">{initials}</span>
+          <div className="w-full h-full bg-card flex items-center justify-center">
+            <span className="text-5xl font-bold text-muted-foreground">{initials}</span>
           </div>
         )}
+        {/* Overlay gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       </div>
-      <h3 className="font-semibold text-foreground text-sm">{name}</h3>
-      <p className="text-xs text-primary">{role}</p>
+      <h3 className="font-semibold text-foreground text-base text-center">{name}</h3>
+      <p className="text-sm text-primary text-center">{role}</p>
     </div>
   )
 }
 
 function CouncilMemberRow({ name, role }: { name: string; role: string }) {
   return (
-    <div className="flex items-center gap-3 py-3 px-4 bg-card rounded-lg border border-border">
-      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-        <span className="text-xs font-medium text-muted-foreground">
+    <div className="flex items-center gap-3 py-3 px-4 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors">
+      <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+        <span className="text-sm font-medium text-muted-foreground">
           {name.split(' ').map(n => n[0]).join('').slice(0, 2)}
         </span>
       </div>
@@ -175,12 +179,14 @@ export default function AboutPage() {
                 {t("about.bureauSubtitle")}
               </p>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {/* Portrait Grid - 4 columns on desktop */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-8">
                 {bureauMembers.slice(0, 4).map((member) => (
                   <MemberCard key={member.name} {...member} />
                 ))}
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mt-6 max-w-xl">
+              {/* Second row - 3 columns centered */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-6 lg:gap-8 mt-8 max-w-3xl mx-auto">
                 {bureauMembers.slice(4).map((member) => (
                   <MemberCard key={member.name} {...member} />
                 ))}
