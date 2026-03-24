@@ -21,6 +21,15 @@ interface ProfessionalCardProps {
 export function ProfessionalCard({ member, showActions = true, size = "md" }: ProfessionalCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   
+  // Early return if member is undefined
+  if (!member || !member.id) {
+    return (
+      <div className="w-[280px] h-[440px] rounded-2xl bg-muted flex items-center justify-center">
+        <p className="text-muted-foreground text-sm">Chargement...</p>
+      </div>
+    )
+  }
+  
   const sizeClasses = {
     sm: "w-[200px] h-[320px]",
     md: "w-[280px] h-[440px]",

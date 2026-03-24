@@ -7,14 +7,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, EyeOff, LogIn, ArrowRight } from "lucide-react"
+import { Eye, EyeOff, LogIn, ArrowRight, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 
 export default function ConnexionPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     identifier: "",
     password: ""
@@ -23,12 +25,35 @@ export default function ConnexionPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
     
-    // Simulate login - in production, this would be an API call
-    setTimeout(() => {
+    const supabase = createClient()
+    
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      email: formData.identifier,
+      password: formData.password,
+    })
+
+    if (signInError) {
+      setError(signInError.message === "Invalid login credentials" 
+        ? "Identifiants incorrects. Veuillez réessayer."
+        : signInError.message)
       setIsLoading(false)
+      return
+    }
+
+    // Get user role to redirect appropriately
+    const role = data.user?.user_metadata?.role || "member"
+
+    if (role === "director") {
+      router.push("/admin/directeur")
+    } else if (role === "president") {
+      router.push("/admin/president")
+    } else if (role === "treasurer") {
+      router.push("/admin/tresorier")
+    } else {
       router.push("/membre/dashboard")
-    }, 1500)
+    }
   }
 
   return (
@@ -48,13 +73,20 @@ export default function ConnexionPage() {
           </CardHeader>
           
           <CardContent>
+            {error && (
+              <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center gap-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                {error}
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="identifier">Identifiant ou Email</Label>
+                <Label htmlFor="identifier">Email</Label>
                 <Input
                   id="identifier"
-                  type="text"
-                  placeholder="CI-2024-XXXX ou email@exemple.com"
+                  type="email"
+                  placeholder="email@exemple.com"
                   value={formData.identifier}
                   onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
                   required
@@ -112,6 +144,14 @@ export default function ConnexionPage() {
                   Faire une demande d'adhésion
                 </Link>
               </p>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-border">
+              <Link href="/admin" className="block">
+                <Button variant="outline" className="w-full text-sm">
+                  Accès Administration
+                </Button>
+              </Link>
             </div>
             
             <div className="mt-6 pt-6 border-t border-border">

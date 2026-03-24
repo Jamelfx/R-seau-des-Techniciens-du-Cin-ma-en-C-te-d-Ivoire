@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle, UserPlus, PenLine } from "lucide-react"
+import { CheckCircle, UserPlus, PenLine, Loader2 } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
 
 const functions = [
   "Chef Opérateur / Directeur Photo",
@@ -36,6 +38,7 @@ const functions = [
 ]
 
 export default function AdhesionPage() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     nom: "",
     prenoms: "",
@@ -50,6 +53,8 @@ export default function AdhesionPage() {
   })
   const [submitted, setSubmitted] = useState(false)
   const [isDrawing, setIsDrawing] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const updateFormData = (field: string, value: string | boolean) => {
@@ -124,10 +129,36 @@ export default function AdhesionPage() {
     updateFormData('signature', '')
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Membership application submitted:", formData)
+    setIsSubmitting(true)
+    setError(null)
+    
+    const supabase = createClient()
+    
+    const { error: submitError } = await supabase
+      .from("adhesion_requests")
+      .insert({
+        first_name: formData.prenoms,
+        last_name: formData.nom,
+        email: formData.email,
+        phone: formData.phone,
+        profession: formData.fonction,
+        birth_date: formData.dateNaissance,
+        birth_place: formData.lieuNaissance,
+        years_experience: parseInt(formData.anneesExperience),
+        signature: formData.signature,
+        status: "pending",
+      })
+    
+    if (submitError) {
+      setError(submitError.message)
+      setIsSubmitting(false)
+      return
+    }
+    
     setSubmitted(true)
+    router.push("/adhesion/confirmation")
   }
 
   if (submitted) {
@@ -384,10 +415,21 @@ export default function AdhesionPage() {
                   type="submit" 
                   className="w-full" 
                   size="lg"
-                  disabled={!isFormValid()}
+                  disabled={!isFormValid() || isSubmitting}
                 >
-                  Soumettre ma demande d&apos;adhésion
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Envoi en cours...
+                    </>
+                  ) : (
+                    "Soumettre ma demande d'adhésion"
+                  )}
                 </Button>
+                
+                {error && (
+                  <p className="text-sm text-destructive text-center mt-2">{error}</p>
+                )}
               </CardContent>
             </Card>
           </form>
