@@ -863,12 +863,14 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
           <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
             <TabsList className="flex-wrap">
               <TabsTrigger value="pages">Pages</TabsTrigger>
-              <TabsTrigger value="menu">Menu & Navigation</TabsTrigger>
+              <TabsTrigger value="about">A propos</TabsTrigger>
+              <TabsTrigger value="menu">Menu</TabsTrigger>
               <TabsTrigger value="card">Carte Membre</TabsTrigger>
               <TabsTrigger value="decors">Decors CI</TabsTrigger>
               <TabsTrigger value="articles">Articles</TabsTrigger>
               <TabsTrigger value="media">Mediatheque</TabsTrigger>
               <TabsTrigger value="members">Membres</TabsTrigger>
+              <TabsTrigger value="branding">Logo & Design</TabsTrigger>
               <TabsTrigger value="settings">Parametres</TabsTrigger>
             </TabsList>
 
@@ -929,6 +931,133 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* A propos Tab - Bureau & Conseil d'Administration */}
+            <TabsContent value="about">
+              <div className="space-y-6">
+                {/* Bureau Executif */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Bureau Executif</CardTitle>
+                        <CardDescription>Gerez les membres du bureau executif</CardDescription>
+                      </div>
+                      <Button size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Ajouter
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {[
+                        { name: "Daouda Coulibaly", role: "Directeur Executif", photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" },
+                        { name: "Aminata Diallo", role: "Directrice Adjointe", photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100" },
+                        { name: "Kouame Assi", role: "Secretaire General", photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100" },
+                      ].map((member, idx) => (
+                        <div key={idx} className="flex items-center gap-4 p-4 bg-secondary/30 rounded-xl">
+                          <div className="w-12 h-12 rounded-full overflow-hidden">
+                            <Image src={member.photo} alt={member.name} width={48} height={48} className="object-cover" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium">{member.name}</h4>
+                            <p className="text-sm text-muted-foreground">{member.role}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline"><Edit className="h-4 w-4" /></Button>
+                            <Button size="sm" variant="outline" className="text-red-500"><Trash2 className="h-4 w-4" /></Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Conseil d'Administration */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Conseil d&apos;Administration</CardTitle>
+                        <CardDescription>Gerez les membres du CA</CardDescription>
+                      </div>
+                      <Button size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Ajouter
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {[
+                        { name: "Mamadou Traore", role: "President du CA", photo: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100" },
+                        { name: "Fatoumata Kone", role: "Vice-Presidente", photo: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100" },
+                        { name: "Ibrahim Sangare", role: "Tresorier", photo: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=100" },
+                        { name: "Mariam Bamba", role: "Tresoriere Adjointe", photo: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100" },
+                      ].map((member, idx) => (
+                        <div key={idx} className="flex items-center gap-4 p-4 bg-secondary/30 rounded-xl">
+                          <div className="w-12 h-12 rounded-full overflow-hidden">
+                            <Image src={member.photo} alt={member.name} width={48} height={48} className="object-cover" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium">{member.name}</h4>
+                            <p className="text-sm text-muted-foreground">{member.role}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline"><Edit className="h-4 w-4" /></Button>
+                            <Button size="sm" variant="outline" className="text-red-500"><Trash2 className="h-4 w-4" /></Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Texte de presentation */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-purple-500" />
+                      Texte de presentation (avec IA)
+                    </CardTitle>
+                    <CardDescription>Modifiez le texte de la page A propos</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label>Titre principal</Label>
+                      <Input defaultValue="A propos du RETECHCI" className="mt-1" />
+                    </div>
+                    <div>
+                      <Label>Notre mission</Label>
+                      <Textarea 
+                        rows={4}
+                        defaultValue="Le Reseau des Techniciens du Cinema en Cote d'Ivoire (RETECHCI) est une organisation professionnelle qui regroupe les techniciens du cinema et de l'audiovisuel. Notre mission est de promouvoir l'excellence technique, defendre les droits des professionnels et contribuer au developpement de l'industrie cinematographique ivoirienne."
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label>Notre histoire</Label>
+                      <Textarea 
+                        rows={4}
+                        defaultValue="Fonde en 2018, le RETECHCI est ne de la volonte de techniciens passionnes de structurer et professionnaliser le secteur. Depuis, nous avons grandi pour devenir la reference en matiere de representation des professionnels techniques du cinema en Cote d'Ivoire."
+                        className="mt-1"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button className="bg-purple-500 hover:bg-purple-600">
+                        <Wand2 className="h-4 w-4 mr-2" />
+                        Ameliorer avec IA
+                      </Button>
+                      <Button>
+                        <Save className="h-4 w-4 mr-2" />
+                        Enregistrer
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
 
             {/* Menu Tab */}
@@ -1333,13 +1462,200 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
               </Card>
             </TabsContent>
 
+            {/* Logo & Design Tab */}
+            <TabsContent value="branding">
+              <div className="space-y-6">
+                {/* Logo et Identite */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Clapperboard className="h-5 w-5 text-primary" />
+                      Logo et Identite
+                    </CardTitle>
+                    <CardDescription>Modifiez le logo et l&apos;identite visuelle du site</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <Label>Logo principal</Label>
+                        <div className="mt-2 border-2 border-dashed border-border rounded-xl p-6 text-center">
+                          <div className="w-32 h-32 mx-auto bg-black rounded-xl flex items-center justify-center mb-4">
+                            <Image 
+                              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-iRNTq7lhwYLY9HdNoLXK0QH4OyVrpl.png"
+                              alt="Logo RETECHCI"
+                              width={100}
+                              height={100}
+                              className="object-contain"
+                            />
+                          </div>
+                          <Button variant="outline" size="sm">
+                            <Upload className="h-4 w-4 mr-2" />
+                            Changer le logo
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Favicon</Label>
+                        <div className="mt-2 border-2 border-dashed border-border rounded-xl p-6 text-center">
+                          <div className="w-16 h-16 mx-auto bg-black rounded-lg flex items-center justify-center mb-4">
+                            <Clapperboard className="h-8 w-8 text-primary" />
+                          </div>
+                          <Button variant="outline" size="sm">
+                            <Upload className="h-4 w-4 mr-2" />
+                            Changer le favicon
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Nom du site</Label>
+                        <Input defaultValue="RETECHCI" className="mt-1" />
+                      </div>
+                      <div>
+                        <Label>Slogan</Label>
+                        <Input defaultValue="Reseau des Techniciens du Cinema en Cote d'Ivoire" className="mt-1" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Typographie */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Type className="h-5 w-5" />
+                      Typographie
+                    </CardTitle>
+                    <CardDescription>Personnalisez les polices du site</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Police des titres</Label>
+                        <Select defaultValue="inter">
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="inter">Inter</SelectItem>
+                            <SelectItem value="poppins">Poppins</SelectItem>
+                            <SelectItem value="montserrat">Montserrat</SelectItem>
+                            <SelectItem value="playfair">Playfair Display</SelectItem>
+                            <SelectItem value="roboto">Roboto</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Police du texte</Label>
+                        <Select defaultValue="inter">
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="inter">Inter</SelectItem>
+                            <SelectItem value="opensans">Open Sans</SelectItem>
+                            <SelectItem value="lato">Lato</SelectItem>
+                            <SelectItem value="nunito">Nunito</SelectItem>
+                            <SelectItem value="roboto">Roboto</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-secondary/30 rounded-xl">
+                      <h4 className="font-bold text-lg mb-2">Apercu de la typographie</h4>
+                      <p className="text-muted-foreground">
+                        Ceci est un exemple de texte pour visualiser le rendu des polices choisies sur le site.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Couleurs */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Palette className="h-5 w-5" />
+                      Palette de couleurs
+                    </CardTitle>
+                    <CardDescription>Definissez les couleurs principales du site</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <Label>Couleur principale</Label>
+                        <div className="flex gap-2 mt-1">
+                          <Input type="color" defaultValue="#dc2626" className="w-12 h-10 p-1 cursor-pointer" />
+                          <Input defaultValue="#dc2626" className="flex-1" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Couleur secondaire</Label>
+                        <div className="flex gap-2 mt-1">
+                          <Input type="color" defaultValue="#f97316" className="w-12 h-10 p-1 cursor-pointer" />
+                          <Input defaultValue="#f97316" className="flex-1" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Arriere-plan</Label>
+                        <div className="flex gap-2 mt-1">
+                          <Input type="color" defaultValue="#0a0a0a" className="w-12 h-10 p-1 cursor-pointer" />
+                          <Input defaultValue="#0a0a0a" className="flex-1" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Accent</Label>
+                        <div className="flex gap-2 mt-1">
+                          <Input type="color" defaultValue="#a855f7" className="w-12 h-10 p-1 cursor-pointer" />
+                          <Input defaultValue="#a855f7" className="flex-1" />
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Assistant IA pour fonctionnalites */}
+                <Card className="border-purple-500/30 bg-purple-500/5">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-purple-500" />
+                      Assistant IA - Developpement
+                    </CardTitle>
+                    <CardDescription>Demandez a l&apos;IA de creer ou modifier des fonctionnalites</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl">
+                      <p className="text-sm text-purple-200">
+                        Decrivez la fonctionnalite que vous souhaitez ajouter ou modifier, et l&apos;IA vous aidera a la concevoir.
+                      </p>
+                    </div>
+                    <Textarea 
+                      placeholder="Ex: Je voudrais ajouter une galerie photo sur la page d'accueil avec un effet de diaporama..."
+                      rows={4}
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      {["Nouvelle page", "Formulaire", "Animation", "Integration", "Modification design"].map((tag) => (
+                        <Badge key={tag} variant="outline" className="cursor-pointer hover:bg-purple-500/20">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                    <Button className="w-full bg-purple-500 hover:bg-purple-600">
+                      <Wand2 className="h-4 w-4 mr-2" />
+                      Generer avec l&apos;IA
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
             {/* Settings Tab */}
             <TabsContent value="settings">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>Informations du site</CardTitle>
-                    <CardDescription>Paramètres généraux</CardDescription>
+                    <CardDescription>Parametres generaux</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>

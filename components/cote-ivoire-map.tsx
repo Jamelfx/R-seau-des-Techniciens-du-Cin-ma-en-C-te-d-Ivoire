@@ -302,49 +302,27 @@ export function CoteIvoireMap({
           })}
         </div>
 
-        {/* Legend */}
-        <div className="absolute bottom-3 left-3 bg-black/90 backdrop-blur-sm rounded-xl p-3 text-xs border border-neutral-700">
-          <h4 className="font-semibold text-white mb-2">Legende</h4>
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-primary" />
-              <span className="text-neutral-300">Capitale economique</span>
+        {/* Compact Legend */}
+        <div className="absolute bottom-2 left-2 bg-black/80 backdrop-blur-sm rounded-lg p-2 text-[9px] border border-neutral-700/50">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              <span className="text-neutral-400">Abidjan</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
-              <span className="text-neutral-300">Capitale politique</span>
+            <div className="flex items-center gap-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
+              <span className="text-neutral-400">Yamoussoukro</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-white border border-neutral-400" />
-              <span className="text-neutral-300">Chefs-lieux</span>
-            </div>
-            <div className="h-px bg-neutral-700 my-2" />
-            <div className="text-[10px] text-neutral-400 mb-1">Types de decors :</div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              <div className="flex items-center gap-1.5">
-                <Building className="h-3 w-3 text-primary" />
-                <span className="text-neutral-400">Urbain</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Waves className="h-3 w-3 text-primary" />
-                <span className="text-neutral-400">Plage</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Trees className="h-3 w-3 text-primary" />
-                <span className="text-neutral-400">Nature</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Landmark className="h-3 w-3 text-primary" />
-                <span className="text-neutral-400">Historique</span>
-              </div>
+            <div className="flex items-center gap-1">
+              <Camera className="h-2.5 w-2.5 text-primary" />
+              <span className="text-neutral-400">Decor</span>
             </div>
           </div>
         </div>
 
         {/* Title */}
-        <div className="absolute top-3 left-3 bg-black/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-neutral-700">
-          <h3 className="text-sm font-bold text-white">Carte des Decors</h3>
-          <p className="text-[10px] text-neutral-400">Cote d&apos;Ivoire - Effet 3D interactif</p>
+        <div className="absolute top-2 left-2 bg-black/80 backdrop-blur-sm rounded-lg px-2 py-1 border border-neutral-700/50">
+          <h3 className="text-xs font-bold text-white">Carte Decors CI</h3>
         </div>
 
         {/* 3D shine effect */}
