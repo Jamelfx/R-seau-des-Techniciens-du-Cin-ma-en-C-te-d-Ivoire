@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Clapperboard, Lock, User, AlertCircle, UserCog, Crown, Wallet, LayoutDashboard } from "lucide-react"
+import { Clapperboard, Lock, User, AlertCircle, UserCog, Crown, Wallet } from "lucide-react"
 import Link from "next/link"
 
 type AdminRole = "directeur" | "president" | "tresorier"
@@ -197,34 +197,7 @@ export default function AdminLoginPage() {
               </Button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-border text-center">
-              <p className="text-xs text-muted-foreground mb-2">
-                Accès direct aux dashboards (mode démo)
-              </p>
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <Link href="/admin/directeur">
-                  <Button variant="outline" size="sm" className="w-full text-xs">
-                    Directeur
-                  </Button>
-                </Link>
-                <Link href="/admin/president">
-                  <Button variant="outline" size="sm" className="w-full text-xs">
-                    Président
-                  </Button>
-                </Link>
-                <Link href="/admin/tresorier">
-                  <Button variant="outline" size="sm" className="w-full text-xs">
-                    Trésorière
-                  </Button>
-                </Link>
-                <Link href="/admin/cms">
-                  <Button variant="outline" size="sm" className="w-full text-xs">
-                    <LayoutDashboard className="h-3 w-3 mr-1" />
-                    CMS
-                  </Button>
-                </Link>
-              </div>
-            </div>
+            
 
             <p className="text-xs text-center text-muted-foreground mt-4">
               <Link href="/connexion" className="text-primary hover:underline">
