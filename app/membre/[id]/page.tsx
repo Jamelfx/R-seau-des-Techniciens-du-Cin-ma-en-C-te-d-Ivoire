@@ -148,23 +148,19 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
               {/* Contact Card */}
               <Card className="bg-card border-border">
                 <CardContent className="p-6 space-y-4">
-                  <h3 className="font-semibold text-lg">Contact</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 text-sm">
-                      <MapPin className="h-4 w-4 text-primary" />
-                      <span className="text-muted-foreground">{member.location}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <Phone className="h-4 w-4 text-primary" />
-                      <span className="text-muted-foreground">{member.phone}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <Mail className="h-4 w-4 text-primary" />
-                      <span className="text-muted-foreground">{member.email}</span>
-                    </div>
+                  <h3 className="font-semibold text-lg">Contacter ce technicien</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Envoyez une demande de contact. Le Directeur Exécutif vous mettra en relation.
+                  </p>
+                  <div className="flex items-center gap-3 text-sm">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    <span className="text-muted-foreground">{member.location}</span>
                   </div>
-                  <div className="flex gap-2 pt-4">
-                    <Button className="flex-1">Contacter</Button>
+                  <div className="flex gap-2 pt-2">
+                    <Button className="flex-1">
+                      <Mail className="h-4 w-4 mr-2" />
+                      Contacter
+                    </Button>
                     <Button variant="outline" size="icon">
                       <Share2 className="h-4 w-4" />
                     </Button>

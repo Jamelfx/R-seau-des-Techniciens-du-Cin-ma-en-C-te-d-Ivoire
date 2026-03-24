@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useRef } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clapperboard, QrCode, CheckCircle, Scan, ShieldCheck } from "lucide-react"
@@ -8,6 +9,38 @@ import Link from "next/link"
 
 export function DigitalCard() {
   const { t } = useI18n()
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [rotateX, setRotateX] = useState(0)
+  const [rotateY, setRotateY] = useState(0)
+  const [isHovering, setIsHovering] = useState(false)
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return
+    
+    const rect = cardRef.current.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    
+    const mouseX = e.clientX - centerX
+    const mouseY = e.clientY - centerY
+    
+    // Calculate rotation (max 15 degrees)
+    const rotateYValue = (mouseX / (rect.width / 2)) * 15
+    const rotateXValue = -(mouseY / (rect.height / 2)) * 15
+    
+    setRotateX(rotateXValue)
+    setRotateY(rotateYValue)
+  }
+
+  const handleMouseEnter = () => {
+    setIsHovering(true)
+  }
+
+  const handleMouseLeave = () => {
+    setIsHovering(false)
+    setRotateX(0)
+    setRotateY(0)
+  }
 
   return (
     <section className="py-24 px-4 bg-background">
@@ -57,14 +90,46 @@ export function DigitalCard() {
             </Link>
           </div>
           
-          {/* Right - Card Preview - Portrait PVC Format */}
-          <div className="flex justify-center lg:justify-end">
-            <div className="relative">
+          {/* Right - Card Preview - Portrait PVC Format with 3D Effect */}
+          <div className="flex justify-center lg:justify-end perspective-1000">
+            <div 
+              ref={cardRef}
+              className="relative cursor-pointer"
+              onMouseMove={handleMouseMove}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+              style={{
+                perspective: "1000px",
+              }}
+            >
               {/* Glow effect */}
-              <div className="absolute inset-0 bg-primary/30 blur-[60px] rounded-full scale-75" />
+              <div 
+                className="absolute inset-0 bg-primary/30 blur-[60px] rounded-full scale-75 transition-opacity duration-300"
+                style={{ opacity: isHovering ? 0.6 : 0.3 }}
+              />
               
-              {/* Card - Portrait PVC Format */}
-              <div className="relative w-[280px] h-[420px] rounded-2xl overflow-hidden shadow-2xl border border-border/50">
+              {/* Card - Portrait PVC Format with 3D Transform */}
+              <div 
+                className="relative w-[280px] h-[420px] rounded-2xl overflow-hidden shadow-2xl border border-border/50 transition-all duration-200 ease-out"
+                style={{
+                  transform: `rotateX(${rotateX}deg) rotateY(${rotateY}deg) ${isHovering ? 'scale(1.02)' : 'scale(1)'}`,
+                  transformStyle: "preserve-3d",
+                  boxShadow: isHovering 
+                    ? `${rotateY * -2}px ${rotateX * 2}px 40px rgba(0,0,0,0.4), 0 0 60px rgba(var(--primary), 0.2)`
+                    : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                }}
+              >
+                {/* Shine effect on hover */}
+                <div 
+                  className="absolute inset-0 pointer-events-none z-20 transition-opacity duration-300"
+                  style={{
+                    background: isHovering 
+                      ? `linear-gradient(${105 + rotateY * 2}deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%)`
+                      : 'none',
+                    opacity: isHovering ? 1 : 0,
+                  }}
+                />
+                
                 {/* Background gradient */}
                 <div className="absolute inset-0 bg-gradient-to-b from-primary/40 via-card to-card" />
                 

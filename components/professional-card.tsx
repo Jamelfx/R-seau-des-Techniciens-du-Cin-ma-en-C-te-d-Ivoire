@@ -41,39 +41,12 @@ export function ProfessionalCard({
   const cardRef = useRef<HTMLDivElement>(null)
   
   // Normalize props - support both member object and individual props
-  const id = member?.id || memberId || "LOADING"
+  const id = member?.id || memberId || "CI-0000-0000"
   const name = member?.name || propName || "Chargement..."
   const role = member?.role || propFunction || propRole || ""
   const category = (member?.category || propCategory || "A") as "A" | "B" | "C"
   const title = member?.title || propTitle
   const photo = member?.photo || propPhoto
-  
-  // Early return if no valid data
-  if (id === "LOADING" && !name) {
-    return (
-      <div className="w-[280px] h-[440px] rounded-2xl bg-muted flex items-center justify-center">
-        <p className="text-muted-foreground text-sm">Chargement...</p>
-      </div>
-    )
-  }
-  
-  const sizeClasses = {
-    sm: "w-[200px] h-[320px]",
-    md: "w-[280px] h-[440px]",
-    lg: "w-[320px] h-[500px]"
-  }
-  
-  const photoSizes = {
-    sm: "w-20 h-20",
-    md: "w-28 h-28",
-    lg: "w-32 h-32"
-  }
-  
-  const textSizes = {
-    sm: { name: "text-lg", role: "text-xs", badge: "text-[10px] px-2 py-0.5", id: "text-[10px]" },
-    md: { name: "text-xl", role: "text-sm", badge: "text-xs px-3 py-1", id: "text-xs" },
-    lg: { name: "text-2xl", role: "text-base", badge: "text-sm px-4 py-1.5", id: "text-sm" }
-  }
   
   // Generate unique QR code data URL based on member ID
   const generateQRCodeSVG = (data: string) => {
@@ -107,6 +80,33 @@ export function ProfessionalCard({
   }
   
   const qrCells = generateQRCodeSVG(id)
+  
+  // Early return if no valid data
+  if (!name || name === "Chargement...") {
+    return (
+      <div className="w-[280px] h-[440px] rounded-2xl bg-muted flex items-center justify-center">
+        <p className="text-muted-foreground text-sm">Chargement...</p>
+      </div>
+    )
+  }
+  
+  const sizeClasses = {
+    sm: "w-[200px] h-[320px]",
+    md: "w-[280px] h-[440px]",
+    lg: "w-[320px] h-[500px]"
+  }
+  
+  const photoSizes = {
+    sm: "w-20 h-20",
+    md: "w-28 h-28",
+    lg: "w-32 h-32"
+  }
+  
+  const textSizes = {
+    sm: { name: "text-lg", role: "text-xs", badge: "text-[10px] px-2 py-0.5", id: "text-[10px]" },
+    md: { name: "text-xl", role: "text-sm", badge: "text-xs px-3 py-1", id: "text-xs" },
+    lg: { name: "text-2xl", role: "text-base", badge: "text-sm px-4 py-1.5", id: "text-sm" }
+  }
   
   const handlePrint = () => {
     if (cardRef.current) {
