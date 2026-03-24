@@ -1,5 +1,6 @@
 "use client"
 
+// Professional Card Component for RETECHCI members
 import { useRef } from "react"
 import { Download, Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -18,6 +19,7 @@ interface ProfessionalCardProps {
   name?: string
   role?: string
   function?: string
+  category?: string
   title?: string
   photo?: string
   showActions?: boolean
@@ -49,15 +51,15 @@ export function ProfessionalCard({
   const cardRef = useRef<HTMLDivElement>(null)
   
   // Normalize props - support both member object and individual props
+  // Use safe defaults to prevent any undefined errors
   const id = member?.id || memberId || "CI-0000-0000"
-  const name = member?.name || propName || "Chargement..."
+  const name = member?.name || propName || ""
   const role = member?.role || propFunction || propRole || ""
   const title = member?.title || propTitle
   const photo = member?.photo || propPhoto
   
-  // Generate unique QR code data URL based on member ID
-  const generateQRCodeSVG = (data: string) => {
-    // Defensive check for undefined or empty data
+  // Generate unique QR code pattern based on member ID
+  const generateQRPattern = (data: string): boolean[][] => {
     const safeData = data || "CI-0000-0000"
     const hash = safeData.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
     const qrSize = 7
@@ -88,10 +90,10 @@ export function ProfessionalCard({
     return cells
   }
   
-  const qrCells = generateQRCodeSVG(id || "CI-0000-0000")
+  const qrCells = generateQRPattern(id)
   
-  // Early return if no valid data
-  if (!name || name === "Chargement...") {
+  // Early return for loading state
+  if (!name) {
     return (
       <div className="w-[280px] h-[440px] rounded-2xl bg-muted flex items-center justify-center">
         <p className="text-muted-foreground text-sm">Chargement...</p>
@@ -106,275 +108,139 @@ export function ProfessionalCard({
   }
   
   const photoSizes = {
-    sm: "w-20 h-20",
-    md: "w-28 h-28",
-    lg: "w-32 h-32"
+    sm: "w-16 h-16",
+    md: "w-24 h-24",
+    lg: "w-28 h-28"
   }
   
   const textSizes = {
-    sm: { name: "text-lg", role: "text-xs", badge: "text-[10px] px-2 py-0.5", id: "text-[10px]", org: "text-[7px]" },
-    md: { name: "text-xl", role: "text-sm", badge: "text-xs px-3 py-1", id: "text-xs", org: "text-[8px]" },
-    lg: { name: "text-2xl", role: "text-base", badge: "text-sm px-4 py-1.5", id: "text-sm", org: "text-[9px]" }
+    sm: { name: "text-lg", role: "text-xs", badge: "text-[10px] px-2 py-0.5", id: "text-[10px]" },
+    md: { name: "text-xl", role: "text-sm", badge: "text-xs px-3 py-1", id: "text-xs" },
+    lg: { name: "text-2xl", role: "text-base", badge: "text-sm px-4 py-1.5", id: "text-sm" }
   }
   
   const handlePrint = () => {
     if (cardRef.current) {
-      const printWindow = window.open('', '_blank')
+      const printContent = cardRef.current.innerHTML
+      const printWindow = window.open('', '', 'height=600,width=400')
       if (printWindow) {
         printWindow.document.write(`
-          <!DOCTYPE html>
           <html>
             <head>
-              <title>Carte Professionnelle - ${name}</title>
+              <title>Carte Membre RETECHCI - ${name}</title>
               <style>
                 body { 
-                  margin: 0; 
-                  padding: 20px; 
                   display: flex; 
                   justify-content: center; 
                   align-items: center; 
-                  min-height: 100vh;
-                  background: #f5f5f5;
+                  min-height: 100vh; 
+                  margin: 0;
+                  background: #1a1a1a;
                 }
                 .card {
-                  width: 85.6mm;
-                  height: 140mm;
-                  background: linear-gradient(180deg, #1a0a0a 0%, #0a0a0a 30%, #0a0a0a 100%);
-                  border-radius: 12px;
+                  width: 280px;
+                  height: 440px;
+                  background: linear-gradient(180deg, rgba(220,38,38,0.3) 0%, rgba(10,10,10,1) 40%);
+                  border-radius: 16px;
                   padding: 20px;
                   box-sizing: border-box;
-                  display: flex;
-                  flex-direction: column;
-                  align-items: center;
                   color: white;
-                  font-family: system-ui, -apple-system, sans-serif;
-                  position: relative;
-                  overflow: hidden;
-                }
-                .card::before {
-                  content: '';
-                  position: absolute;
-                  top: 0;
-                  left: 0;
-                  right: 0;
-                  height: 120px;
-                  background: linear-gradient(180deg, rgba(220, 38, 38, 0.3) 0%, transparent 100%);
-                }
-                .header {
-                  width: 100%;
-                  display: flex;
-                  justify-content: space-between;
-                  align-items: flex-start;
-                  position: relative;
-                  z-index: 1;
-                  margin-bottom: 20px;
-                }
-                .logo-container {
-                  display: flex;
-                  align-items: center;
-                  gap: 8px;
-                }
-                .logo {
-                  width: 28px;
-                  height: 28px;
-                }
-                .org-name {
-                  font-size: 7px;
-                  line-height: 1.2;
-                  color: rgba(255,255,255,0.8);
-                  max-width: 100px;
-                  text-align: right;
-                }
-                .photo-container {
-                  width: 100px;
-                  height: 100px;
-                  border-radius: 50%;
-                  border: 3px solid #dc2626;
-                  overflow: hidden;
-                  margin-bottom: 16px;
-                  position: relative;
-                  z-index: 1;
-                }
-                .photo {
-                  width: 100%;
-                  height: 100%;
-                  object-fit: cover;
-                }
-                .name {
-                  font-size: 22px;
-                  font-weight: 700;
-                  margin-bottom: 4px;
-                  text-align: center;
-                }
-                .role {
-                  color: #dc2626;
-                  font-size: 14px;
-                  font-weight: 500;
-                  margin-bottom: 12px;
-                }
-                .title {
-                  background: rgba(255,255,255,0.1);
-                  padding: 6px 16px;
-                  border-radius: 20px;
-                  font-size: 12px;
-                  margin-bottom: auto;
-                }
-                .id-section {
-                  width: calc(100% + 40px);
-                  margin: 0 -20px -20px;
-                  padding: 16px 20px;
-                  background: rgba(20, 20, 20, 0.8);
-                  border-top: 1px solid rgba(255,255,255,0.1);
-                  display: flex;
-                  justify-content: space-between;
-                  align-items: center;
-                  margin-top: 20px;
-                }
-                .id-label {
-                  font-size: 10px;
-                  color: rgba(255,255,255,0.6);
-                  margin-bottom: 2px;
-                }
-                .id-value {
-                  font-size: 13px;
-                  font-weight: 600;
-                  color: #dc2626;
-                }
-                .qr-code {
-                  width: 50px;
-                  height: 50px;
-                  background: white;
-                  border-radius: 4px;
-                  padding: 4px;
-                }
-                @media print {
-                  body { background: white; }
+                  font-family: system-ui, sans-serif;
                 }
               </style>
             </head>
             <body>
-              <div class="card">
-                <div class="header">
-                  <div class="logo-container">
-                    <svg class="logo" viewBox="0 0 40 40" fill="none">
-                      <path d="M8 8L16 20L8 32H4L12 20L4 8H8Z" fill="#dc2626"/>
-                      <path d="M12 8L20 20L12 32H8L16 20L8 8H12Z" fill="#dc2626"/>
-                      <path d="M20 8L32 8V12H24V18H30V22H24V28H32V32H20V8Z" fill="#dc2626"/>
-                    </svg>
-                  </div>
-                  <div class="org-name">Réseau des Techniciens du Cinéma en Côte d'Ivoire</div>
-                </div>
-                <div class="photo-container">
-                  <img class="photo" src="${photo || '/placeholder.svg'}" alt="${name}" />
-                </div>
-                <div class="name">${name}</div>
-                <div class="role">${role}</div>
-                ${title ? `<div class="title">${title}</div>` : ''}
-                <div class="id-section">
-                  <div>
-                    <div class="id-label">ID MEMBRE</div>
-                    <div class="id-value">${id}</div>
-                  </div>
-                  <div class="qr-code">
-                    <svg viewBox="0 0 70 70" fill="none">
-                      ${qrCells.map((row, y) => 
-                        row.map((cell, x) => 
-                          cell ? `<rect x="${x * 10}" y="${y * 10}" width="10" height="10" fill="black"/>` : ''
-                        ).join('')
-                      ).join('')}
-                    </svg>
-                  </div>
-                </div>
-              </div>
-              <script>window.onload = () => window.print();</script>
+              <div class="card">${printContent}</div>
             </body>
           </html>
         `)
         printWindow.document.close()
+        printWindow.focus()
+        printWindow.print()
+        printWindow.close()
       }
     }
   }
   
+  const handleDownload = () => {
+    alert(`Téléchargement de la carte de ${name}`)
+  }
+
   return (
     <div className="flex flex-col items-center gap-4">
       {/* Card */}
       <div 
         ref={cardRef}
-        className={`${sizeClasses[size]} rounded-2xl overflow-hidden relative flex flex-col`}
+        className={`${sizeClasses[size]} rounded-2xl overflow-hidden relative`}
         style={{
-          background: 'linear-gradient(180deg, #1a0a0a 0%, #0a0a0a 30%, #0a0a0a 100%)'
+          background: 'linear-gradient(180deg, rgba(220,38,38,0.3) 0%, rgba(10,10,10,1) 40%)'
         }}
       >
-        {/* Red gradient overlay at top */}
-        <div 
-          className="absolute top-0 left-0 right-0 h-32 pointer-events-none"
-          style={{
-            background: 'linear-gradient(180deg, rgba(220, 38, 38, 0.35) 0%, transparent 100%)'
-          }}
-        />
-        
         {/* Header with Logo and Organization Name */}
-        <div className="relative z-10 flex justify-between items-start p-4">
-          <RetechciLogo className={size === "sm" ? "w-6 h-6" : size === "md" ? "w-8 h-8" : "w-10 h-10"} />
-          <p className={`${textSizes[size].org} text-white/80 text-right leading-tight max-w-[100px]`}>
-            Réseau des Techniciens du Cinéma en Côte d&apos;Ivoire
-          </p>
-        </div>
-        
-        {/* Photo */}
-        <div className="relative z-10 flex justify-center mt-2">
-          <div className={`${photoSizes[size]} rounded-full border-[3px] border-red-600 overflow-hidden`}>
-            {photo ? (
-              <Image
-                src={photo}
-                alt={name}
-                width={128}
-                height={128}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-muted flex items-center justify-center text-2xl font-bold text-muted-foreground">
-                {name.split(' ').map(n => n[0]).join('')}
-              </div>
-            )}
+        <div className="flex items-center justify-between px-4 pt-4">
+          <RetechciLogo className="w-10 h-10" />
+          <div className="text-right">
+            <p className="text-[8px] text-gray-400 leading-tight">Réseau des Techniciens</p>
+            <p className="text-[8px] text-gray-400 leading-tight">du Cinéma en Côte d&apos;Ivoire</p>
           </div>
         </div>
         
-        {/* Name & Role */}
-        <div className="relative z-10 text-center mt-4 px-4">
-          <h3 className={`${textSizes[size].name} font-bold text-white`}>{name}</h3>
-          <p className={`${textSizes[size].role} text-red-500 font-medium mt-1`}>{role}</p>
+        {/* Profile Photo */}
+        <div className="flex flex-col items-center mt-4">
+          <div className={`${photoSizes[size]} rounded-full border-4 border-red-600 overflow-hidden bg-muted`}>
+            {photo ? (
+              <Image 
+                src={photo} 
+                alt={name}
+                width={120}
+                height={120}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-700 text-2xl font-bold text-white">
+                {name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+              </div>
+            )}
+          </div>
           
+          {/* Name */}
+          <h3 className={`${textSizes[size].name} font-bold text-white mt-4 text-center px-4`}>
+            {name}
+          </h3>
+          
+          {/* Role/Function */}
+          <p className={`${textSizes[size].role} text-red-500 mt-1`}>
+            {role}
+          </p>
+          
+          {/* Title Badge */}
           {title && (
-            <span className={`inline-block mt-3 ${textSizes[size].badge} rounded-full bg-white/10 text-white/80`}>
+            <span className={`${textSizes[size].badge} bg-gray-700/50 text-gray-300 rounded-full mt-3`}>
               {title}
             </span>
           )}
         </div>
         
-        {/* ID Section */}
-        <div className="mt-auto relative z-10">
-          <div className="bg-[#141414]/90 border-t border-white/10 px-4 py-3 flex justify-between items-center">
+        {/* ID Section with QR Code */}
+        <div className="absolute bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm p-4 rounded-b-2xl">
+          <div className="flex items-center justify-between">
             <div>
-              <p className={`${textSizes[size].id} text-white/50 font-medium`}>ID MEMBRE</p>
-              <p className={`${textSizes[size].role} text-red-500 font-semibold`}>{id}</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider">ID Membre</p>
+              <p className={`${textSizes[size].id} text-red-500 font-mono font-bold`}>{id}</p>
             </div>
             
             {/* QR Code */}
-            <div className="bg-white rounded p-1.5">
-              <svg 
-                viewBox="0 0 70 70" 
-                className={size === "sm" ? "w-10 h-10" : size === "md" ? "w-12 h-12" : "w-14 h-14"}
-              >
-                {qrCells.map((row, y) => 
-                  row.map((cell, x) => 
+            <div className="w-12 h-12 bg-white p-1 rounded">
+              <svg viewBox="0 0 7 7" className="w-full h-full">
+                {qrCells.map((row, i) =>
+                  row.map((cell, j) =>
                     cell ? (
-                      <rect 
-                        key={`${x}-${y}`}
-                        x={x * 10} 
-                        y={y * 10} 
-                        width="10" 
-                        height="10" 
+                      <rect
+                        key={`${i}-${j}`}
+                        x={j}
+                        y={i}
+                        width="1"
+                        height="1"
                         fill="black"
                       />
                     ) : null
@@ -386,14 +252,14 @@ export function ProfessionalCard({
         </div>
       </div>
       
-      {/* Actions */}
+      {/* Action Buttons */}
       {showActions && (
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />
             Imprimer
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleDownload}>
             <Download className="h-4 w-4 mr-2" />
             Télécharger
           </Button>

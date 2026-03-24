@@ -1,8 +1,8 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
-  // Simple middleware that just passes through
-  // Supabase session handling is done in the pages themselves
+export function middleware(request: NextRequest) {
+  // Pass through - authentication is handled by individual pages
   return NextResponse.next()
 }
 
