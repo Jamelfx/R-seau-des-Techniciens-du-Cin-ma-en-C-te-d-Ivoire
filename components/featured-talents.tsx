@@ -1,36 +1,65 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
-import { TalentCard } from "@/components/talent-card"
+import { ArrowRight, Star } from "lucide-react"
 import { useI18n } from "@/lib/i18n"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 
+// This would typically come from the database, populated by member profiles
 const talents = [
   {
+    id: "CI-2024-0001",
     name: "Marc Zadi",
     role: "Directeur de la Photographie",
     image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
     status: "disponible" as const,
+    experience: "Senior",
+    category: "A",
   },
   {
+    id: "CI-2024-0015",
     name: "Aïcha Touré",
     role: "Chef Monteuse",
     image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face",
     status: "en-tournage" as const,
+    experience: "Senior",
+    category: "A",
   },
   {
+    id: "CI-2024-0023",
     name: "Eric Kouassi",
     role: "Ingénieur du Son",
     image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
     status: "disponible" as const,
+    experience: "Intermédiaire",
+    category: "B",
   },
   {
+    id: "CI-2024-0047",
     name: "Fatou Diallo",
     role: "Directrice Artistique",
     image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
     status: "indisponible" as const,
+    experience: "Senior",
+    category: "A",
   },
 ]
+
+const statusConfig = {
+  disponible: {
+    label: "Disponible",
+    className: "bg-green-500/20 text-green-400 border-green-500/30",
+  },
+  "en-tournage": {
+    label: "En Tournage",
+    className: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+  },
+  indisponible: {
+    label: "Indisponible",
+    className: "bg-red-500/20 text-red-400 border-red-500/30",
+  },
+}
 
 export function FeaturedTalents() {
   const { t } = useI18n()
@@ -56,7 +85,53 @@ export function FeaturedTalents() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {talents.map((talent) => (
-            <TalentCard key={talent.name} {...talent} />
+            <div 
+              key={talent.id} 
+              className="group bg-card border border-border rounded-xl p-4 hover:border-primary/50 transition-all duration-300"
+            >
+              {/* Header with avatar and status */}
+              <div className="flex items-start gap-3 mb-3">
+                <div className="relative">
+                  <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-primary/30 group-hover:border-primary/60 transition-colors">
+                    <img 
+                      src={talent.image} 
+                      alt={talent.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  {/* Online indicator */}
+                  {talent.status === "disponible" && (
+                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-card rounded-full" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h3 className="font-semibold text-foreground truncate">{talent.name}</h3>
+                    <Badge className={`text-[10px] px-1.5 py-0 ${statusConfig[talent.status].className}`}>
+                      {statusConfig[talent.status].label}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">{talent.role}</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                    <span className="text-xs text-muted-foreground">{talent.experience}</span>
+                    <span className="text-xs text-muted-foreground">•</span>
+                    <span className="text-xs text-muted-foreground">Cat. {talent.category}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Action Button */}
+              <Link href={`/annuaire?profil=${talent.id}`}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full border-border text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                >
+                  Voir le profil
+                </Button>
+              </Link>
+            </div>
           ))}
         </div>
 
