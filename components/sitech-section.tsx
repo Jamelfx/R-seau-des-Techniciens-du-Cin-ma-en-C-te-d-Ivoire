@@ -1,6 +1,11 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
+import { useI18n } from "@/lib/i18n"
 
 export function SitechSection() {
+  const { t } = useI18n()
+
   return (
     <section className="relative py-24 px-4 overflow-hidden">
       {/* Background with overlay */}
@@ -15,35 +20,33 @@ export function SitechSection() {
       <div className="relative max-w-6xl mx-auto">
         <div className="max-w-2xl">
           <p className="text-primary font-semibold tracking-wide mb-4">
-            L&apos;ÉVÉNEMENT DE L&apos;ANNÉE
+            {t("sitech.badge")}
           </p>
           
           <h2 className="text-5xl md:text-6xl font-bold mb-6">
-            <span className="text-foreground">SITECH </span>
-            <span className="text-amber-500">2027</span>
+            <span className="text-foreground">{t("sitech.title")} </span>
+            <span className="text-amber-500">{t("sitech.year")}</span>
           </h2>
           
           <p className="text-muted-foreground text-lg leading-relaxed mb-8 max-w-xl">
-            Salon International des Technologies de l&apos;Image et du Son. 
-            Retrouvez les dernières innovations, des masterclasses 
-            exclusives et tout l&apos;écosystème audiovisuel ouest-africain.
+            {t("sitech.description")}
           </p>
           
           <div className="flex gap-12 mb-8">
             <div>
-              <p className="text-3xl font-bold text-foreground">15-17</p>
-              <p className="text-primary font-semibold text-sm">DÉCEMBRE 2027</p>
+              <p className="text-3xl font-bold text-foreground">{t("sitech.date")}</p>
+              <p className="text-primary font-semibold text-sm">{t("sitech.month")}</p>
             </div>
             <div>
-              <p className="text-3xl font-bold text-foreground">1500+</p>
-              <p className="text-primary font-semibold text-sm">PARTICIPANTS</p>
+              <p className="text-3xl font-bold text-foreground">{t("sitech.participants")}</p>
+              <p className="text-primary font-semibold text-sm">{t("sitech.participantsLabel")}</p>
             </div>
           </div>
           
           <Button 
             className="bg-amber-500 hover:bg-amber-600 text-black font-semibold px-8 py-6 text-base"
           >
-            Découvrir SITECH 2027
+            {t("sitech.cta")}
           </Button>
         </div>
       </div>

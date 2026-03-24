@@ -1,6 +1,9 @@
+"use client"
+
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { TalentCard } from "@/components/talent-card"
+import { useI18n } from "@/lib/i18n"
 
 const talents = [
   {
@@ -30,21 +33,23 @@ const talents = [
 ]
 
 export function FeaturedTalents() {
+  const { t } = useI18n()
+
   return (
     <section className="border-t border-border bg-card/50 px-4 py-16">
       <div className="container mx-auto">
         <div className="mb-8 flex items-end justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Talents à la Une</h2>
+            <h2 className="text-2xl font-bold text-foreground">{t("talents.title")}</h2>
             <p className="mt-1 text-muted-foreground">
-              Techniciens certifiés et leurs disponibilités en temps réel.
+              {t("talents.subtitle")}
             </p>
           </div>
           <Link
             href="/annuaire"
             className="hidden items-center gap-1 text-sm font-medium text-primary hover:underline sm:flex"
           >
-            Voir tout l{"'"}annuaire
+            {t("talents.viewAll")}
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -59,7 +64,7 @@ export function FeaturedTalents() {
           href="/annuaire"
           className="mt-6 flex items-center justify-center gap-1 text-sm font-medium text-primary hover:underline sm:hidden"
         >
-          Voir tout l{"'"}annuaire
+          {t("talents.viewAll")}
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>

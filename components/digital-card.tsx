@@ -3,8 +3,11 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clapperboard, QrCode, CheckCircle } from "lucide-react"
+import { useI18n } from "@/lib/i18n"
 
 export function DigitalCard() {
+  const { t } = useI18n()
+
   return (
     <section className="py-24 px-4 bg-background">
       <div className="max-w-6xl mx-auto">
@@ -12,28 +15,26 @@ export function DigitalCard() {
           {/* Left Content */}
           <div className="space-y-6">
             <Badge variant="outline" className="border-border text-muted-foreground px-4 py-1.5">
-              INNOVATION RETECHCI
+              {t("card.badge")}
             </Badge>
             
             <h2 className="text-4xl md:text-5xl font-bold text-foreground">
-              CARTE PROFESSIONNELLE{" "}
-              <span className="text-primary">DIGITALE</span>
+              {t("card.title1")}{" "}
+              <span className="text-primary">{t("card.title2")}</span>
             </h2>
             
             <p className="text-muted-foreground text-lg leading-relaxed max-w-xl">
-              Chaque membre du réseau dispose d&apos;une carte virtuelle unique. Scannable 
-              instantanément sur les plateaux, elle certifie vos compétences, votre statut et 
-              votre adhésion à la grille salariale.
+              {t("card.description")}
             </p>
             
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <QrCode className="w-5 h-5 text-primary" />
-                <span className="text-foreground">QR Code unique pour vérification instantanée</span>
+                <span className="text-foreground">{t("card.feature1")}</span>
               </div>
               <div className="flex items-center gap-3">
                 <CheckCircle className="w-5 h-5 text-primary" />
-                <span className="text-foreground">Certification des compétences par le Bureau</span>
+                <span className="text-foreground">{t("card.feature2")}</span>
               </div>
             </div>
             
@@ -41,7 +42,7 @@ export function DigitalCard() {
               variant="outline" 
               className="border-border text-foreground hover:bg-secondary mt-4"
             >
-              Obtenir ma carte
+              {t("card.cta")}
             </Button>
           </div>
           
@@ -59,7 +60,7 @@ export function DigitalCard() {
                     <Clapperboard className="w-5 h-5 text-primary" />
                   </div>
                   <Badge variant="secondary" className="bg-secondary text-muted-foreground text-xs">
-                    CATEGORIE A
+                    {t("card.category")}
                   </Badge>
                 </div>
                 
@@ -75,14 +76,14 @@ export function DigitalCard() {
                   <h3 className="text-xl font-bold text-foreground">Jamel Basiru</h3>
                   <p className="text-primary font-medium">Monteur Image</p>
                   <Badge variant="secondary" className="mt-2 bg-secondary text-muted-foreground text-xs">
-                    Directeur Exécutif
+                    {t("card.role")}
                   </Badge>
                 </div>
                 
                 {/* ID Section */}
                 <div className="bg-secondary/50 rounded-xl p-4 flex justify-between items-center">
                   <div>
-                    <p className="text-xs text-muted-foreground">ID MEMBRE</p>
+                    <p className="text-xs text-muted-foreground">{t("card.memberId")}</p>
                     <p className="text-foreground font-mono font-bold">CI-2024-8842</p>
                   </div>
                   <div className="w-12 h-12 bg-foreground rounded-lg flex items-center justify-center">

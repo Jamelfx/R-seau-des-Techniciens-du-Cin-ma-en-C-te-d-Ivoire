@@ -1,4 +1,10 @@
+"use client"
+
+import { useI18n } from "@/lib/i18n"
+
 export function Partners() {
+  const { t } = useI18n()
+
   const partners = [
     { name: "SONY", style: "font-bold tracking-wider" },
     { name: "Canon", style: "font-semibold" },
@@ -11,7 +17,7 @@ export function Partners() {
     <section className="py-16 px-4 bg-card border-y border-border">
       <div className="max-w-6xl mx-auto">
         <p className="text-center text-muted-foreground text-sm tracking-widest mb-10">
-          NOS PARTENAIRES OFFICIELS
+          {t("partners.title")}
         </p>
         
         <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">

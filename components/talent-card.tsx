@@ -1,4 +1,7 @@
+"use client"
+
 import Image from "next/image"
+import { useI18n } from "@/lib/i18n"
 
 type TalentStatus = "disponible" | "en-tournage" | "indisponible"
 
@@ -9,23 +12,24 @@ interface TalentCardProps {
   status: TalentStatus
 }
 
-const statusConfig: Record<TalentStatus, { label: string; className: string }> = {
+const statusConfig: Record<TalentStatus, { labelKey: string; className: string }> = {
   "disponible": {
-    label: "Disponible",
+    labelKey: "talents.available",
     className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
   },
   "en-tournage": {
-    label: "En Tournage",
+    labelKey: "talents.filming",
     className: "bg-amber-500/20 text-amber-400 border-amber-500/30",
   },
   "indisponible": {
-    label: "Indisponible",
+    labelKey: "talents.unavailable",
     className: "bg-red-500/20 text-red-400 border-red-500/30",
   },
 }
 
 export function TalentCard({ name, role, image, status }: TalentCardProps) {
-  const { label, className } = statusConfig[status]
+  const { t } = useI18n()
+  const { labelKey, className } = statusConfig[status]
 
   return (
     <div className="group flex items-center gap-4 rounded-xl bg-card p-4 transition-colors hover:bg-muted/50">
@@ -44,7 +48,7 @@ export function TalentCard({ name, role, image, status }: TalentCardProps) {
       <div className="ml-auto">
         <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${className}`}>
           <span className="h-1.5 w-1.5 rounded-full bg-current" />
-          {label}
+          {t(labelKey)}
         </span>
       </div>
     </div>

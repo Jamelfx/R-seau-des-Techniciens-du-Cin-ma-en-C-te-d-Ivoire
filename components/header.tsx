@@ -1,20 +1,27 @@
 "use client"
 
 import Link from "next/link"
-import { User } from "lucide-react"
+import { User, Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-
-const navigation = [
-  { name: "Accueil", href: "/" },
-  { name: "A propos", href: "/a-propos" },
-  { name: "Annuaire", href: "/annuaire" },
-  { name: "Actualités", href: "/actualites" },
-  { name: "Conventions & Légal", href: "/conventions" },
-  { name: "Direct", href: "/direct", isLive: true },
-  { name: "SITECH 2027", href: "/sitech-2027" },
-]
+import { ThemeToggle } from "@/components/theme-toggle"
+import { LanguageToggle } from "@/components/language-toggle"
+import { useI18n } from "@/lib/i18n"
+import { useState } from "react"
 
 export function Header() {
+  const { t } = useI18n()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const navigation = [
+    { name: t("nav.home"), href: "/" },
+    { name: t("nav.about"), href: "/a-propos" },
+    { name: t("nav.directory"), href: "/annuaire" },
+    { name: t("nav.news"), href: "/actualites" },
+    { name: t("nav.conventions"), href: "/conventions" },
+    { name: t("nav.live"), href: "/direct", isLive: true },
+    { name: t("nav.sitech"), href: "/sitech-2027" },
+  ]
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -33,18 +40,54 @@ export function Header() {
               className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               {item.isLive && (
-                <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
               )}
               {item.name}
             </Link>
           ))}
         </nav>
 
-        <Button variant="ghost" size="icon" className="rounded-full border border-border">
-          <User className="h-5 w-5" />
-          <span className="sr-only">Profil utilisateur</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <LanguageToggle />
+          <ThemeToggle />
+          <Button variant="ghost" size="icon" className="rounded-full border border-border">
+            <User className="h-5 w-5" />
+            <span className="sr-only">Profil utilisateur</span>
+          </Button>
+          
+          {/* Mobile menu button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            <span className="sr-only">Menu</span>
+          </Button>
+        </div>
       </div>
+
+      {/* Mobile Navigation */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden border-t border-border bg-background">
+          <nav className="container mx-auto px-4 py-4 flex flex-col gap-4">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {item.isLive && (
+                  <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                )}
+                {item.name}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      )}
     </header>
   )
 }

@@ -1,7 +1,12 @@
+"use client"
+
 import Link from "next/link"
 import { Facebook, Twitter, Linkedin, MapPin, Mail } from "lucide-react"
+import { useI18n } from "@/lib/i18n"
 
 export function Footer() {
+  const { t } = useI18n()
+
   return (
     <footer className="bg-card border-t border-border py-16 px-4">
       <div className="max-w-6xl mx-auto">
@@ -15,7 +20,7 @@ export function Footer() {
               <span className="font-bold text-lg text-foreground">RETECHCI</span>
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Réseau des Techniciens du cinéma en Côte d&apos;Ivoire.
+              {t("footer.description")}
             </p>
             <div className="flex gap-4">
               <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -32,26 +37,26 @@ export function Footer() {
           
           {/* Navigation */}
           <div>
-            <h3 className="font-semibold text-foreground mb-6">Navigation</h3>
+            <h3 className="font-semibold text-foreground mb-6">{t("footer.navigation")}</h3>
             <ul className="space-y-4">
               <li>
                 <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
-                  Accueil
+                  {t("nav.home")}
                 </Link>
               </li>
               <li>
                 <Link href="/annuaire" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
-                  Annuaire des Talents
+                  {t("footer.talentsDirectory")}
                 </Link>
               </li>
               <li>
                 <Link href="/actualites" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
-                  Actualités
+                  {t("nav.news")}
                 </Link>
               </li>
               <li>
                 <Link href="/sitech" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
-                  SITECH 2027
+                  {t("nav.sitech")}
                 </Link>
               </li>
             </ul>
@@ -59,26 +64,26 @@ export function Footer() {
           
           {/* Ressources */}
           <div>
-            <h3 className="font-semibold text-foreground mb-6">Ressources</h3>
+            <h3 className="font-semibold text-foreground mb-6">{t("footer.resources")}</h3>
             <ul className="space-y-4">
               <li>
                 <Link href="/grille-salariale" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
-                  Grille Salariale
+                  {t("footer.salaryGrid")}
                 </Link>
               </li>
               <li>
                 <Link href="/contrats" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
-                  Contrats Types
+                  {t("footer.contracts")}
                 </Link>
               </li>
               <li>
                 <Link href="/conventions" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
-                  Conventions & Légal
+                  {t("nav.conventions")}
                 </Link>
               </li>
               <li>
                 <Link href="/formations" className="text-muted-foreground hover:text-foreground transition-colors text-sm">
-                  Formations
+                  {t("footer.training")}
                 </Link>
               </li>
             </ul>
@@ -86,12 +91,12 @@ export function Footer() {
           
           {/* Contact */}
           <div>
-            <h3 className="font-semibold text-foreground mb-6">Nous Contacter</h3>
+            <h3 className="font-semibold text-foreground mb-6">{t("footer.contact")}</h3>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                 <span className="text-muted-foreground text-sm">
-                  Cocody Riviera 2, Rue des Jardins, Abidjan, Côte d&apos;Ivoire
+                  {t("footer.address")}
                 </span>
               </li>
               <li className="flex items-center gap-3">
@@ -107,7 +112,7 @@ export function Footer() {
         {/* Bottom */}
         <div className="mt-12 pt-8 border-t border-border">
           <p className="text-center text-muted-foreground text-sm">
-            © 2024 RETECHCI. Tous droits réservés.
+            © 2024 RETECHCI. {t("footer.rights")}
           </p>
         </div>
       </div>
