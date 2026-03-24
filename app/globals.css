@@ -85,7 +85,7 @@
 }
 
 @theme inline {
-  --font-sans: 'Space Grotesk', 'Inter', 'Geist', sans-serif;
+  --font-sans: 'Geist', 'Geist Fallback', sans-serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';
   --color-brand-red: var(--brand-red);
   --color-brand-green: var(--brand-green);

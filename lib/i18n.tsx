@@ -65,6 +65,25 @@ const translations = {
     // Partners
     "partners.title": "NOS PARTENAIRES OFFICIELS",
     
+    // About Page
+    "about.badge": "À PROPOS DE RETECHCI",
+    "about.title": "Qui sommes-nous ?",
+    "about.intro": "Formellement créée le 16 Juillet 2022, le RETECHCI est la toute première association regroupant uniquement les techniciens du cinéma de Côte d'Ivoire.",
+    "about.mission": "Face à la négligence dont fait l'objet la grande famille des techniciens dans notre pays, nous avons décidé de nous unir pour défendre nos intérêts et professionnaliser notre secteur.",
+    "about.quote": "\"Loin d'un sytlle de syndicat contre les entreprises de cinéma, le RETECHCI veut plutôt apporter sa pierre à l'édifice en militant activement pour la réglementation et le développement du secteur.\"",
+    "about.quoteAuthor": "Statuts de l'Association",
+    "about.foundedYear": "2022",
+    "about.foundedLabel": "Année de création",
+    "about.members": "500+",
+    "about.membersLabel": "Membres actifs",
+    "about.objectivesTitle": "Nos Objectifs",
+    "about.objective1": "Promouvoir les métiers techniques audiovisuels",
+    "about.objective2": "Collecter les avis des membres (enquête semestrielle)",
+    "about.bureauTitle": "Bureau Exécutif",
+    "about.bureauSubtitle": "Les membres qui dirigent l'association au quotidien.",
+    "about.councilTitle": "Conseil d'Administration",
+    "about.councilSubtitle": "Organe de surveillance et d'orientation stratégique.",
+
     // Footer
     "footer.description": "Réseau des Techniciens du cinéma en Côte d'Ivoire.",
     "footer.navigation": "Navigation",
@@ -140,6 +159,25 @@ const translations = {
     // Partners
     "partners.title": "OUR OFFICIAL PARTNERS",
     
+    // About Page
+    "about.badge": "ABOUT RETECHCI",
+    "about.title": "Who are we?",
+    "about.intro": "Formally created on July 16, 2022, RETECHCI is the very first association grouping only film technicians from Côte d'Ivoire.",
+    "about.mission": "Faced with the neglect of the great family of technicians in our country, we decided to unite to defend our interests and professionalize our sector.",
+    "about.quote": "\"Far from a union style against film companies, RETECHCI wants to contribute to building the industry by actively advocating for regulation and sector development.\"",
+    "about.quoteAuthor": "Association Statutes",
+    "about.foundedYear": "2022",
+    "about.foundedLabel": "Year of creation",
+    "about.members": "500+",
+    "about.membersLabel": "Active members",
+    "about.objectivesTitle": "Our Objectives",
+    "about.objective1": "Promote audiovisual technical professions",
+    "about.objective2": "Collect members' opinions (bi-annual survey)",
+    "about.bureauTitle": "Executive Bureau",
+    "about.bureauSubtitle": "The members who lead the association daily.",
+    "about.councilTitle": "Board of Directors",
+    "about.councilSubtitle": "Strategic oversight and guidance body.",
+
     // Footer
     "footer.description": "Network of Film Technicians in Côte d'Ivoire.",
     "footer.navigation": "Navigation",
