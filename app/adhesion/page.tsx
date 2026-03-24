@@ -1,18 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle, Upload, User, Briefcase, GraduationCap, FileText } from "lucide-react"
+import { CheckCircle, UserPlus, PenLine } from "lucide-react"
 
-const specialties = [
+const functions = [
   "Chef Opérateur / Directeur Photo",
   "Cadreur",
   "Assistant Caméra",
@@ -34,70 +33,95 @@ const specialties = [
   "Chef Costumier",
   "Maquilleur/Coiffeur",
   "Cascadeur",
-  "Autre"
-]
-
-const experienceLevels = [
-  { value: "junior", label: "Junior (0-3 ans)", description: "Début de carrière" },
-  { value: "intermediate", label: "Intermédiaire (3-7 ans)", description: "Expérience confirmée" },
-  { value: "senior", label: "Senior (7+ ans)", description: "Expert reconnu" },
 ]
 
 export default function AdhesionPage() {
-  const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
-    // Personal Info
-    firstName: "",
-    lastName: "",
+    nom: "",
+    prenoms: "",
     email: "",
     phone: "",
-    birthDate: "",
-    address: "",
-    city: "",
-    // Professional Info
-    specialty: "",
-    otherSpecialty: "",
-    experienceLevel: "",
-    yearsExperience: "",
-    biography: "",
-    // Portfolio
-    portfolio: "",
-    linkedin: "",
-    imdb: "",
-    // Documents
-    cvFile: null as File | null,
-    photoFile: null as File | null,
-    idFile: null as File | null,
-    // Agreements
-    acceptTerms: false,
-    acceptSalaryGrid: false,
-    acceptEthics: false,
+    fonction: "",
+    dateNaissance: "",
+    lieuNaissance: "",
+    anneesExperience: "",
+    acceptAdhesion: false,
+    signature: ""
   })
   const [submitted, setSubmitted] = useState(false)
+  const [isDrawing, setIsDrawing] = useState(false)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const updateFormData = (field: string, value: string | boolean | File | null) => {
+  const updateFormData = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleFileChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null
-    updateFormData(field, file)
+  const isFormValid = () => {
+    return (
+      formData.nom &&
+      formData.prenoms &&
+      formData.email &&
+      formData.phone &&
+      formData.fonction &&
+      formData.dateNaissance &&
+      formData.lieuNaissance &&
+      formData.anneesExperience &&
+      formData.acceptAdhesion &&
+      formData.signature
+    )
   }
 
-  const isStep1Valid = () => {
-    return formData.firstName && formData.lastName && formData.email && formData.phone && formData.birthDate
+  // Signature pad handlers
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    
+    setIsDrawing(true)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    
+    ctx.beginPath()
+    const rect = canvas.getBoundingClientRect()
+    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left
+    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top
+    ctx.moveTo(x, y)
   }
 
-  const isStep2Valid = () => {
-    return formData.specialty && formData.experienceLevel && formData.biography
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    
+    const rect = canvas.getBoundingClientRect()
+    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left
+    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top
+    
+    ctx.lineTo(x, y)
+    ctx.strokeStyle = '#dc2626'
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+    ctx.stroke()
   }
 
-  const isStep3Valid = () => {
-    return formData.cvFile && formData.photoFile
+  const stopDrawing = () => {
+    setIsDrawing(false)
+    const canvas = canvasRef.current
+    if (canvas) {
+      const signature = canvas.toDataURL()
+      updateFormData('signature', signature)
+    }
   }
 
-  const isStep4Valid = () => {
-    return formData.acceptTerms && formData.acceptSalaryGrid && formData.acceptEthics
+  const clearSignature = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    updateFormData('signature', '')
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -117,29 +141,34 @@ export default function AdhesionPage() {
             </div>
             <h1 className="text-3xl font-bold text-foreground mb-4">Demande envoyée avec succès !</h1>
             <p className="text-muted-foreground mb-6">
-              Votre demande d&apos;adhésion a été transmise au Bureau Exécutif du RETECHCI. 
-              Vous recevrez une réponse par email dans un délai de 7 jours ouvrables.
+              Votre demande d&apos;adhésion a été transmise au Directeur Exécutif qui la transmettra au 
+              Conseil d&apos;Administration pour examen.
             </p>
             <div className="bg-card border border-border rounded-xl p-6 text-left">
               <h3 className="font-semibold text-foreground mb-4">Prochaines étapes :</h3>
               <ol className="space-y-3 text-sm text-muted-foreground">
                 <li className="flex gap-3">
                   <span className="flex-shrink-0 w-6 h-6 bg-primary/20 text-primary rounded-full flex items-center justify-center text-xs font-bold">1</span>
-                  <span>Vérification de votre dossier par le Bureau Exécutif</span>
+                  <span>Le Directeur Exécutif reçoit votre dossier et le transmet au Président du Conseil d&apos;Administration</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="flex-shrink-0 w-6 h-6 bg-primary/20 text-primary rounded-full flex items-center justify-center text-xs font-bold">2</span>
-                  <span>Entretien téléphonique ou en personne (si nécessaire)</span>
+                  <span>Le Conseil d&apos;Administration examine votre demande (délai de 15 jours)</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="flex-shrink-0 w-6 h-6 bg-primary/20 text-primary rounded-full flex items-center justify-center text-xs font-bold">3</span>
-                  <span>Validation par le Conseil d&apos;Administration</span>
+                  <span>En cas d&apos;approbation, vous recevrez un lien par email pour payer vos frais d&apos;adhésion (5 000 FCFA) et créer votre compte</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="flex-shrink-0 w-6 h-6 bg-primary/20 text-primary rounded-full flex items-center justify-center text-xs font-bold">4</span>
-                  <span>Réception de votre carte professionnelle digitale</span>
+                  <span>Après paiement, vous aurez accès à votre espace membre et votre carte professionnelle digitale</span>
                 </li>
               </ol>
+            </div>
+            <div className="mt-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg text-left">
+              <p className="text-sm text-amber-600 dark:text-amber-400">
+                <strong>Rappel :</strong> La cotisation mensuelle est de 2 000 FCFA après l&apos;adhésion.
+              </p>
             </div>
             <Button className="mt-8" onClick={() => window.location.href = "/"}>
               Retour à l&apos;accueil
@@ -155,7 +184,7 @@ export default function AdhesionPage() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="pt-8 px-6 lg:px-20 py-12">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-2xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
             <span className="inline-block px-4 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full mb-4">
@@ -165,417 +194,202 @@ export default function AdhesionPage() {
               Demande d&apos;adhésion
             </h1>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Rejoignez le RETECHCI et bénéficiez de la carte professionnelle, 
-              de l&apos;accès à l&apos;annuaire et de la protection de la grille salariale.
+              Remplissez ce formulaire pour rejoindre le RETECHCI. 
+              Votre demande sera examinée par le Conseil d&apos;Administration dans un délai de 15 jours.
             </p>
           </div>
 
-          {/* Progress Steps */}
-          <div className="flex items-center justify-center gap-2 mb-12">
-            {[1, 2, 3, 4].map((s) => (
-              <div key={s} className="flex items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                  step >= s 
-                    ? "bg-primary text-primary-foreground" 
-                    : "bg-secondary text-muted-foreground"
-                }`}>
-                  {step > s ? <CheckCircle className="h-5 w-5" /> : s}
-                </div>
-                {s < 4 && (
-                  <div className={`w-12 lg:w-20 h-1 mx-1 ${step > s ? "bg-primary" : "bg-secondary"}`} />
-                )}
-              </div>
-            ))}
-          </div>
-
           <form onSubmit={handleSubmit}>
-            {/* Step 1: Personal Information */}
-            {step === 1 && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <User className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle>Informations Personnelles</CardTitle>
-                      <CardDescription>Vos coordonnées de contact</CardDescription>
-                    </div>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <UserPlus className="h-5 w-5 text-primary" />
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName">Prénom *</Label>
-                      <Input
-                        id="firstName"
-                        value={formData.firstName}
-                        onChange={(e) => updateFormData("firstName", e.target.value)}
-                        placeholder="Votre prénom"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">Nom *</Label>
-                      <Input
-                        id="lastName"
-                        value={formData.lastName}
-                        onChange={(e) => updateFormData("lastName", e.target.value)}
-                        placeholder="Votre nom"
-                        required
-                      />
-                    </div>
+                  <div>
+                    <CardTitle>Formulaire d&apos;adhésion</CardTitle>
+                    <CardDescription>Tous les champs marqués * sont obligatoires</CardDescription>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => updateFormData("email", e.target.value)}
-                        placeholder="votre@email.com"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Téléphone *</Label>
-                      <Input
-                        id="phone"
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => updateFormData("phone", e.target.value)}
-                        placeholder="+225 XX XX XX XX XX"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="birthDate">Date de naissance *</Label>
-                      <Input
-                        id="birthDate"
-                        type="date"
-                        value={formData.birthDate}
-                        onChange={(e) => updateFormData("birthDate", e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="city">Ville</Label>
-                      <Input
-                        id="city"
-                        value={formData.city}
-                        onChange={(e) => updateFormData("city", e.target.value)}
-                        placeholder="Abidjan"
-                      />
-                    </div>
-                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Nom et Prénoms */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="address">Adresse complète</Label>
+                    <Label htmlFor="nom">Nom *</Label>
                     <Input
-                      id="address"
-                      value={formData.address}
-                      onChange={(e) => updateFormData("address", e.target.value)}
-                      placeholder="Quartier, rue, commune"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Step 2: Professional Information */}
-            {step === 2 && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <Briefcase className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle>Informations Professionnelles</CardTitle>
-                      <CardDescription>Votre métier et expérience</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <Label>Spécialité principale *</Label>
-                    <Select
-                      value={formData.specialty}
-                      onValueChange={(value) => updateFormData("specialty", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez votre spécialité" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {specialties.map((specialty) => (
-                          <SelectItem key={specialty} value={specialty}>
-                            {specialty}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {formData.specialty === "Autre" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="otherSpecialty">Précisez votre spécialité</Label>
-                      <Input
-                        id="otherSpecialty"
-                        value={formData.otherSpecialty}
-                        onChange={(e) => updateFormData("otherSpecialty", e.target.value)}
-                        placeholder="Votre spécialité"
-                      />
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <Label>Niveau d&apos;expérience *</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {experienceLevels.map((level) => (
-                        <div
-                          key={level.value}
-                          className={`p-4 rounded-xl border cursor-pointer transition-colors ${
-                            formData.experienceLevel === level.value
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:border-primary/50"
-                          }`}
-                          onClick={() => updateFormData("experienceLevel", level.value)}
-                        >
-                          <div className="font-medium text-foreground text-sm">{level.label}</div>
-                          <div className="text-xs text-muted-foreground mt-1">{level.description}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="yearsExperience">Années d&apos;expérience</Label>
-                    <Input
-                      id="yearsExperience"
-                      type="number"
-                      min="0"
-                      value={formData.yearsExperience}
-                      onChange={(e) => updateFormData("yearsExperience", e.target.value)}
-                      placeholder="Ex: 5"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="biography">Biographie professionnelle *</Label>
-                    <Textarea
-                      id="biography"
-                      value={formData.biography}
-                      onChange={(e) => updateFormData("biography", e.target.value)}
-                      placeholder="Décrivez votre parcours, vos compétences et vos réalisations principales..."
-                      rows={5}
+                      id="nom"
+                      value={formData.nom}
+                      onChange={(e) => updateFormData("nom", e.target.value)}
+                      placeholder="BASIRU"
                       required
                     />
-                    <p className="text-xs text-muted-foreground">Minimum 100 caractères</p>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="portfolio">Site portfolio</Label>
-                      <Input
-                        id="portfolio"
-                        type="url"
-                        value={formData.portfolio}
-                        onChange={(e) => updateFormData("portfolio", e.target.value)}
-                        placeholder="https://..."
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="linkedin">LinkedIn</Label>
-                      <Input
-                        id="linkedin"
-                        type="url"
-                        value={formData.linkedin}
-                        onChange={(e) => updateFormData("linkedin", e.target.value)}
-                        placeholder="https://linkedin.com/in/..."
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="imdb">IMDb</Label>
-                      <Input
-                        id="imdb"
-                        type="url"
-                        value={formData.imdb}
-                        onChange={(e) => updateFormData("imdb", e.target.value)}
-                        placeholder="https://imdb.com/name/..."
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="prenoms">Prénoms *</Label>
+                    <Input
+                      id="prenoms"
+                      value={formData.prenoms}
+                      onChange={(e) => updateFormData("prenoms", e.target.value)}
+                      placeholder="Jamel Koffi"
+                      required
+                    />
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                </div>
 
-            {/* Step 3: Documents */}
-            {step === 3 && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <FileText className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle>Documents</CardTitle>
-                      <CardDescription>Pièces justificatives</CardDescription>
-                    </div>
+                {/* Email et Téléphone */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => updateFormData("email", e.target.value)}
+                      placeholder="votre@email.com"
+                      required
+                    />
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-primary/50 transition-colors">
-                      <input
-                        type="file"
-                        id="photoFile"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleFileChange("photoFile")}
-                      />
-                      <label htmlFor="photoFile" className="cursor-pointer">
-                        <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                        <p className="font-medium text-foreground">Photo de profil *</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {formData.photoFile ? formData.photoFile.name : "JPG ou PNG, max 5MB"}
-                        </p>
-                      </label>
-                    </div>
-                    <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-primary/50 transition-colors">
-                      <input
-                        type="file"
-                        id="cvFile"
-                        accept=".pdf,.doc,.docx"
-                        className="hidden"
-                        onChange={handleFileChange("cvFile")}
-                      />
-                      <label htmlFor="cvFile" className="cursor-pointer">
-                        <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                        <p className="font-medium text-foreground">CV / Filmographie *</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {formData.cvFile ? formData.cvFile.name : "PDF, DOC ou DOCX, max 10MB"}
-                        </p>
-                      </label>
-                    </div>
-                    <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-primary/50 transition-colors">
-                      <input
-                        type="file"
-                        id="idFile"
-                        accept="image/*,.pdf"
-                        className="hidden"
-                        onChange={handleFileChange("idFile")}
-                      />
-                      <label htmlFor="idFile" className="cursor-pointer">
-                        <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                        <p className="font-medium text-foreground">Pièce d&apos;identité</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {formData.idFile ? formData.idFile.name : "CNI, Passeport ou Permis (optionnel)"}
-                        </p>
-                      </label>
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Téléphone *</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => updateFormData("phone", e.target.value)}
+                      placeholder="+225 XX XX XX XX XX"
+                      required
+                    />
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                </div>
 
-            {/* Step 4: Agreements */}
-            {step === 4 && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <GraduationCap className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle>Engagements</CardTitle>
-                      <CardDescription>Validation des conditions</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-3 p-4 rounded-xl border border-border">
-                      <Checkbox
-                        id="acceptTerms"
-                        checked={formData.acceptTerms}
-                        onCheckedChange={(checked) => updateFormData("acceptTerms", checked as boolean)}
-                      />
-                      <label htmlFor="acceptTerms" className="text-sm cursor-pointer">
-                        <span className="font-medium text-foreground">J&apos;accepte les statuts et le règlement intérieur du RETECHCI *</span>
-                        <p className="text-muted-foreground mt-1">
-                          Je m&apos;engage à respecter les valeurs de professionnalisme, de solidarité et d&apos;éthique de l&apos;association.
-                        </p>
-                      </label>
-                    </div>
-                    <div className="flex items-start gap-3 p-4 rounded-xl border border-border">
-                      <Checkbox
-                        id="acceptSalaryGrid"
-                        checked={formData.acceptSalaryGrid}
-                        onCheckedChange={(checked) => updateFormData("acceptSalaryGrid", checked as boolean)}
-                      />
-                      <label htmlFor="acceptSalaryGrid" className="text-sm cursor-pointer">
-                        <span className="font-medium text-foreground">J&apos;adhère à la grille salariale de référence *</span>
-                        <p className="text-muted-foreground mt-1">
-                          Je m&apos;engage à respecter les tarifs minimaux recommandés par le RETECHCI pour mes prestations.
-                        </p>
-                      </label>
-                    </div>
-                    <div className="flex items-start gap-3 p-4 rounded-xl border border-border">
-                      <Checkbox
-                        id="acceptEthics"
-                        checked={formData.acceptEthics}
-                        onCheckedChange={(checked) => updateFormData("acceptEthics", checked as boolean)}
-                      />
-                      <label htmlFor="acceptEthics" className="text-sm cursor-pointer">
-                        <span className="font-medium text-foreground">J&apos;accepte la charte éthique et déontologique *</span>
-                        <p className="text-muted-foreground mt-1">
-                          Je m&apos;engage à adopter un comportement professionnel et respectueux sur tous les plateaux.
-                        </p>
-                      </label>
-                    </div>
-                  </div>
-                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
-                    <p className="text-sm text-amber-600 dark:text-amber-400">
-                      <strong>Cotisation annuelle :</strong> 25 000 FCFA
-                      <br />
-                      <span className="text-muted-foreground">
-                        Le paiement sera effectué après validation de votre candidature.
-                      </span>
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                {/* Fonction */}
+                <div className="space-y-2">
+                  <Label>Fonction (Uniquement Technicien du cinéma) *</Label>
+                  <Select
+                    value={formData.fonction}
+                    onValueChange={(value) => updateFormData("fonction", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionnez votre fonction" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {functions.map((func) => (
+                        <SelectItem key={func} value={func}>
+                          {func}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            {/* Navigation */}
-            <div className="flex justify-between mt-8">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setStep(s => Math.max(1, s - 1))}
-                disabled={step === 1}
-              >
-                Précédent
-              </Button>
-              {step < 4 ? (
-                <Button
-                  type="button"
-                  onClick={() => setStep(s => Math.min(4, s + 1))}
-                  disabled={
-                    (step === 1 && !isStep1Valid()) ||
-                    (step === 2 && !isStep2Valid()) ||
-                    (step === 3 && !isStep3Valid())
-                  }
+                {/* Date et lieu de naissance */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="dateNaissance">Date de naissance *</Label>
+                    <Input
+                      id="dateNaissance"
+                      type="date"
+                      value={formData.dateNaissance}
+                      onChange={(e) => updateFormData("dateNaissance", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lieuNaissance">Lieu de naissance *</Label>
+                    <Input
+                      id="lieuNaissance"
+                      value={formData.lieuNaissance}
+                      onChange={(e) => updateFormData("lieuNaissance", e.target.value)}
+                      placeholder="Abidjan, Côte d'Ivoire"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Années d'expérience */}
+                <div className="space-y-2">
+                  <Label htmlFor="anneesExperience">Combien d&apos;années d&apos;expérience ? *</Label>
+                  <Input
+                    id="anneesExperience"
+                    type="number"
+                    min="0"
+                    value={formData.anneesExperience}
+                    onChange={(e) => updateFormData("anneesExperience", e.target.value)}
+                    placeholder="Ex: 5"
+                    required
+                  />
+                </div>
+
+                {/* Engagement */}
+                <div className="space-y-4 pt-4 border-t border-border">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="acceptAdhesion"
+                      checked={formData.acceptAdhesion}
+                      onCheckedChange={(checked) => updateFormData("acceptAdhesion", checked as boolean)}
+                    />
+                    <Label htmlFor="acceptAdhesion" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
+                      Je signifie ma volonté d&apos;adhérer au RETECHCI et j&apos;accepte que le Conseil d&apos;Administration 
+                      examine ma demande. Je comprends que j&apos;aurai une réponse dans un délai de 15 jours. *
+                    </Label>
+                  </div>
+                </div>
+
+                {/* Signature électronique */}
+                <div className="space-y-3 pt-4 border-t border-border">
+                  <Label className="flex items-center gap-2">
+                    <PenLine className="h-4 w-4" />
+                    Signature électronique *
+                  </Label>
+                  <div className="border-2 border-dashed border-border rounded-xl p-2 bg-card">
+                    <canvas
+                      ref={canvasRef}
+                      width={500}
+                      height={150}
+                      className="w-full h-32 bg-white dark:bg-gray-900 rounded-lg cursor-crosshair touch-none"
+                      onMouseDown={startDrawing}
+                      onMouseMove={draw}
+                      onMouseUp={stopDrawing}
+                      onMouseLeave={stopDrawing}
+                      onTouchStart={startDrawing}
+                      onTouchMove={draw}
+                      onTouchEnd={stopDrawing}
+                    />
+                    <div className="flex justify-between items-center mt-2">
+                      <p className="text-xs text-muted-foreground">
+                        Dessinez votre signature dans le cadre ci-dessus
+                      </p>
+                      <Button type="button" variant="ghost" size="sm" onClick={clearSignature}>
+                        Effacer
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informations sur les frais */}
+                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                  <h4 className="font-medium text-foreground">Frais d&apos;adhésion et cotisation</h4>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>- Frais d&apos;adhésion : <strong className="text-foreground">5 000 FCFA</strong> (paiement unique)</li>
+                    <li>- Cotisation mensuelle : <strong className="text-foreground">2 000 FCFA</strong></li>
+                  </ul>
+                  <p className="text-xs text-muted-foreground pt-2">
+                    Vous recevrez un lien de paiement par email après validation de votre demande par le Conseil d&apos;Administration.
+                  </p>
+                </div>
+
+                {/* Submit Button */}
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  size="lg"
+                  disabled={!isFormValid()}
                 >
-                  Continuer
+                  Soumettre ma demande d&apos;adhésion
                 </Button>
-              ) : (
-                <Button
-                  type="submit"
-                  className="bg-primary hover:bg-primary/90"
-                  disabled={!isStep4Valid()}
-                >
-                  Soumettre ma candidature
-                </Button>
-              )}
-            </div>
+              </CardContent>
+            </Card>
           </form>
         </div>
       </main>
