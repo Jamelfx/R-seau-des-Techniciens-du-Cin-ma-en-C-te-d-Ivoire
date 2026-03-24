@@ -212,7 +212,19 @@ export default function AdhesionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      {/* Background Image with reduced opacity */}
+      <div 
+        className="fixed inset-0 z-0"
+        style={{
+          backgroundImage: "url('https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=2059')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed",
+          opacity: 0.08
+        }}
+      />
+      <div className="relative z-10">
       <Header />
       <main className="pt-8 px-6 lg:px-20 py-12">
         <div className="max-w-2xl mx-auto">
@@ -436,6 +448,7 @@ export default function AdhesionPage() {
         </div>
       </main>
       <Footer />
+      </div>
     </div>
   )
 }

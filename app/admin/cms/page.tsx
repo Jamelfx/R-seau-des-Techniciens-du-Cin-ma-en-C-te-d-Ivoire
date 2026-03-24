@@ -14,7 +14,7 @@ import {
   LayoutDashboard, FileText, Image as ImageIcon, Users, Settings,
   Plus, Edit, Trash2, Eye, Save, Upload, LogOut, Globe,
   Home, Info, Newspaper, CalendarDays, Star, Building2,
-  CheckCircle, AlertCircle, RefreshCw, Lock, User, Clapperboard
+  CheckCircle, AlertCircle, RefreshCw, Lock, User, Clapperboard, UserPlus
 } from "lucide-react"
 import Image from "next/image"
 
@@ -29,6 +29,7 @@ const pages = [
   { id: "home", name: "Accueil", path: "/", lastUpdated: "2024-01-20", status: "published" },
   { id: "about", name: "À propos", path: "/a-propos", lastUpdated: "2024-01-18", status: "published" },
   { id: "directory", name: "Annuaire", path: "/annuaire", lastUpdated: "2024-01-15", status: "published" },
+  { id: "adhesion", name: "Formulaire d'adhésion", path: "/adhesion", lastUpdated: "2024-01-23", status: "published" },
   { id: "news", name: "Actualités", path: "/actualites", lastUpdated: "2024-01-19", status: "published" },
   { id: "conventions", name: "Conventions & Légal", path: "/conventions", lastUpdated: "2024-01-10", status: "published" },
   { id: "sitech", name: "SITECH 2027", path: "/sitech-2027", lastUpdated: "2024-01-21", status: "draft" },
@@ -315,6 +316,7 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                            page.id === "sitech" ? <CalendarDays className="h-5 w-5 text-blue-500" /> :
                            page.id === "affiche" ? <Star className="h-5 w-5 text-blue-500" /> :
                            page.id === "directory" ? <Building2 className="h-5 w-5 text-blue-500" /> :
+                           page.id === "adhesion" ? <UserPlus className="h-5 w-5 text-blue-500" /> :
                            <FileText className="h-5 w-5 text-blue-500" />}
                         </div>
                         <div className="flex-1">
