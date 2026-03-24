@@ -111,6 +111,18 @@ const translations = {
     "directory.filters.modern": "Moderne",
     "directory.filters.traditional": "Traditionnel",
 
+    // News Page
+    "news.title": "Actualités &",
+    "news.titleHighlight": "Tendances",
+    "news.subtitle": "Suivez l'actualité du cinéma ivoirien et les dernières nouvelles de l'industrie.",
+    "news.filters.all": "Tout",
+    "news.filters.boxOffice": "Box Office",
+    "news.filters.technique": "Technique",
+    "news.filters.training": "Formation",
+    "news.filters.production": "Production",
+    "news.filters.festival": "Festival",
+    "news.filters.association": "Association",
+
     // Footer
     "footer.description": "Réseau des Techniciens du cinéma en Côte d'Ivoire.",
     "footer.navigation": "Navigation",
@@ -231,6 +243,18 @@ const translations = {
     "directory.filters.historical": "Historical",
     "directory.filters.modern": "Modern",
     "directory.filters.traditional": "Traditional",
+
+    // News Page
+    "news.title": "News &",
+    "news.titleHighlight": "Trends",
+    "news.subtitle": "Follow Ivorian cinema news and the latest industry updates.",
+    "news.filters.all": "All",
+    "news.filters.boxOffice": "Box Office",
+    "news.filters.technique": "Technical",
+    "news.filters.training": "Training",
+    "news.filters.production": "Production",
+    "news.filters.festival": "Festival",
+    "news.filters.association": "Association",
 
     // Footer
     "footer.description": "Network of Film Technicians in Côte d'Ivoire.",
