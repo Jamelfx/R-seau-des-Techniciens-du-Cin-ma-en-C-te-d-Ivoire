@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -10,11 +9,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { 
   LayoutDashboard, FileText, Image as ImageIcon, Users, Settings,
   Plus, Edit, Trash2, Eye, Save, Upload, LogOut, Globe,
   Home, Info, Newspaper, CalendarDays, Star, Building2,
-  CheckCircle, AlertCircle, RefreshCw, Lock, User, Clapperboard, UserPlus
+  CheckCircle, AlertCircle, Lock, User, Clapperboard, UserPlus,
+  Menu, CreditCard, Palette, Sparkles, GripVertical, ExternalLink,
+  Wand2, RefreshCw, Type, Move
 } from "lucide-react"
 import Image from "next/image"
 
@@ -169,11 +172,541 @@ function CMSLogin({ onLogin }: { onLogin: () => void }) {
             </p>
           </CardContent>
         </Card>
-
-        <p className="text-xs text-center text-muted-foreground mt-4">
-          Accès réservé aux administrateurs du site RETECHCI
-        </p>
       </div>
+    </div>
+  )
+}
+
+// Card Designer Component
+function CardDesigner() {
+  const [cardConfig, setCardConfig] = useState({
+    primaryColor: "#dc2626",
+    secondaryColor: "#1f2937",
+    backgroundColor: "#0a0a0a",
+    gradientStart: "#dc2626",
+    gradientEnd: "#7f1d1d",
+    logoUrl: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-iRNTq7lhwYLY9HdNoLXK0QH4OyVrpl.png",
+    showQRCode: true,
+    borderRadius: "16",
+    fontFamily: "Inter"
+  })
+
+  const handleSave = () => {
+    alert("Design de la carte sauvegardé avec succès !")
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Preview */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            Aperçu de la carte
+          </CardTitle>
+          <CardDescription>Prévisualisation en temps réel</CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center">
+          <div 
+            className="w-[280px] h-[440px] rounded-2xl overflow-hidden shadow-2xl"
+            style={{ 
+              backgroundColor: cardConfig.backgroundColor,
+              borderRadius: `${cardConfig.borderRadius}px`
+            }}
+          >
+            {/* Card Header with gradient */}
+            <div 
+              className="h-20 relative"
+              style={{
+                background: `linear-gradient(135deg, ${cardConfig.gradientStart} 0%, ${cardConfig.gradientEnd} 100%)`
+              }}
+            >
+              {/* Logo */}
+              <div className="absolute top-4 left-4 w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                <Clapperboard className="h-6 w-6" style={{ color: cardConfig.primaryColor }} />
+              </div>
+              {/* Org name */}
+              <div className="absolute top-4 right-4 text-right">
+                <p className="text-[8px] text-white/80 leading-tight">Réseau des Techniciens</p>
+                <p className="text-[8px] text-white/80 leading-tight">du Cinéma en Côte d&apos;Ivoire</p>
+              </div>
+            </div>
+
+            {/* Photo */}
+            <div className="flex justify-center -mt-12">
+              <div 
+                className="w-24 h-24 rounded-full overflow-hidden border-4"
+                style={{ borderColor: cardConfig.primaryColor }}
+              >
+                <div className="w-full h-full bg-gray-600 flex items-center justify-center">
+                  <User className="h-10 w-10 text-gray-400" />
+                </div>
+              </div>
+            </div>
+
+            {/* Info */}
+            <div className="text-center mt-4 px-4">
+              <h3 className="text-xl font-bold text-white">Nom Membre</h3>
+              <p className="text-sm mt-1" style={{ color: cardConfig.primaryColor }}>
+                Fonction
+              </p>
+              <div className="mt-3">
+                <span 
+                  className="inline-block px-3 py-1 rounded-full text-xs"
+                  style={{ 
+                    backgroundColor: `${cardConfig.primaryColor}20`,
+                    color: cardConfig.primaryColor
+                  }}
+                >
+                  Membre RETECHCI
+                </span>
+              </div>
+            </div>
+
+            {/* ID Section */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 p-4"
+              style={{ backgroundColor: cardConfig.secondaryColor }}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">ID Membre</p>
+                  <p className="text-sm font-mono text-white">CI-2024-XXXX</p>
+                </div>
+                {cardConfig.showQRCode && (
+                  <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
+                    <div className="w-10 h-10 bg-gray-200 rounded" />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="h-5 w-5" />
+            Personnalisation
+          </CardTitle>
+          <CardDescription>Modifiez les couleurs et le style</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Couleur principale</Label>
+              <div className="flex gap-2 mt-1">
+                <Input 
+                  type="color" 
+                  value={cardConfig.primaryColor}
+                  onChange={(e) => setCardConfig({...cardConfig, primaryColor: e.target.value})}
+                  className="w-12 h-10 p-1 cursor-pointer"
+                />
+                <Input 
+                  value={cardConfig.primaryColor}
+                  onChange={(e) => setCardConfig({...cardConfig, primaryColor: e.target.value})}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Couleur secondaire</Label>
+              <div className="flex gap-2 mt-1">
+                <Input 
+                  type="color" 
+                  value={cardConfig.secondaryColor}
+                  onChange={(e) => setCardConfig({...cardConfig, secondaryColor: e.target.value})}
+                  className="w-12 h-10 p-1 cursor-pointer"
+                />
+                <Input 
+                  value={cardConfig.secondaryColor}
+                  onChange={(e) => setCardConfig({...cardConfig, secondaryColor: e.target.value})}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Dégradé début</Label>
+              <div className="flex gap-2 mt-1">
+                <Input 
+                  type="color" 
+                  value={cardConfig.gradientStart}
+                  onChange={(e) => setCardConfig({...cardConfig, gradientStart: e.target.value})}
+                  className="w-12 h-10 p-1 cursor-pointer"
+                />
+                <Input 
+                  value={cardConfig.gradientStart}
+                  onChange={(e) => setCardConfig({...cardConfig, gradientStart: e.target.value})}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Dégradé fin</Label>
+              <div className="flex gap-2 mt-1">
+                <Input 
+                  type="color" 
+                  value={cardConfig.gradientEnd}
+                  onChange={(e) => setCardConfig({...cardConfig, gradientEnd: e.target.value})}
+                  className="w-12 h-10 p-1 cursor-pointer"
+                />
+                <Input 
+                  value={cardConfig.gradientEnd}
+                  onChange={(e) => setCardConfig({...cardConfig, gradientEnd: e.target.value})}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <Label>Arrière-plan</Label>
+            <div className="flex gap-2 mt-1">
+              <Input 
+                type="color" 
+                value={cardConfig.backgroundColor}
+                onChange={(e) => setCardConfig({...cardConfig, backgroundColor: e.target.value})}
+                className="w-12 h-10 p-1 cursor-pointer"
+              />
+              <Input 
+                value={cardConfig.backgroundColor}
+                onChange={(e) => setCardConfig({...cardConfig, backgroundColor: e.target.value})}
+                className="flex-1"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label>Arrondi des coins (px)</Label>
+            <Input 
+              type="range"
+              min="0"
+              max="32"
+              value={cardConfig.borderRadius}
+              onChange={(e) => setCardConfig({...cardConfig, borderRadius: e.target.value})}
+              className="mt-1"
+            />
+            <p className="text-xs text-muted-foreground mt-1">{cardConfig.borderRadius}px</p>
+          </div>
+
+          <div>
+            <Label>URL du logo</Label>
+            <Input 
+              value={cardConfig.logoUrl}
+              onChange={(e) => setCardConfig({...cardConfig, logoUrl: e.target.value})}
+              placeholder="https://..."
+              className="mt-1"
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+            <div>
+              <p className="font-medium">Afficher le QR Code</p>
+              <p className="text-sm text-muted-foreground">Sur la carte membre</p>
+            </div>
+            <Switch 
+              checked={cardConfig.showQRCode}
+              onCheckedChange={(checked) => setCardConfig({...cardConfig, showQRCode: checked})}
+            />
+          </div>
+
+          <Button onClick={handleSave} className="w-full">
+            <Save className="h-4 w-4 mr-2" />
+            Sauvegarder le design
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// Menu Manager Component with AI Assistant
+function MenuManager() {
+  const [menuItems, setMenuItems] = useState([
+    { id: "1", name: "Accueil", path: "/", visible: true, order: 1 },
+    { id: "2", name: "À propos", path: "/a-propos", visible: true, order: 2 },
+    { id: "3", name: "Annuaire", path: "/annuaire", visible: true, order: 3 },
+    { id: "4", name: "À l'Affiche", path: "/a-laffiche", visible: true, isHighlight: true, order: 4 },
+    { id: "5", name: "Actualités", path: "/actualites", visible: true, order: 5 },
+    { id: "6", name: "Conventions & Légal", path: "/conventions", visible: true, order: 6 },
+    { id: "7", name: "Direct", path: "/direct", visible: true, isLive: true, order: 7 },
+    { id: "8", name: "SITECH 2027", path: "/sitech-2027", visible: true, order: 8 },
+  ])
+
+  const [newItem, setNewItem] = useState({ name: "", path: "" })
+  const [aiInput, setAiInput] = useState("")
+  const [aiSuggestion, setAiSuggestion] = useState("")
+  const [isAiLoading, setIsAiLoading] = useState(false)
+  const [showAddDialog, setShowAddDialog] = useState(false)
+
+  const handleToggleVisibility = (id: string) => {
+    setMenuItems(items => 
+      items.map(item => 
+        item.id === id ? { ...item, visible: !item.visible } : item
+      )
+    )
+  }
+
+  const handleDelete = (id: string) => {
+    setMenuItems(items => items.filter(item => item.id !== id))
+  }
+
+  const handleAddItem = () => {
+    if (newItem.name && newItem.path) {
+      setMenuItems([...menuItems, {
+        id: String(Date.now()),
+        name: newItem.name,
+        path: newItem.path.startsWith('/') ? newItem.path : `/${newItem.path}`,
+        visible: true,
+        order: menuItems.length + 1
+      }])
+      setNewItem({ name: "", path: "" })
+      setShowAddDialog(false)
+    }
+  }
+
+  const handleAiImprove = async () => {
+    if (!aiInput) return
+    setIsAiLoading(true)
+    
+    // Simulate AI response
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    
+    const suggestions: Record<string, string> = {
+      "annuaire": "Nos Talents - Découvrez les professionnels du cinéma ivoirien",
+      "actualités": "Actu Ciné CI - Les dernières nouvelles du 7ème art en Côte d'Ivoire",
+      "conventions": "Cadre Légal - Grilles salariales et conventions collectives",
+      "sitech": "SITECH 2027 - Le salon international des technologies du cinéma",
+      "direct": "RETECHCI TV - En direct du monde du cinéma",
+      "à propos": "Notre Histoire - Le réseau qui unit les techniciens du cinéma",
+    }
+    
+    const lowerInput = aiInput.toLowerCase()
+    let suggestion = "Voici quelques suggestions pour améliorer votre contenu :\n\n"
+    
+    Object.entries(suggestions).forEach(([key, value]) => {
+      if (lowerInput.includes(key)) {
+        suggestion = value
+      }
+    })
+    
+    if (suggestion.startsWith("Voici")) {
+      suggestion = `"${aiInput}" pourrait devenir : "${aiInput} - Votre destination pour l'excellence technique du cinéma ivoirien"`
+    }
+    
+    setAiSuggestion(suggestion)
+    setIsAiLoading(false)
+  }
+
+  const handleSave = () => {
+    alert("Menu sauvegardé avec succès !")
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Menu Items */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Menu className="h-5 w-5" />
+                Structure du menu
+              </CardTitle>
+              <CardDescription>Gérez les éléments de navigation</CardDescription>
+            </div>
+            <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Ajouter un élément de menu</DialogTitle>
+                  <DialogDescription>Créez une nouvelle entrée dans le menu de navigation</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label>Nom de la rubrique</Label>
+                    <Input 
+                      placeholder="Ex: Galerie Photos"
+                      value={newItem.name}
+                      onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label>Chemin URL</Label>
+                    <Input 
+                      placeholder="Ex: /galerie"
+                      value={newItem.path}
+                      onChange={(e) => setNewItem({...newItem, path: e.target.value})}
+                    />
+                  </div>
+                  <Button onClick={handleAddItem} className="w-full">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter au menu
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {menuItems.sort((a, b) => a.order - b.order).map((item) => (
+              <div 
+                key={item.id} 
+                className={`flex items-center gap-3 p-3 rounded-lg border ${
+                  item.visible ? 'bg-secondary/30 border-border' : 'bg-secondary/10 border-dashed opacity-60'
+                }`}
+              >
+                <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{item.name}</span>
+                    {item.isLive && (
+                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                        LIVE
+                      </Badge>
+                    )}
+                    {item.isHighlight && (
+                      <Badge className="text-[10px] px-1.5 py-0 bg-amber-500">
+                        Highlight
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{item.path}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch 
+                    checked={item.visible}
+                    onCheckedChange={() => handleToggleVisibility(item.id)}
+                  />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-destructive"
+                    onClick={() => handleDelete(item.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <Button onClick={handleSave} className="w-full mt-4">
+            <Save className="h-4 w-4 mr-2" />
+            Sauvegarder le menu
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* AI Assistant */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-purple-500" />
+            Assistant IA
+          </CardTitle>
+          <CardDescription>Améliorez vos contenus avec l&apos;intelligence artificielle</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <Wand2 className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h4 className="font-medium text-purple-600 dark:text-purple-400">
+                  Optimisation de contenu
+                </h4>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Entrez un titre ou une description et l&apos;IA vous proposera des améliorations.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <Label>Texte à améliorer</Label>
+            <Textarea 
+              placeholder="Entrez le nom d'une rubrique, un titre d'article ou une description..."
+              value={aiInput}
+              onChange={(e) => setAiInput(e.target.value)}
+              className="mt-1"
+              rows={3}
+            />
+          </div>
+
+          <Button 
+            onClick={handleAiImprove} 
+            className="w-full bg-purple-500 hover:bg-purple-600"
+            disabled={isAiLoading || !aiInput}
+          >
+            {isAiLoading ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Analyse en cours...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Améliorer avec l&apos;IA
+              </>
+            )}
+          </Button>
+
+          {aiSuggestion && (
+            <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
+              <div className="flex items-start gap-2">
+                <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-green-600 dark:text-green-400 mb-1">
+                    Suggestion
+                  </h4>
+                  <p className="text-sm">{aiSuggestion}</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-2"
+                    onClick={() => {
+                      setAiInput(aiSuggestion)
+                      setAiSuggestion("")
+                    }}
+                  >
+                    <Type className="h-3 w-3 mr-1" />
+                    Utiliser cette suggestion
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="border-t pt-4">
+            <h4 className="font-medium mb-3">Suggestions rapides</h4>
+            <div className="flex flex-wrap gap-2">
+              {["Titre accrocheur", "Description SEO", "Call-to-action", "Ton professionnel"].map((suggestion) => (
+                <Button 
+                  key={suggestion}
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setAiInput(`Améliorer pour un ${suggestion.toLowerCase()}: ${aiInput || "mon texte"}`)}
+                >
+                  {suggestion}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -181,7 +714,6 @@ function CMSLogin({ onLogin }: { onLogin: () => void }) {
 // Main CMS Dashboard Component
 function CMSDashboard({ onLogout }: { onLogout: () => void }) {
   const [selectedTab, setSelectedTab] = useState("pages")
-  const [editingPage, setEditingPage] = useState<string | null>(null)
 
   const handlePublish = (id: string, type: "page" | "article") => {
     alert(`${type === "page" ? "Page" : "Article"} publié avec succès !`)
@@ -286,8 +818,10 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
           </div>
 
           <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-            <TabsList>
+            <TabsList className="flex-wrap">
               <TabsTrigger value="pages">Pages</TabsTrigger>
+              <TabsTrigger value="menu">Menu & Navigation</TabsTrigger>
+              <TabsTrigger value="card">Carte Membre</TabsTrigger>
               <TabsTrigger value="articles">Articles</TabsTrigger>
               <TabsTrigger value="media">Médiathèque</TabsTrigger>
               <TabsTrigger value="members">Membres</TabsTrigger>
@@ -336,7 +870,7 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                           <Button size="sm" variant="outline" onClick={() => window.open(page.path, "_blank")}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => setEditingPage(page.id)}>
+                          <Button size="sm" variant="outline">
                             <Edit className="h-4 w-4" />
                           </Button>
                           {page.status === "draft" && (
@@ -351,6 +885,16 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* Menu Tab */}
+            <TabsContent value="menu">
+              <MenuManager />
+            </TabsContent>
+
+            {/* Card Designer Tab */}
+            <TabsContent value="card">
+              <CardDesigner />
             </TabsContent>
 
             {/* Articles Tab */}
@@ -384,10 +928,7 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                           </div>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <span>{article.category}</span>
-                            <span>•</span>
                             <span>Par {article.author}</span>
-                            <span className="hidden md:inline">•</span>
-                            <span className="hidden md:inline">{new Date(article.date).toLocaleDateString('fr-FR')}</span>
                           </div>
                         </div>
                         <div className="flex gap-2">
@@ -397,7 +938,7 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                           <Button size="sm" variant="outline">
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button size="sm" variant="outline" className="text-red-500 hover:text-red-600">
+                          <Button size="sm" variant="outline" className="text-red-500">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -460,12 +1001,8 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
             <TabsContent value="members">
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Gestion des Contenus Membres</CardTitle>
-                      <CardDescription>Technicien du mois, profils mis en avant</CardDescription>
-                    </div>
-                  </div>
+                  <CardTitle>Gestion des Contenus Membres</CardTitle>
+                  <CardDescription>Technicien du mois, profils mis en avant</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div>
@@ -536,10 +1073,6 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                       <Label>Email de contact</Label>
                       <Input defaultValue="contact@retechci.ci" />
                     </div>
-                    <div>
-                      <Label>Téléphone</Label>
-                      <Input defaultValue="+225 07 XX XX XX" />
-                    </div>
                     <Button>
                       <Save className="h-4 w-4 mr-2" />
                       Enregistrer
@@ -565,10 +1098,6 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                       <Label>Twitter / X</Label>
                       <Input defaultValue="https://twitter.com/retechci" />
                     </div>
-                    <div>
-                      <Label>LinkedIn</Label>
-                      <Input defaultValue="https://linkedin.com/company/retechci" />
-                    </div>
                     <Button>
                       <Save className="h-4 w-4 mr-2" />
                       Enregistrer
@@ -592,8 +1121,8 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                       </div>
                       <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl">
                         <div>
-                          <h4 className="font-medium">Afficher RETECHCI TV</h4>
-                          <p className="text-sm text-muted-foreground">Section direct en page d&apos;accueil</p>
+                          <h4 className="font-medium">Popup Anniversaires</h4>
+                          <p className="text-sm text-muted-foreground">Afficher les anniversaires du jour</p>
                         </div>
                         <Switch defaultChecked />
                       </div>
