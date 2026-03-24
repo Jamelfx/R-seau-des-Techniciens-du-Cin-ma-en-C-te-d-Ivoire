@@ -1,6 +1,10 @@
 import { Header } from "@/components/header"
 import { Hero } from "@/components/hero"
 import { FeaturedTalents } from "@/components/featured-talents"
+import { DigitalCard } from "@/components/digital-card"
+import { SitechSection } from "@/components/sitech-section"
+import { Partners } from "@/components/partners"
+import { Footer } from "@/components/footer"
 
 export default function Home() {
   return (
@@ -9,7 +13,11 @@ export default function Home() {
       <main>
         <Hero />
         <FeaturedTalents />
+        <DigitalCard />
+        <SitechSection />
+        <Partners />
       </main>
+      <Footer />
     </div>
   )
 }
