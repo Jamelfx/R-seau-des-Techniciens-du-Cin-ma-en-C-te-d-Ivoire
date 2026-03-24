@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { ProfessionalCard } from "@/components/professional-card"
+
 import { 
   MapPin, 
   Mail, 
@@ -231,17 +231,37 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
         {/* Profile Header */}
         <section className="container mx-auto px-4 pb-12">
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* Left Column - Card & Contact */}
+            {/* Left Column - Photo & Contact */}
             <div className="space-y-6">
-              <ProfessionalCard
-                memberId={member.id}
-                name={`${member.firstName} ${member.lastName}`}
-                function={member.function}
-                category={member.category}
-                role={member.role}
-                photo={member.photo}
-                showActions={false}
-              />
+              {/* Profile Photo */}
+              <Card className="bg-card border-border overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="relative aspect-[3/4] w-full">
+                    <Image
+                      src={member.photo}
+                      alt={`${member.firstName} ${member.lastName}`}
+                      fill
+                      className="object-cover"
+                    />
+                    {/* Overlay with info */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4">
+                      <h3 className="text-xl font-bold text-white">{member.firstName} {member.lastName}</h3>
+                      <p className="text-primary font-medium">{member.function}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge className="bg-amber-500/20 text-amber-500 border-amber-500/30">
+                          <Star className="h-3 w-3 mr-1 fill-current" />
+                          {member.level}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Member ID */}
+                  <div className="p-3 bg-secondary/50 border-t border-border">
+                    <p className="text-xs text-muted-foreground">ID Membre</p>
+                    <p className="font-mono text-sm">{member.id}</p>
+                  </div>
+                </CardContent>
+              </Card>
               
               {/* Contact Card */}
               <Card className="bg-card border-border">
@@ -301,13 +321,10 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
                     <h1 className="text-3xl font-bold">{member.firstName} {member.lastName}</h1>
                     <p className="text-xl text-primary mt-1">{member.function}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="border-amber-500 text-amber-500">
+                  <Badge variant="outline" className="border-amber-500 text-amber-500">
                       <Star className="h-3 w-3 mr-1 fill-current" />
                       {member.level}
                     </Badge>
-                    <Badge variant="secondary">Catégorie {member.category}</Badge>
-                  </div>
                 </div>
                 
                 <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">

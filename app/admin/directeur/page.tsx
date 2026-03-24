@@ -34,11 +34,11 @@ const membershipRequests = [
 ]
 
 const allMembers = [
-  { id: "CI-2024-001", name: "Jamel Basiru", specialty: "Monteur Image", email: "jamel@email.com", cotisation: "paid", phone: "+225 07 XX XX XX" },
-  { id: "CI-2024-002", name: "Sophie Kouassi", specialty: "Chef Op", email: "sophie@email.com", cotisation: "paid", phone: "+225 05 XX XX XX" },
-  { id: "CI-2024-003", name: "Marc Zadi", specialty: "Ingénieur Son", email: "marc@email.com", cotisation: "pending", phone: "+225 01 XX XX XX" },
-  { id: "CI-2024-004", name: "Awa Diallo", specialty: "Scripte", email: "awa@email.com", cotisation: "paid", phone: "+225 07 XX XX XX" },
-  { id: "CI-2024-005", name: "Yves Bamba", specialty: "Cadreur", email: "yves@email.com", cotisation: "overdue", phone: "+225 05 XX XX XX" },
+  { id: "CI-2024-001", name: "Jamel Basiru", specialty: "Monteur Image", email: "jamel@email.com", cotisation: "paid", phone: "+225 07 XX XX XX", level: "Senior", experience: 12 },
+  { id: "CI-2024-002", name: "Sophie Kouassi", specialty: "Chef Op", email: "sophie@email.com", cotisation: "paid", phone: "+225 05 XX XX XX", level: "Senior", experience: 15 },
+  { id: "CI-2024-003", name: "Marc Zadi", specialty: "Ingenieur Son", email: "marc@email.com", cotisation: "pending", phone: "+225 01 XX XX XX", level: "Intermediaire", experience: 8 },
+  { id: "CI-2024-004", name: "Awa Diallo", specialty: "Scripte", email: "awa@email.com", cotisation: "paid", phone: "+225 07 XX XX XX", level: "Junior", experience: 3 },
+  { id: "CI-2024-005", name: "Yves Bamba", specialty: "Cadreur", email: "yves@email.com", cotisation: "overdue", phone: "+225 05 XX XX XX", level: "Intermediaire", experience: 6 },
 ]
 
 const expenses = [
@@ -488,8 +488,9 @@ export default function DirectorDashboard() {
                         <tr className="border-b border-border">
                           <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">ID</th>
                           <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Nom</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Spécialité</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Email</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Specialite</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Exp.</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Niveau</th>
                           <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Cotisation</th>
                           <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Actions</th>
                         </tr>
@@ -503,14 +504,26 @@ export default function DirectorDashboard() {
                             <td className="py-3 px-4 text-sm font-mono">{member.id}</td>
                             <td className="py-3 px-4 font-medium">{member.name}</td>
                             <td className="py-3 px-4 text-sm text-muted-foreground">{member.specialty}</td>
-                            <td className="py-3 px-4 text-sm">{member.email}</td>
+                            <td className="py-3 px-4 text-sm">{member.experience} ans</td>
+                            <td className="py-3 px-4">
+                              <Select defaultValue={member.level}>
+                                <SelectTrigger className="w-32 h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Junior">Junior</SelectItem>
+                                  <SelectItem value="Intermediaire">Intermediaire</SelectItem>
+                                  <SelectItem value="Senior">Senior</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </td>
                             <td className="py-3 px-4">
                               <Badge className={
                                 member.cotisation === "paid" ? "bg-green-500/20 text-green-600" :
                                 member.cotisation === "pending" ? "bg-amber-500/20 text-amber-600" :
                                 "bg-red-500/20 text-red-600"
                               }>
-                                {member.cotisation === "paid" ? "À jour" : 
+                                {member.cotisation === "paid" ? "A jour" : 
                                  member.cotisation === "pending" ? "En attente" : "En retard"}
                               </Badge>
                             </td>
