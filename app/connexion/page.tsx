@@ -35,6 +35,8 @@ export default function ConnexionPage() {
     
     // Check for demo account first
     if (formData.identifier === demoAccount.email && formData.password === demoAccount.password) {
+      // Store demo login status in localStorage
+      localStorage.setItem("retechci_demo_logged_in", "true")
       router.push("/membre/dashboard")
       return
     }

@@ -864,6 +864,7 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
             <TabsList className="flex-wrap">
               <TabsTrigger value="pages">Pages</TabsTrigger>
               <TabsTrigger value="about">A propos</TabsTrigger>
+              <TabsTrigger value="sitech">SITECH 2027</TabsTrigger>
               <TabsTrigger value="menu">Menu</TabsTrigger>
               <TabsTrigger value="card">Carte Membre</TabsTrigger>
               <TabsTrigger value="decors">Decors CI</TabsTrigger>
@@ -1057,6 +1058,229 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                     </div>
                   </CardContent>
                 </Card>
+              </div>
+            </TabsContent>
+
+            {/* SITECH 2027 Tab */}
+            <TabsContent value="sitech">
+              <div className="space-y-6">
+                {/* Event Info */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Informations generales - SITECH 2027</CardTitle>
+                    <CardDescription>Modifiez les informations de l&apos;evenement</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Nom de l&apos;evenement</Label>
+                        <Input defaultValue="SITECH 2027" className="mt-1" />
+                      </div>
+                      <div>
+                        <Label>Sous-titre</Label>
+                        <Input defaultValue="Salon International des Technologies" className="mt-1" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label>Dates</Label>
+                        <Input defaultValue="15-17 Decembre 2027" className="mt-1" />
+                      </div>
+                      <div>
+                        <Label>Lieu</Label>
+                        <Input defaultValue="Sofitel Hotel Ivoire" className="mt-1" />
+                      </div>
+                      <div>
+                        <Label>Ville</Label>
+                        <Input defaultValue="Abidjan, Cote d'Ivoire" className="mt-1" />
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Description</Label>
+                      <Textarea 
+                        defaultValue="L'evenement phare des technologies de l'Image et du Son en Afrique de l'Ouest"
+                        className="mt-1"
+                        rows={3}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Tarifs */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Tarifs d&apos;inscription</CardTitle>
+                        <CardDescription>Gerez les prix des differentes categories</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-3 gap-4 p-4 bg-secondary/30 rounded-xl">
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Categorie</Label>
+                          <p className="font-medium">Participant - Etudiant</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Prix (FCFA)</Label>
+                          <Input defaultValue="15000" className="mt-1" />
+                        </div>
+                        <div className="flex items-end gap-2">
+                          <Button size="sm" variant="outline"><Edit className="h-4 w-4" /></Button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 p-4 bg-secondary/30 rounded-xl">
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Categorie</Label>
+                          <p className="font-medium">Participant - Professionnel</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Prix (FCFA)</Label>
+                          <Input defaultValue="45000" className="mt-1" />
+                        </div>
+                        <div className="flex items-end gap-2">
+                          <Button size="sm" variant="outline"><Edit className="h-4 w-4" /></Button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 p-4 bg-secondary/30 rounded-xl">
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Categorie</Label>
+                          <p className="font-medium">Participant - VIP</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Prix (FCFA)</Label>
+                          <Input defaultValue="150000" className="mt-1" />
+                        </div>
+                        <div className="flex items-end gap-2">
+                          <Button size="sm" variant="outline"><Edit className="h-4 w-4" /></Button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Categorie</Label>
+                          <p className="font-medium">Exposant - Stand Standard</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Prix (FCFA)</Label>
+                          <Input defaultValue="250000" className="mt-1" />
+                        </div>
+                        <div className="flex items-end gap-2">
+                          <Button size="sm" variant="outline"><Edit className="h-4 w-4" /></Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Galerie Photos */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Galerie photos - Editions precedentes</CardTitle>
+                        <CardDescription>Gerez les photos des editions passees</CardDescription>
+                      </div>
+                      <Button size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Ajouter des photos
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-4 gap-4">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="relative aspect-video rounded-lg overflow-hidden group">
+                          <Image
+                            src={`https://images.unsplash.com/photo-154057506306${i}-178a50c2df87?w=300`}
+                            alt={`Photo ${i}`}
+                            fill
+                            className="object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <Button size="sm" variant="secondary"><Edit className="h-4 w-4" /></Button>
+                            <Button size="sm" variant="destructive"><Trash2 className="h-4 w-4" /></Button>
+                          </div>
+                          <Badge className="absolute top-2 left-2 bg-black/70 text-xs">2024</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Videos YouTube */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Videos YouTube</CardTitle>
+                        <CardDescription>Liens vers les videos des programmes</CardDescription>
+                      </div>
+                      <Button size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Ajouter une video
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {[
+                        { title: "SITECH 2024 - Film Officiel", url: "https://youtube.com/watch?v=xxx", year: "2024" },
+                        { title: "Masterclass Sony VENICE", url: "https://youtube.com/watch?v=yyy", year: "2024" },
+                        { title: "Panel Financement Cinema", url: "https://youtube.com/watch?v=zzz", year: "2023" },
+                      ].map((video, i) => (
+                        <div key={i} className="flex items-center gap-4 p-3 bg-secondary/30 rounded-xl">
+                          <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
+                            <svg className="h-5 w-5 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium">{video.title}</p>
+                            <p className="text-xs text-muted-foreground">{video.url}</p>
+                          </div>
+                          <Badge variant="outline">{video.year}</Badge>
+                          <Button size="sm" variant="ghost"><Edit className="h-4 w-4" /></Button>
+                          <Button size="sm" variant="ghost" className="text-red-500"><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* AI Assistant */}
+                <Card className="border-purple-500/30 bg-purple-500/5">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-purple-500" />
+                      Assistant IA - Contenu SITECH
+                    </CardTitle>
+                    <CardDescription>Generez du contenu pour l&apos;evenement avec l&apos;IA</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Textarea 
+                      placeholder="Ex: Redige une description attractive pour le panel sur le financement du cinema africain..."
+                      rows={3}
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      {["Description evenement", "Programme conference", "Email invitation", "Post reseaux sociaux"].map((tag) => (
+                        <Badge key={tag} variant="outline" className="cursor-pointer hover:bg-purple-500/20">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                    <Button className="w-full bg-purple-500 hover:bg-purple-600">
+                      <Wand2 className="h-4 w-4 mr-2" />
+                      Generer avec l&apos;IA
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Button className="w-full">
+                  <Save className="h-4 w-4 mr-2" />
+                  Sauvegarder toutes les modifications
+                </Button>
               </div>
             </TabsContent>
 
