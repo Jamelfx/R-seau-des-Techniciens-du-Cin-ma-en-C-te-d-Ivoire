@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import Image from "next/image"
 import Link from "next/link"
+import { CoteIvoireMap } from "@/components/cote-ivoire-map"
 
 // Types
 type AvailabilityStatus = "available" | "filming" | "unavailable"
@@ -182,7 +183,7 @@ const filmLocations: FilmLocation[] = [
     id: "1",
     name: "Plateau Business District",
     city: "Abidjan",
-    description: "Le quartier des affaires d'Abidjan offre un cadre urbain moderne parfait pour des scènes corporate, des thrillers ou des films contemporains.",
+    description: "Le quartier des affaires d'Abidjan offre un cadre urbain moderne parfait pour des scenes corporate, des thrillers ou des films contemporains.",
     image: "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400&h=250&fit=crop",
     tags: ["architecture moderne", "buildings", "entreprises"],
     filters: ["urban", "modern"],
@@ -192,7 +193,7 @@ const filmLocations: FilmLocation[] = [
     id: "2",
     name: "Village Lagunaire de Blockhauss",
     city: "Abidjan",
-    description: "Village traditionnel au bord de la lagune Ebrié. Architecture vernaculaire, pirogues traditionnelles.",
+    description: "Village traditionnel au bord de la lagune Ebrie. Architecture vernaculaire, pirogues traditionnelles.",
     image: "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?w=400&h=250&fit=crop",
     tags: ["lagune", "traditionnel", "village"],
     filters: ["traditional", "nature"],
@@ -202,7 +203,7 @@ const filmLocations: FilmLocation[] = [
     id: "3",
     name: "Quartier Colonial de Grand-Bassam",
     city: "Grand-Bassam",
-    description: "Site UNESCO avec une architecture coloniale française bien préservée.",
+    description: "Site UNESCO avec une architecture coloniale francaise bien preservee.",
     image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=250&fit=crop",
     tags: ["historique", "colonial", "UNESCO"],
     filters: ["historical", "urban"],
@@ -212,7 +213,7 @@ const filmLocations: FilmLocation[] = [
     id: "4",
     name: "Plage d'Assinie",
     city: "Assinie",
-    description: "Plages de sable fin bordées de cocotiers. Idéal pour les scènes de détente ou de romance.",
+    description: "Plages de sable fin bordees de cocotiers. Ideal pour les scenes de detente ou de romance.",
     image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=250&fit=crop",
     tags: ["plage", "cocotiers", "tropical"],
     filters: ["beach", "nature"],
@@ -220,11 +221,11 @@ const filmLocations: FilmLocation[] = [
   },
   {
     id: "5",
-    name: "Forêt de Banco",
+    name: "Foret de Banco",
     city: "Abidjan",
-    description: "Parc national en plein coeur d'Abidjan. Forêt tropicale dense idéale pour scènes de nature.",
+    description: "Parc national en plein coeur d'Abidjan. Foret tropicale dense ideale pour scenes de nature.",
     image: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=400&h=250&fit=crop",
-    tags: ["forêt", "nature", "tropical"],
+    tags: ["foret", "nature", "tropical"],
     filters: ["nature"],
     coordinates: { lat: 5.3833, lng: -4.0500 }
   },
@@ -232,7 +233,7 @@ const filmLocations: FilmLocation[] = [
     id: "6",
     name: "Basilique Notre-Dame de la Paix",
     city: "Yamoussoukro",
-    description: "Plus grande basilique chrétienne du monde. Architecture monumentale impressionnante.",
+    description: "Plus grande basilique chretienne du monde. Architecture monumentale impressionnante.",
     image: "https://images.unsplash.com/photo-1548625149-fc4a29cf7092?w=400&h=250&fit=crop",
     tags: ["religieux", "architecture", "monument"],
     filters: ["historical", "modern"],
@@ -330,53 +331,126 @@ function EquipmentTable({ equipment }: { equipment: Equipment[] }) {
   )
 }
 
-// Google Maps Component
-function InteractiveMap({ locations, selectedLocation, onSelectLocation }: { 
-  locations: FilmLocation[], 
-  selectedLocation: string | null,
-  onSelectLocation: (id: string) => void 
-}) {
-  // Center on Côte d'Ivoire
-  const mapSrc = `https://www.google.com/maps/embed/v1/view?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&center=7.5399,-5.5471&zoom=7&maptype=roadmap`
-  
-  return (
-    <div className="relative h-full min-h-[400px] rounded-lg overflow-hidden border border-border">
-      <iframe
-        src={mapSrc}
-        className="w-full h-full"
-        style={{ border: 0, minHeight: '400px' }}
-        allowFullScreen
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-      />
-      {/* Map Markers Overlay */}
-      <div className="absolute inset-0 pointer-events-none">
-        {locations.map((loc) => (
-          <button
-            key={loc.id}
-            onClick={() => onSelectLocation(loc.id)}
-            className={`absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 pointer-events-auto cursor-pointer transition-transform hover:scale-125 ${
-              selectedLocation === loc.id ? 'scale-125' : ''
-            }`}
-            style={{
-              // Approximate positions on the embedded map
-              left: `${((loc.coordinates.lng + 8) / 10) * 100}%`,
-              top: `${((10 - loc.coordinates.lat) / 8) * 100}%`
-            }}
-          >
-            <MapPin className={`h-6 w-6 ${selectedLocation === loc.id ? 'text-primary fill-primary' : 'text-primary'}`} />
-          </button>
-        ))}
-      </div>
-      {/* Legend */}
-      <div className="absolute bottom-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg p-3 text-xs">
-        <div className="flex items-center gap-2 mb-1">
-          <MapPin className="h-4 w-4 text-primary" />
-          <span>Décor disponible</span>
+// Scouting Request Dialog Component
+function ScoutingRequestDialog({ locationName }: { locationName: string }) {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    company: "",
+    projectType: "",
+    dates: "",
+    message: ""
+  })
+  const [submitted, setSubmitted] = useState(false)
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    console.log("Scouting request sent to Directeur Executif:", {
+      ...formData,
+      location: locationName
+    })
+    setSubmitted(true)
+  }
+
+  if (submitted) {
+    return (
+      <div className="text-center py-8">
+        <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Mail className="h-8 w-8 text-green-500" />
         </div>
-        <p className="text-muted-foreground">Cliquez sur un marqueur pour voir les détails</p>
+        <h3 className="text-lg font-semibold text-foreground mb-2">Demande envoyee !</h3>
+        <p className="text-muted-foreground text-sm">
+          Le Directeur Executif vous contactera pour organiser le reperage de {locationName}.
+        </p>
       </div>
-    </div>
+    )
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="scout-name">Nom complet *</Label>
+          <Input 
+            id="scout-name" 
+            required 
+            value={formData.name} 
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+            placeholder="Votre nom" 
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="scout-email">Email *</Label>
+          <Input 
+            id="scout-email" 
+            type="email" 
+            required 
+            value={formData.email} 
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
+            placeholder="votre@email.com" 
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="scout-phone">Telephone *</Label>
+          <Input 
+            id="scout-phone" 
+            type="tel"
+            required 
+            value={formData.phone} 
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })} 
+            placeholder="+225 XX XX XX XX XX" 
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="scout-company">Societe de production</Label>
+          <Input 
+            id="scout-company" 
+            value={formData.company} 
+            onChange={(e) => setFormData({ ...formData, company: e.target.value })} 
+            placeholder="Nom de la societe" 
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="scout-type">Type de projet *</Label>
+          <Input 
+            id="scout-type" 
+            required 
+            value={formData.projectType} 
+            onChange={(e) => setFormData({ ...formData, projectType: e.target.value })} 
+            placeholder="Film, Serie, Publicite..." 
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="scout-dates">Dates souhaitees</Label>
+          <Input 
+            id="scout-dates" 
+            value={formData.dates} 
+            onChange={(e) => setFormData({ ...formData, dates: e.target.value })} 
+            placeholder="Ex: Mars 2024" 
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="scout-message">Description du projet *</Label>
+        <Textarea 
+          id="scout-message" 
+          required 
+          value={formData.message} 
+          onChange={(e) => setFormData({ ...formData, message: e.target.value })} 
+          placeholder="Decrivez votre projet, vos besoins specifiques pour ce decor..." 
+          rows={4} 
+        />
+      </div>
+      <Button type="submit" className="w-full">Envoyer la demande de reperage</Button>
+      <p className="text-xs text-muted-foreground text-center">
+        Votre demande sera transmise au Directeur Executif du RETECHCI
+      </p>
+    </form>
   )
 }
 
@@ -701,7 +775,7 @@ export default function DirectoryPage() {
                   ))}
                 </div>
 
-                <InteractiveMap 
+                <CoteIvoireMap 
                   locations={filteredLocations} 
                   selectedLocation={selectedLocation}
                   onSelectLocation={setSelectedLocation}
@@ -744,12 +818,14 @@ export default function DirectoryPage() {
                             <DialogTrigger asChild>
                               <Button size="sm" variant="outline">{t("directory.requestScouting")}</Button>
                             </DialogTrigger>
-                            <DialogContent>
+                            <DialogContent className="sm:max-w-lg">
                               <DialogHeader>
-                                <DialogTitle>Demander un repérage - {loc.name}</DialogTitle>
-                                <DialogDescription>Demandez un repérage pour vos besoins de tournage.</DialogDescription>
+                                <DialogTitle>Demander un reperage - {loc.name}</DialogTitle>
+                                <DialogDescription>
+                                  Remplissez ce formulaire pour demander un reperage. Le Directeur Executif vous contactera.
+                                </DialogDescription>
                               </DialogHeader>
-                              <ContactDialog serviceName={loc.name} />
+                              <ScoutingRequestDialog locationName={loc.name} />
                             </DialogContent>
                           </Dialog>
                         </div>

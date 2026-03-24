@@ -17,7 +17,7 @@ import {
   Home, Info, Newspaper, CalendarDays, Star, Building2,
   CheckCircle, AlertCircle, Lock, User, Clapperboard, UserPlus,
   Menu, CreditCard, Palette, Sparkles, GripVertical, ExternalLink,
-  Wand2, RefreshCw, Type, Move
+  Wand2, RefreshCw, Type, Move, MapPin, Camera
 } from "lucide-react"
 import Image from "next/image"
 
@@ -49,6 +49,49 @@ const mediaLibrary = [
   { id: "1", name: "hero-banner.jpg", type: "image", size: "2.4 MB", url: "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=200" },
   { id: "2", name: "sitech-poster.jpg", type: "image", size: "1.8 MB", url: "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=200" },
   { id: "3", name: "team-photo.jpg", type: "image", size: "3.1 MB", url: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=200" },
+]
+
+// Decors/Locations for CMS management
+const decorsData = [
+  { 
+    id: "1", 
+    name: "Plateau Business District", 
+    city: "Abidjan", 
+    category: "Urbain",
+    status: "active",
+    images: [
+      "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400",
+      "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=400",
+      "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=400"
+    ],
+    posX: 72,
+    posY: 78
+  },
+  { 
+    id: "2", 
+    name: "Plage d'Assinie", 
+    city: "Assinie", 
+    category: "Plage",
+    status: "active",
+    images: [
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400",
+      "https://images.unsplash.com/photo-1473116763249-2faaef81ccda?w=400"
+    ],
+    posX: 85,
+    posY: 82
+  },
+  { 
+    id: "3", 
+    name: "Basilique Notre-Dame", 
+    city: "Yamoussoukro", 
+    category: "Monument",
+    status: "active",
+    images: [
+      "https://images.unsplash.com/photo-1548625149-fc4a29cf7092?w=400"
+    ],
+    posX: 55,
+    posY: 58
+  },
 ]
 
 // Login Component
@@ -822,10 +865,11 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
               <TabsTrigger value="pages">Pages</TabsTrigger>
               <TabsTrigger value="menu">Menu & Navigation</TabsTrigger>
               <TabsTrigger value="card">Carte Membre</TabsTrigger>
+              <TabsTrigger value="decors">Decors CI</TabsTrigger>
               <TabsTrigger value="articles">Articles</TabsTrigger>
-              <TabsTrigger value="media">Médiathèque</TabsTrigger>
+              <TabsTrigger value="media">Mediatheque</TabsTrigger>
               <TabsTrigger value="members">Membres</TabsTrigger>
-              <TabsTrigger value="settings">Paramètres</TabsTrigger>
+              <TabsTrigger value="settings">Parametres</TabsTrigger>
             </TabsList>
 
             {/* Pages Tab */}
@@ -944,6 +988,243 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Decors Tab */}
+            <TabsContent value="decors">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Gestion des Decors</CardTitle>
+                      <CardDescription>Gerez les lieux de tournage sur la carte de Cote d&apos;Ivoire</CardDescription>
+                    </div>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Ajouter un decor
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle>Ajouter un nouveau decor</DialogTitle>
+                          <DialogDescription>Configurez les details du lieu de tournage</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Nom du lieu</Label>
+                              <Input placeholder="Ex: Plateau Business District" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Ville</Label>
+                              <Select>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selectionnez une ville" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="abidjan">Abidjan</SelectItem>
+                                  <SelectItem value="yamoussoukro">Yamoussoukro</SelectItem>
+                                  <SelectItem value="bouake">Bouake</SelectItem>
+                                  <SelectItem value="grand-bassam">Grand-Bassam</SelectItem>
+                                  <SelectItem value="assinie">Assinie</SelectItem>
+                                  <SelectItem value="man">Man</SelectItem>
+                                  <SelectItem value="korhogo">Korhogo</SelectItem>
+                                  <SelectItem value="san-pedro">San-Pedro</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Categorie</Label>
+                              <Select>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Type de decor" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="urban">Urbain / Moderne</SelectItem>
+                                  <SelectItem value="beach">Plage / Littoral</SelectItem>
+                                  <SelectItem value="nature">Nature / Foret</SelectItem>
+                                  <SelectItem value="historical">Historique / Colonial</SelectItem>
+                                  <SelectItem value="traditional">Traditionnel / Village</SelectItem>
+                                  <SelectItem value="monument">Monument / Religieux</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Statut</Label>
+                              <Select defaultValue="active">
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="active">Actif</SelectItem>
+                                  <SelectItem value="inactive">Inactif</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Description</Label>
+                            <Textarea placeholder="Decrivez le lieu et ses caracteristiques pour le tournage..." rows={3} />
+                          </div>
+                          
+                          {/* Position on Map */}
+                          <div className="space-y-2">
+                            <Label>Position sur la carte</Label>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label className="text-xs text-muted-foreground">Position X (0-100)</Label>
+                                <Input type="number" min="0" max="100" placeholder="Ex: 72" />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-xs text-muted-foreground">Position Y (0-100)</Label>
+                                <Input type="number" min="0" max="100" placeholder="Ex: 78" />
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Calibrez la position de l&apos;icone sur la carte (0,0 = coin superieur gauche)
+                            </p>
+                          </div>
+
+                          {/* Images */}
+                          <div className="space-y-2">
+                            <Label>Photos du lieu</Label>
+                            <div className="grid grid-cols-4 gap-2">
+                              <div className="aspect-square rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
+                                <Camera className="h-6 w-6 text-muted-foreground mb-1" />
+                                <span className="text-xs text-muted-foreground">Photo 1</span>
+                              </div>
+                              <div className="aspect-square rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
+                                <Plus className="h-6 w-6 text-muted-foreground" />
+                              </div>
+                              <div className="aspect-square rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
+                                <Plus className="h-6 w-6 text-muted-foreground" />
+                              </div>
+                              <div className="aspect-square rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
+                                <Plus className="h-6 w-6 text-muted-foreground" />
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Ajoutez plusieurs photos pour presenter le lieu sous differents angles
+                            </p>
+                          </div>
+                          <Button className="w-full">
+                            <Save className="h-4 w-4 mr-2" />
+                            Enregistrer le decor
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {decorsData.map((decor) => (
+                      <div key={decor.id} className="flex items-start gap-4 p-4 bg-secondary/30 rounded-xl">
+                        {/* Thumbnail */}
+                        <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
+                          <Image
+                            src={decor.images[0]}
+                            alt={decor.name}
+                            fill
+                            className="object-cover"
+                          />
+                          {decor.images.length > 1 && (
+                            <div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                              +{decor.images.length - 1}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium truncate">{decor.name}</h4>
+                            <Badge variant={decor.status === "active" ? "default" : "secondary"} className="text-xs">
+                              {decor.status === "active" ? "Actif" : "Inactif"}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {decor.city}
+                            </span>
+                            <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded">
+                              {decor.category}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                            <span>Position: X={decor.posX}, Y={decor.posY}</span>
+                            <span>|</span>
+                            <span>{decor.images.length} photo(s)</span>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <ImageIcon className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-red-500">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Map Preview */}
+                  <div className="mt-6 p-4 bg-secondary/20 rounded-xl">
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      Apercu de la carte
+                    </h4>
+                    <div className="relative aspect-[4/3] bg-background rounded-lg border border-border overflow-hidden">
+                      {/* Simplified map preview */}
+                      <svg viewBox="0 0 100 100" className="w-full h-full">
+                        <path
+                          d="M 15 10 L 25 8 L 40 5 L 55 8 L 70 12 L 85 18 L 88 25 L 85 35 L 82 45 L 80 55 L 82 65 L 85 75 L 80 85 L 70 88 L 60 85 L 50 88 L 40 90 L 30 88 L 20 82 L 15 70 L 12 55 L 10 40 L 12 25 L 15 10 Z"
+                          fill="#262626"
+                          stroke="#f97316"
+                          strokeWidth="0.5"
+                        />
+                        {decorsData.map((decor) => (
+                          <g key={decor.id}>
+                            <circle
+                              cx={decor.posX}
+                              cy={decor.posY}
+                              r="3"
+                              fill="#f97316"
+                              className="cursor-pointer"
+                            />
+                            <text
+                              x={decor.posX}
+                              y={decor.posY - 5}
+                              fontSize="3"
+                              fill="#a3a3a3"
+                              textAnchor="middle"
+                            >
+                              {decor.name.substring(0, 10)}...
+                            </text>
+                          </g>
+                        ))}
+                      </svg>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2 text-center">
+                      Les positions des decors sont affichees sur cette carte. Modifiez X et Y pour ajuster le placement.
+                    </p>
                   </div>
                 </CardContent>
               </Card>

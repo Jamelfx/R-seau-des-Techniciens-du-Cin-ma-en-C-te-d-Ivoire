@@ -7,19 +7,22 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { ProfessionalCard } from "@/components/professional-card"
 import { 
   MapPin, 
-  Phone, 
   Mail, 
-  Calendar,
   Star,
   Film,
   Award,
   Clock,
   ChevronLeft,
   Share2,
-  Download
+  Download,
+  CheckCircle
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
@@ -113,8 +116,103 @@ const availabilityLabels: Record<string, { label: string; color: string }> = {
   unavailable: { label: "Indisponible", color: "bg-red-500" }
 }
 
+// Contact Dialog Component
+function ContactTechnicianDialog({ technicianName }: { technicianName: string }) {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    project: "",
+    message: ""
+  })
+  const [submitted, setSubmitted] = useState(false)
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    console.log("Contact request for technician:", technicianName, formData)
+    setSubmitted(true)
+  }
+
+  if (submitted) {
+    return (
+      <div className="text-center py-8">
+        <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle className="h-8 w-8 text-green-500" />
+        </div>
+        <h3 className="text-lg font-semibold text-foreground mb-2">Demande envoyee !</h3>
+        <p className="text-muted-foreground text-sm">
+          Le Directeur Executif du RETECHCI vous mettra en relation avec {technicianName} dans les plus brefs delais.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="contact-name">Nom complet *</Label>
+          <Input 
+            id="contact-name" 
+            required 
+            value={formData.name} 
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+            placeholder="Votre nom" 
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="contact-email">Email *</Label>
+          <Input 
+            id="contact-email" 
+            type="email" 
+            required 
+            value={formData.email} 
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
+            placeholder="votre@email.com" 
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="contact-phone">Telephone</Label>
+        <Input 
+          id="contact-phone" 
+          type="tel" 
+          value={formData.phone} 
+          onChange={(e) => setFormData({ ...formData, phone: e.target.value })} 
+          placeholder="+225 XX XX XX XX XX" 
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="contact-project">Nom du projet</Label>
+        <Input 
+          id="contact-project" 
+          value={formData.project} 
+          onChange={(e) => setFormData({ ...formData, project: e.target.value })} 
+          placeholder="Ex: Film documentaire, Serie TV..." 
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="contact-message">Message *</Label>
+        <Textarea 
+          id="contact-message" 
+          required 
+          value={formData.message} 
+          onChange={(e) => setFormData({ ...formData, message: e.target.value })} 
+          placeholder="Decrivez votre projet et les dates souhaitees..." 
+          rows={4} 
+        />
+      </div>
+      <Button type="submit" className="w-full">Envoyer la demande</Button>
+      <p className="text-xs text-muted-foreground text-center">
+        Votre demande sera transmise au Directeur Executif du RETECHCI qui vous mettra en relation.
+      </p>
+    </form>
+  )
+}
+
 export default function MemberProfilePage({ params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = useState("filmography")
+  const [contactOpen, setContactOpen] = useState(false)
   const member = memberData // In production, fetch by params.id
   const availability = availabilityLabels[member.availability]
 
@@ -150,17 +248,30 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
                 <CardContent className="p-6 space-y-4">
                   <h3 className="font-semibold text-lg">Contacter ce technicien</h3>
                   <p className="text-sm text-muted-foreground">
-                    Envoyez une demande de contact. Le Directeur Exécutif vous mettra en relation.
+                    Envoyez une demande de contact. Le Directeur Executif vous mettra en relation.
                   </p>
                   <div className="flex items-center gap-3 text-sm">
                     <MapPin className="h-4 w-4 text-primary" />
                     <span className="text-muted-foreground">{member.location}</span>
                   </div>
                   <div className="flex gap-2 pt-2">
-                    <Button className="flex-1">
-                      <Mail className="h-4 w-4 mr-2" />
-                      Contacter
-                    </Button>
+                    <Dialog open={contactOpen} onOpenChange={setContactOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="flex-1">
+                          <Mail className="h-4 w-4 mr-2" />
+                          Contacter
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                          <DialogTitle>Contacter {member.firstName} {member.lastName}</DialogTitle>
+                          <DialogDescription>
+                            Envoyez une demande de contact. Le Directeur Executif du RETECHCI vous mettra en relation.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <ContactTechnicianDialog technicianName={`${member.firstName} ${member.lastName}`} />
+                      </DialogContent>
+                    </Dialog>
                     <Button variant="outline" size="icon">
                       <Share2 className="h-4 w-4" />
                     </Button>
