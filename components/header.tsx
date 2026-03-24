@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { User, Menu, X, LogIn, UserPlus, LayoutDashboard, LogOut } from "lucide-react"
+import { User, Menu, X, LogIn, UserPlus, LayoutDashboard, LogOut, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { LanguageToggle } from "@/components/language-toggle"
@@ -100,6 +100,13 @@ export function Header() {
                       Devenir Membre
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin" className="flex items-center gap-2 cursor-pointer text-muted-foreground">
+                      <Shield className="h-4 w-4" />
+                      Accès Administration
+                    </Link>
+                  </DropdownMenuItem>
                 </>
               )}
             </DropdownMenuContent>
@@ -151,6 +158,14 @@ export function Header() {
               >
                 <UserPlus className="h-4 w-4" />
                 Devenir Membre
+              </Link>
+              <Link
+                href="/admin"
+                className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Shield className="h-4 w-4" />
+                Accès Administration
               </Link>
             </div>
           </nav>

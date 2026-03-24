@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import Image from "next/image"
 
 interface ProfessionalCardProps {
-  member: {
+  member?: {
     id: string
     name: string
     role: string
@@ -14,15 +14,42 @@ interface ProfessionalCardProps {
     title?: string
     photo?: string
   }
+  // Alternative props format
+  memberId?: string
+  name?: string
+  role?: string
+  function?: string
+  category?: "A" | "B" | "C" | string
+  title?: string
+  photo?: string
   showActions?: boolean
   size?: "sm" | "md" | "lg"
 }
 
-export function ProfessionalCard({ member, showActions = true, size = "md" }: ProfessionalCardProps) {
+export function ProfessionalCard({ 
+  member, 
+  memberId,
+  name: propName,
+  role: propRole,
+  function: propFunction,
+  category: propCategory,
+  title: propTitle,
+  photo: propPhoto,
+  showActions = true, 
+  size = "md" 
+}: ProfessionalCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   
-  // Early return if member is undefined
-  if (!member || !member.id) {
+  // Normalize props - support both member object and individual props
+  const id = member?.id || memberId || "LOADING"
+  const name = member?.name || propName || "Chargement..."
+  const role = member?.role || propFunction || propRole || ""
+  const category = (member?.category || propCategory || "A") as "A" | "B" | "C"
+  const title = member?.title || propTitle
+  const photo = member?.photo || propPhoto
+  
+  // Early return if no valid data
+  if (id === "LOADING" && !name) {
     return (
       <div className="w-[280px] h-[440px] rounded-2xl bg-muted flex items-center justify-center">
         <p className="text-muted-foreground text-sm">Chargement...</p>
@@ -50,15 +77,13 @@ export function ProfessionalCard({ member, showActions = true, size = "md" }: Pr
   
   // Generate unique QR code data URL based on member ID
   const generateQRCodeSVG = (data: string) => {
-    // Create a simple QR-like pattern based on the member ID
     const hash = data.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    const size = 7
+    const qrSize = 7
     const cells: boolean[][] = []
     
-    for (let i = 0; i < size; i++) {
+    for (let i = 0; i < qrSize; i++) {
       cells[i] = []
-      for (let j = 0; j < size; j++) {
-        // Create deterministic pattern based on hash
+      for (let j = 0; j < qrSize; j++) {
         cells[i][j] = ((hash + i * j + i + j) % 3) !== 0
       }
     }
@@ -67,7 +92,7 @@ export function ProfessionalCard({ member, showActions = true, size = "md" }: Pr
     const addFinderPattern = (startX: number, startY: number) => {
       for (let i = 0; i < 3; i++) {
         for (let j = 0; j < 3; j++) {
-          if (startX + i < size && startY + j < size) {
+          if (startX + i < qrSize && startY + j < qrSize) {
             cells[startY + j][startX + i] = i === 1 && j === 1 ? true : (i === 0 || i === 2 || j === 0 || j === 2)
           }
         }
@@ -75,13 +100,13 @@ export function ProfessionalCard({ member, showActions = true, size = "md" }: Pr
     }
     
     addFinderPattern(0, 0)
-    addFinderPattern(size - 3, 0)
-    addFinderPattern(0, size - 3)
+    addFinderPattern(qrSize - 3, 0)
+    addFinderPattern(0, qrSize - 3)
     
     return cells
   }
   
-  const qrCells = generateQRCodeSVG(member.id)
+  const qrCells = generateQRCodeSVG(id)
   
   const handlePrint = () => {
     if (cardRef.current) {
@@ -91,7 +116,7 @@ export function ProfessionalCard({ member, showActions = true, size = "md" }: Pr
           <!DOCTYPE html>
           <html>
             <head>
-              <title>Carte Professionnelle - ${member.name}</title>
+              <title>Carte Professionnelle - ${name}</title>
               <style>
                 body { 
                   margin: 0; 
@@ -223,18 +248,18 @@ export function ProfessionalCard({ member, showActions = true, size = "md" }: Pr
                     <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
                     <rect x="8" y="8" width="8" height="8" rx="1"/>
                   </svg>
-                  <span class="category">CATÉGORIE ${member.category}</span>
+                  <span class="category">CATÉGORIE ${category}</span>
                 </div>
                 <div class="photo-container">
-                  <img class="photo" src="${member.photo || '/placeholder.svg'}" alt="${member.name}" />
+                  <img class="photo" src="${photo || '/placeholder.svg'}" alt="${name}" />
                 </div>
-                <div class="name">${member.name}</div>
-                <div class="role">${member.role}</div>
-                ${member.title ? `<div class="title">${member.title}</div>` : ''}
+                <div class="name">${name}</div>
+                <div class="role">${role}</div>
+                ${title ? `<div class="title">${title}</div>` : ''}
                 <div class="id-section">
                   <div>
                     <div class="id-label">ID MEMBRE</div>
-                    <div class="id-value">${member.id}</div>
+                    <div class="id-value">${id}</div>
                   </div>
                   <div class="qr-code">
                     <svg viewBox="0 0 70 70" fill="none">
@@ -278,24 +303,24 @@ export function ProfessionalCard({ member, showActions = true, size = "md" }: Pr
         <div className="relative z-10 flex justify-between items-start p-4">
           <Clapperboard className="w-8 h-8 text-red-600" />
           <span className={`${textSizes[size].badge} rounded-full bg-white/10 border border-white/20 text-white/90 font-medium`}>
-            CATÉGORIE {member.category}
+            CATÉGORIE {category}
           </span>
         </div>
         
         {/* Photo */}
         <div className="relative z-10 flex justify-center mt-2">
           <div className={`${photoSizes[size]} rounded-full border-[3px] border-red-600 overflow-hidden`}>
-            {member.photo ? (
+            {photo ? (
               <Image
-                src={member.photo}
-                alt={member.name}
+                src={photo}
+                alt={name}
                 width={128}
                 height={128}
                 className="w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full bg-muted flex items-center justify-center text-2xl font-bold text-muted-foreground">
-                {member.name.split(' ').map(n => n[0]).join('')}
+                {name.split(' ').map(n => n[0]).join('')}
               </div>
             )}
           </div>
@@ -303,12 +328,12 @@ export function ProfessionalCard({ member, showActions = true, size = "md" }: Pr
         
         {/* Name & Role */}
         <div className="relative z-10 text-center mt-4 px-4">
-          <h3 className={`${textSizes[size].name} font-bold text-white`}>{member.name}</h3>
-          <p className={`${textSizes[size].role} text-red-500 font-medium mt-1`}>{member.role}</p>
+          <h3 className={`${textSizes[size].name} font-bold text-white`}>{name}</h3>
+          <p className={`${textSizes[size].role} text-red-500 font-medium mt-1`}>{role}</p>
           
-          {member.title && (
+          {title && (
             <span className={`inline-block mt-3 ${textSizes[size].badge} rounded-full bg-white/10 text-white/80`}>
-              {member.title}
+              {title}
             </span>
           )}
         </div>
@@ -318,7 +343,7 @@ export function ProfessionalCard({ member, showActions = true, size = "md" }: Pr
           <div className="bg-[#141414]/90 border-t border-white/10 px-4 py-3 flex justify-between items-center">
             <div>
               <p className={`${textSizes[size].id} text-white/50 font-medium`}>ID MEMBRE</p>
-              <p className={`${textSizes[size].role} text-red-500 font-semibold`}>{member.id}</p>
+              <p className={`${textSizes[size].role} text-red-500 font-semibold`}>{id}</p>
             </div>
             
             {/* QR Code */}
