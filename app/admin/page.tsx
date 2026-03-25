@@ -99,7 +99,7 @@ export default function AdminLoginPage() {
       directeur: ["director", "admin"],
       president: ["president", "admin"],
       tresorier: ["treasurer", "admin"],
-      cms: ["cms_admin", "director", "admin"]
+      cms: ["admin", "director", "president", "treasurer"]
     }
 
     if (!allowedRoles[selectedRole].includes(memberData.role)) {
