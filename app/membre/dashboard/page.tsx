@@ -387,13 +387,14 @@ export default function MemberDashboard() {
                     <div className="relative">
                       <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-primary/20">
                         {profileData.photo ? (
-                          <Image
-                            src={profileData.photo}
-                            alt={profileData.prenoms}
-                            width={160}
-                            height={160}
-                            className="w-full h-full object-cover"
-                          />
+<Image
+  src={profileData.photo}
+  alt={profileData.prenoms}
+  width={160}
+  height={160}
+  className="object-cover"
+  priority
+/>
                         ) : (
                           <div className="w-full h-full bg-muted flex items-center justify-center">
                             <User className="h-16 w-16 text-muted-foreground" />
