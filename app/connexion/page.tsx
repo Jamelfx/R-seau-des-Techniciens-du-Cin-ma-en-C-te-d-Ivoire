@@ -22,24 +22,10 @@ export default function ConnexionPage() {
     password: ""
   })
 
-  // Demo account for testing
-  const demoAccount = {
-    email: "demo@retechci.org",
-    password: "demo2024"
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
-    
-    // Check for demo account first
-    if (formData.identifier === demoAccount.email && formData.password === demoAccount.password) {
-      // Store demo login status in localStorage
-      localStorage.setItem("retechci_demo_logged_in", "true")
-      router.push("/membre/dashboard")
-      return
-    }
     
     const supabase = createClient()
     
@@ -56,8 +42,14 @@ export default function ConnexionPage() {
       return
     }
 
-    // Get user role to redirect appropriately
-    const role = data.user?.user_metadata?.role || "member"
+    // Get user role from members table or metadata to redirect appropriately
+    const { data: memberData } = await supabase
+      .from('members')
+      .select('role')
+      .eq('email', formData.identifier)
+      .single()
+
+    const role = memberData?.role || data.user?.user_metadata?.role || "member"
 
     if (role === "director") {
       router.push("/admin/directeur")
@@ -68,10 +60,6 @@ export default function ConnexionPage() {
     } else {
       router.push("/membre/dashboard")
     }
-  }
-
-  const handleDemoLogin = () => {
-    setFormData(demoAccount)
   }
 
   return (
@@ -155,24 +143,6 @@ export default function ConnexionPage() {
               </Button>
             </form>
             
-            {/* Demo Account */}
-            <div className="mt-4 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-              <p className="text-sm text-muted-foreground mb-2 text-center">
-                Compte demo pour tester :
-              </p>
-              <Button 
-                type="button" 
-                variant="outline" 
-                className="w-full" 
-                onClick={handleDemoLogin}
-              >
-                Utiliser le compte demo
-              </Button>
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                Email: demo@retechci.org | Mot de passe: demo2024
-              </p>
-            </div>
-
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
                 Pas encore membre ?{" "}
