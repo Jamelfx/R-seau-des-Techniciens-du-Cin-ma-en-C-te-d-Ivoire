@@ -791,45 +791,37 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
   })
   
   const fetchCMSData = async () => {
-    console.log("[v0] fetchCMSData called")
     setLoading(true)
     try {
       // Fetch articles
-      const { data: articles, error: articlesError } = await supabase
+      const { data: articles } = await supabase
         .from('articles')
         .select('*')
         .order('created_at', { ascending: false })
       
-      console.log("[v0] Articles fetched:", articles?.length || 0, "error:", articlesError)
-      
       // Fetch locations
-      const { data: locations, error: locationsError } = await supabase
+      const { data: locations } = await supabase
         .from('locations')
         .select('*')
         .order('created_at', { ascending: false })
       
-      console.log("[v0] Locations fetched:", locations?.length || 0, "error:", locationsError)
-      
       // Fetch members count
-      const { data: members, count, error: membersError } = await supabase
+      const { data: members, count } = await supabase
         .from('members')
         .select('*', { count: 'exact' })
         .eq('status', 'active')
-      
-      console.log("[v0] Members fetched:", members?.length || 0, "count:", count, "error:", membersError)
       
       setArticlesData(articles || [])
       setLocationsData(locations || [])
       setMembersData(members || [])
       setMembersCount(count || 0)
     } catch (error) {
-      console.error("[v0] Error fetching CMS data:", error)
+      console.error("Error fetching CMS data:", error)
     }
     setLoading(false)
   }
   
   useEffect(() => {
-    console.log("[v0] CMS useEffect triggered")
     fetchCMSData()
   }, [])
   
