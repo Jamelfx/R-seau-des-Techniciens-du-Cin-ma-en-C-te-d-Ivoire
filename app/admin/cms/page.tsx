@@ -755,10 +755,233 @@ function MenuManager() {
 // Main CMS Dashboard Component
 function CMSDashboard({ onLogout }: { onLogout: () => void }) {
   const [selectedTab, setSelectedTab] = useState("pages")
+  const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const supabase = createClient()
+  
+  // Data states
+  const [articlesData, setArticlesData] = useState<any[]>([])
+  const [locationsData, setLocationsData] = useState<any[]>([])
+  const [membersData, setMembersData] = useState<any[]>([])
+  const [membersCount, setMembersCount] = useState(0)
+  
+  // New article form
+  const [showArticleModal, setShowArticleModal] = useState(false)
+  const [newArticle, setNewArticle] = useState({
+    title: "",
+    excerpt: "",
+    content: "",
+    category: "actualites",
+    cover_image: ""
+  })
+  
+  // New location form
+  const [showLocationModal, setShowLocationModal] = useState(false)
+  const [newLocation, setNewLocation] = useState({
+    name: "",
+    city: "",
+    region: "",
+    category: ["Urbain"],
+    description: "",
+    address: "",
+    contact_name: "",
+    contact_phone: "",
+    contact_email: "",
+    daily_rate: 0
+  })
+  
+  useEffect(() => {
+    fetchCMSData()
+  }, [])
+  
+  const fetchCMSData = async () => {
+    setLoading(true)
+    try {
+      // Fetch articles
+      const { data: articles } = await supabase
+        .from('articles')
+        .select('*')
+        .order('created_at', { ascending: false })
+      
+      // Fetch locations
+      const { data: locations } = await supabase
+        .from('locations')
+        .select('*')
+        .order('created_at', { ascending: false })
+      
+      // Fetch members count
+      const { data: members, count } = await supabase
+        .from('members')
+        .select('*', { count: 'exact' })
+        .eq('status', 'active')
+      
+      setArticlesData(articles || [])
+      setLocationsData(locations || [])
+      setMembersData(members || [])
+      setMembersCount(count || 0)
+    } catch (error) {
+      console.error("Error fetching CMS data:", error)
+    }
+    setLoading(false)
+  }
+  
+  // Create article
+  const handleCreateArticle = async () => {
+    if (!newArticle.title || !newArticle.content) {
+      alert("Veuillez remplir le titre et le contenu")
+      return
+    }
+    
+    setActionLoading('article')
+    try {
+      const { error } = await supabase
+        .from('articles')
+        .insert({
+          title: newArticle.title,
+          excerpt: newArticle.excerpt,
+          content: newArticle.content,
+          category: newArticle.category,
+          cover_image: newArticle.cover_image || null,
+          published: false,
+          created_at: new Date().toISOString()
+        })
+      
+      if (error) throw error
+      
+      setShowArticleModal(false)
+      setNewArticle({ title: "", excerpt: "", content: "", category: "actualites", cover_image: "" })
+      await fetchCMSData()
+      alert("Article cree avec succes")
+    } catch (error) {
+      console.error("Error:", error)
+      alert("Erreur lors de la creation")
+    }
+    setActionLoading(null)
+  }
+  
+  // Publish/unpublish article
+  const handleTogglePublish = async (articleId: string, currentStatus: boolean) => {
+    setActionLoading(articleId)
+    try {
+      const { error } = await supabase
+        .from('articles')
+        .update({ 
+          published: !currentStatus,
+          published_at: !currentStatus ? new Date().toISOString() : null
+        })
+        .eq('id', articleId)
+      
+      if (error) throw error
+      await fetchCMSData()
+    } catch (error) {
+      console.error("Error:", error)
+    }
+    setActionLoading(null)
+  }
+  
+  // Delete article
+  const handleDeleteArticle = async (articleId: string) => {
+    if (!confirm("Supprimer cet article ?")) return
+    
+    setActionLoading(articleId)
+    try {
+      const { error } = await supabase
+        .from('articles')
+        .delete()
+        .eq('id', articleId)
+      
+      if (error) throw error
+      await fetchCMSData()
+    } catch (error) {
+      console.error("Error:", error)
+    }
+    setActionLoading(null)
+  }
+  
+  // Create location
+  const handleCreateLocation = async () => {
+    if (!newLocation.name || !newLocation.city) {
+      alert("Veuillez remplir le nom et la ville")
+      return
+    }
+    
+    setActionLoading('location')
+    try {
+      const { error } = await supabase
+        .from('locations')
+        .insert({
+          name: newLocation.name,
+          city: newLocation.city,
+          region: newLocation.region,
+          category: newLocation.category,
+          description: newLocation.description,
+          address: newLocation.address,
+          contact_name: newLocation.contact_name,
+          contact_phone: newLocation.contact_phone,
+          contact_email: newLocation.contact_email,
+          daily_rate: newLocation.daily_rate,
+          featured: false
+        })
+      
+      if (error) throw error
+      
+      setShowLocationModal(false)
+      setNewLocation({
+        name: "", city: "", region: "", category: ["Urbain"], description: "",
+        address: "", contact_name: "", contact_phone: "", contact_email: "", daily_rate: 0
+      })
+      await fetchCMSData()
+      alert("Decor ajoute avec succes")
+    } catch (error) {
+      console.error("Error:", error)
+      alert("Erreur lors de l'ajout")
+    }
+    setActionLoading(null)
+  }
+  
+  // Toggle location featured
+  const handleToggleFeatured = async (locationId: string, currentStatus: boolean) => {
+    setActionLoading(locationId)
+    try {
+      const { error } = await supabase
+        .from('locations')
+        .update({ featured: !currentStatus })
+        .eq('id', locationId)
+      
+      if (error) throw error
+      await fetchCMSData()
+    } catch (error) {
+      console.error("Error:", error)
+    }
+    setActionLoading(null)
+  }
+  
+  // Delete location
+  const handleDeleteLocation = async (locationId: string) => {
+    if (!confirm("Supprimer ce decor ?")) return
+    
+    setActionLoading(locationId)
+    try {
+      const { error } = await supabase
+        .from('locations')
+        .delete()
+        .eq('id', locationId)
+      
+      if (error) throw error
+      await fetchCMSData()
+    } catch (error) {
+      console.error("Error:", error)
+    }
+    setActionLoading(null)
+  }
 
   const handlePublish = (id: string, type: "page" | "article") => {
-    alert(`${type === "page" ? "Page" : "Article"} publié avec succès !`)
+    alert(`${type === "page" ? "Page" : "Article"} publie avec succes !`)
   }
+  
+  const Loader2Icon = ({ className }: { className?: string }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+  )
 
   return (
     <div className="min-h-screen bg-background">
@@ -772,13 +995,17 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
             <span className="font-bold">CMS RETECHCI</span>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={fetchCMSData}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Actualiser
+            </Button>
             <Button variant="outline" size="sm" onClick={() => window.open("/", "_blank")}>
               <Eye className="h-4 w-4 mr-2" />
               Voir le site
             </Button>
             <Button variant="ghost" size="sm" onClick={onLogout}>
               <LogOut className="h-4 w-4 mr-2" />
-              Déconnexion
+              Deconnexion
             </Button>
           </div>
         </div>
@@ -824,7 +1051,7 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                     <FileText className="h-6 w-6 text-green-500" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-foreground">{articles.length}</p>
+                    <p className="text-2xl font-bold text-foreground">{articlesData.length}</p>
                     <p className="text-sm text-muted-foreground">Articles</p>
                   </div>
                 </div>
@@ -837,8 +1064,8 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                     <ImageIcon className="h-6 w-6 text-purple-500" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-foreground">{mediaLibrary.length}</p>
-                    <p className="text-sm text-muted-foreground">Médias</p>
+                    <p className="text-2xl font-bold text-foreground">{locationsData.length}</p>
+                    <p className="text-sm text-muted-foreground">Decors</p>
                   </div>
                 </div>
               </CardContent>
@@ -850,7 +1077,7 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                     <Users className="h-6 w-6 text-amber-500" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-foreground">512</p>
+                    <p className="text-2xl font-bold text-foreground">{membersCount}</p>
                     <p className="text-sm text-muted-foreground">Membres</p>
                   </div>
                 </div>
@@ -1299,47 +1526,136 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle>Gestion des Articles</CardTitle>
-                      <CardDescription>Créez et modifiez les actualités</CardDescription>
+                      <CardDescription>Creez et modifiez les actualites</CardDescription>
                     </div>
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Nouvel article
-                    </Button>
+                    <Dialog open={showArticleModal} onOpenChange={setShowArticleModal}>
+                      <DialogTrigger asChild>
+                        <Button>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Nouvel article
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-xl">
+                        <DialogHeader>
+                          <DialogTitle>Creer un article</DialogTitle>
+                          <DialogDescription>Redigez un nouvel article pour le site</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div>
+                            <Label>Titre *</Label>
+                            <Input 
+                              placeholder="Titre de l'article"
+                              value={newArticle.title}
+                              onChange={(e) => setNewArticle({...newArticle, title: e.target.value})}
+                            />
+                          </div>
+                          <div>
+                            <Label>Categorie</Label>
+                            <Select value={newArticle.category} onValueChange={(v) => setNewArticle({...newArticle, category: v})}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="actualites">Actualites</SelectItem>
+                                <SelectItem value="evenements">Evenements</SelectItem>
+                                <SelectItem value="formation">Formation</SelectItem>
+                                <SelectItem value="conventions">Conventions</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label>Resume</Label>
+                            <Textarea 
+                              placeholder="Bref resume de l'article..."
+                              value={newArticle.excerpt}
+                              onChange={(e) => setNewArticle({...newArticle, excerpt: e.target.value})}
+                              rows={2}
+                            />
+                          </div>
+                          <div>
+                            <Label>Contenu *</Label>
+                            <Textarea 
+                              placeholder="Contenu de l'article..."
+                              value={newArticle.content}
+                              onChange={(e) => setNewArticle({...newArticle, content: e.target.value})}
+                              rows={6}
+                            />
+                          </div>
+                          <div>
+                            <Label>Image de couverture (URL)</Label>
+                            <Input 
+                              placeholder="https://..."
+                              value={newArticle.cover_image}
+                              onChange={(e) => setNewArticle({...newArticle, cover_image: e.target.value})}
+                            />
+                          </div>
+                          <Button onClick={handleCreateArticle} className="w-full" disabled={actionLoading === 'article'}>
+                            {actionLoading === 'article' ? <Loader2Icon className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                            Creer l&apos;article
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {articles.map((article) => (
-                      <div key={article.id} className="flex items-center gap-4 p-4 bg-secondary/30 rounded-xl">
-                        <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-green-500" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium">{article.title}</h4>
-                            <Badge variant={article.status === "published" ? "default" : "secondary"} className="text-xs">
-                              {article.status === "published" ? "Publié" : "Brouillon"}
-                            </Badge>
+                  {articlesData.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Aucun article</p>
+                      <Button className="mt-4" onClick={() => setShowArticleModal(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Creer un article
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {articlesData.map((article) => (
+                        <div key={article.id} className="flex items-center gap-4 p-4 bg-secondary/30 rounded-xl">
+                          <div className="w-10 h-10 bg-green-500/10 rounded-lg flex items-center justify-center">
+                            <FileText className="h-5 w-5 text-green-500" />
                           </div>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span>{article.category}</span>
-                            <span>Par {article.author}</span>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium">{article.title}</h4>
+                              <Badge variant={article.published ? "default" : "secondary"} className="text-xs">
+                                {article.published ? "Publie" : "Brouillon"}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span>{article.category}</span>
+                              <span>{new Date(article.created_at).toLocaleDateString('fr-FR')}</span>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant={article.published ? "outline" : "default"}
+                              onClick={() => handleTogglePublish(article.id, article.published)}
+                              disabled={actionLoading === article.id}
+                            >
+                              {actionLoading === article.id ? (
+                                <Loader2Icon className="h-4 w-4 animate-spin" />
+                              ) : article.published ? (
+                                "Depublier"
+                              ) : (
+                                <><CheckCircle className="h-4 w-4 mr-1" />Publier</>
+                              )}
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="text-red-500"
+                              onClick={() => handleDeleteArticle(article.id)}
+                              disabled={actionLoading === article.id}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="outline" className="text-red-500">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1353,7 +1669,7 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                       <CardTitle>Gestion des Decors</CardTitle>
                       <CardDescription>Gerez les lieux de tournage sur la carte de Cote d&apos;Ivoire</CardDescription>
                     </div>
-                    <Dialog>
+                    <Dialog open={showLocationModal} onOpenChange={setShowLocationModal}>
                       <DialogTrigger asChild>
                         <Button>
                           <Plus className="h-4 w-4 mr-2" />
@@ -1365,108 +1681,97 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                           <DialogTitle>Ajouter un nouveau decor</DialogTitle>
                           <DialogDescription>Configurez les details du lieu de tournage</DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-4 py-4">
+                        <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto">
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label>Nom du lieu</Label>
-                              <Input placeholder="Ex: Plateau Business District" />
+                              <Label>Nom du lieu *</Label>
+                              <Input 
+                                placeholder="Ex: Plateau Business District"
+                                value={newLocation.name}
+                                onChange={(e) => setNewLocation({...newLocation, name: e.target.value})}
+                              />
                             </div>
                             <div className="space-y-2">
-                              <Label>Ville</Label>
-                              <Select>
+                              <Label>Ville *</Label>
+                              <Select value={newLocation.city} onValueChange={(v) => setNewLocation({...newLocation, city: v})}>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Selectionnez une ville" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="abidjan">Abidjan</SelectItem>
-                                  <SelectItem value="yamoussoukro">Yamoussoukro</SelectItem>
-                                  <SelectItem value="bouake">Bouake</SelectItem>
-                                  <SelectItem value="grand-bassam">Grand-Bassam</SelectItem>
-                                  <SelectItem value="assinie">Assinie</SelectItem>
-                                  <SelectItem value="man">Man</SelectItem>
-                                  <SelectItem value="korhogo">Korhogo</SelectItem>
-                                  <SelectItem value="san-pedro">San-Pedro</SelectItem>
+                                  <SelectItem value="Abidjan">Abidjan</SelectItem>
+                                  <SelectItem value="Yamoussoukro">Yamoussoukro</SelectItem>
+                                  <SelectItem value="Bouake">Bouake</SelectItem>
+                                  <SelectItem value="Grand-Bassam">Grand-Bassam</SelectItem>
+                                  <SelectItem value="Assinie">Assinie</SelectItem>
+                                  <SelectItem value="Man">Man</SelectItem>
+                                  <SelectItem value="Korhogo">Korhogo</SelectItem>
+                                  <SelectItem value="San-Pedro">San-Pedro</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Categorie</Label>
-                              <Select>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Type de decor" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="urban">Urbain / Moderne</SelectItem>
-                                  <SelectItem value="beach">Plage / Littoral</SelectItem>
-                                  <SelectItem value="nature">Nature / Foret</SelectItem>
-                                  <SelectItem value="historical">Historique / Colonial</SelectItem>
-                                  <SelectItem value="traditional">Traditionnel / Village</SelectItem>
-                                  <SelectItem value="monument">Monument / Religieux</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Statut</Label>
-                              <Select defaultValue="active">
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="active">Actif</SelectItem>
-                                  <SelectItem value="inactive">Inactif</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
+                          <div className="space-y-2">
+                            <Label>Region</Label>
+                            <Input 
+                              placeholder="Ex: District d'Abidjan"
+                              value={newLocation.region}
+                              onChange={(e) => setNewLocation({...newLocation, region: e.target.value})}
+                            />
                           </div>
                           <div className="space-y-2">
                             <Label>Description</Label>
-                            <Textarea placeholder="Decrivez le lieu et ses caracteristiques pour le tournage..." rows={3} />
+                            <Textarea 
+                              placeholder="Decrivez le lieu et ses caracteristiques pour le tournage..." 
+                              rows={3}
+                              value={newLocation.description}
+                              onChange={(e) => setNewLocation({...newLocation, description: e.target.value})}
+                            />
                           </div>
-                          
-                          {/* Position on Map */}
                           <div className="space-y-2">
-                            <Label>Position sur la carte</Label>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label className="text-xs text-muted-foreground">Position X (0-100)</Label>
-                                <Input type="number" min="0" max="100" placeholder="Ex: 72" />
-                              </div>
-                              <div className="space-y-2">
-                                <Label className="text-xs text-muted-foreground">Position Y (0-100)</Label>
-                                <Input type="number" min="0" max="100" placeholder="Ex: 78" />
-                              </div>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              Calibrez la position de l&apos;icone sur la carte (0,0 = coin superieur gauche)
-                            </p>
+                            <Label>Adresse</Label>
+                            <Input 
+                              placeholder="Adresse complete"
+                              value={newLocation.address}
+                              onChange={(e) => setNewLocation({...newLocation, address: e.target.value})}
+                            />
                           </div>
-
-                          {/* Images */}
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label>Nom du contact</Label>
+                              <Input 
+                                placeholder="Nom"
+                                value={newLocation.contact_name}
+                                onChange={(e) => setNewLocation({...newLocation, contact_name: e.target.value})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Telephone</Label>
+                              <Input 
+                                placeholder="+225..."
+                                value={newLocation.contact_phone}
+                                onChange={(e) => setNewLocation({...newLocation, contact_phone: e.target.value})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Email</Label>
+                              <Input 
+                                placeholder="email@..."
+                                value={newLocation.contact_email}
+                                onChange={(e) => setNewLocation({...newLocation, contact_email: e.target.value})}
+                              />
+                            </div>
+                          </div>
                           <div className="space-y-2">
-                            <Label>Photos du lieu</Label>
-                            <div className="grid grid-cols-4 gap-2">
-                              <div className="aspect-square rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
-                                <Camera className="h-6 w-6 text-muted-foreground mb-1" />
-                                <span className="text-xs text-muted-foreground">Photo 1</span>
-                              </div>
-                              <div className="aspect-square rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
-                                <Plus className="h-6 w-6 text-muted-foreground" />
-                              </div>
-                              <div className="aspect-square rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
-                                <Plus className="h-6 w-6 text-muted-foreground" />
-                              </div>
-                              <div className="aspect-square rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors">
-                                <Plus className="h-6 w-6 text-muted-foreground" />
-                              </div>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              Ajoutez plusieurs photos pour presenter le lieu sous differents angles
-                            </p>
+                            <Label>Tarif journalier (FCFA)</Label>
+                            <Input 
+                              type="number"
+                              placeholder="Ex: 100000"
+                              value={newLocation.daily_rate || ''}
+                              onChange={(e) => setNewLocation({...newLocation, daily_rate: parseInt(e.target.value) || 0})}
+                            />
                           </div>
-                          <Button className="w-full">
-                            <Save className="h-4 w-4 mr-2" />
+                          <Button onClick={handleCreateLocation} className="w-full" disabled={actionLoading === 'location'}>
+                            {actionLoading === 'location' ? <Loader2Icon className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                             Enregistrer le decor
                           </Button>
                         </div>
@@ -1475,66 +1780,88 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
                   </div>
                 </CardHeader>
                 <CardContent>
+                  {locationsData.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Aucun decor enregistre</p>
+                      <Button className="mt-4" onClick={() => setShowLocationModal(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Ajouter un decor
+                      </Button>
+                    </div>
+                  ) : (
                   <div className="space-y-4">
-                    {decorsData.map((decor) => (
-                      <div key={decor.id} className="flex items-start gap-4 p-4 bg-secondary/30 rounded-xl">
+                    {locationsData.map((location) => (
+                      <div key={location.id} className="flex items-start gap-4 p-4 bg-secondary/30 rounded-xl">
                         {/* Thumbnail */}
-                        <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
-                          <Image
-                            src={decor.images[0]}
-                            alt={decor.name}
-                            fill
-                            className="object-cover"
-                          />
-                          {decor.images.length > 1 && (
-                            <div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
-                              +{decor.images.length - 1}
-                            </div>
+                        <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-primary/10 flex items-center justify-center">
+                          {location.cover_image_url ? (
+                            <Image
+                              src={location.cover_image_url}
+                              alt={location.name}
+                              width={96}
+                              height={96}
+                              className="object-cover w-full h-full"
+                            />
+                          ) : (
+                            <MapPin className="h-8 w-8 text-primary" />
                           )}
                         </div>
                         
                         {/* Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <h4 className="font-medium truncate">{decor.name}</h4>
-                            <Badge variant={decor.status === "active" ? "default" : "secondary"} className="text-xs">
-                              {decor.status === "active" ? "Actif" : "Inactif"}
-                            </Badge>
+                            <h4 className="font-medium truncate">{location.name}</h4>
+                            {location.featured && (
+                              <Badge className="text-xs bg-amber-500">En vedette</Badge>
+                            )}
                           </div>
                           <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
                             <span className="flex items-center gap-1">
                               <MapPin className="h-3 w-3" />
-                              {decor.city}
+                              {location.city}, {location.region}
                             </span>
-                            <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded">
-                              {decor.category}
-                            </span>
+                            {location.category && (
+                              <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded">
+                                {Array.isArray(location.category) ? location.category[0] : location.category}
+                              </span>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
-                            <span>Position: X={decor.posX}, Y={decor.posY}</span>
-                            <span>|</span>
-                            <span>{decor.images.length} photo(s)</span>
-                          </div>
+                          {location.daily_rate > 0 && (
+                            <p className="text-sm text-green-500 mt-1">
+                              {location.daily_rate.toLocaleString('fr-FR')} FCFA/jour
+                            </p>
+                          )}
                         </div>
 
                         {/* Actions */}
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline">
-                            <Eye className="h-4 w-4" />
+                          <Button 
+                            size="sm" 
+                            variant={location.featured ? "default" : "outline"}
+                            onClick={() => handleToggleFeatured(location.id, location.featured)}
+                            disabled={actionLoading === location.id}
+                          >
+                            {actionLoading === location.id ? (
+                              <Loader2Icon className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Star className="h-4 w-4" />
+                            )}
                           </Button>
-                          <Button size="sm" variant="outline">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <ImageIcon className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="outline" className="text-red-500">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-red-500"
+                            onClick={() => handleDeleteLocation(location.id)}
+                            disabled={actionLoading === location.id}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
                     ))}
                   </div>
+                  )}
 
                   {/* Map Preview */}
                   <div className="mt-6 p-4 bg-secondary/20 rounded-xl">
