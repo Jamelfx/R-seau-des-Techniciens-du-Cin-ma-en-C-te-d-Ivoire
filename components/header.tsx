@@ -166,24 +166,17 @@ export function Header() {
                     )}
                   </div>
                   {/* Admin links for admin users */}
-                  {member.role && ['director', 'president', 'treasurer', 'admin'].includes(member.role) && (
+                  {member.role && ['director', 'president', 'treasurer'].includes(member.role) && (
                     <>
                       <DropdownMenuItem asChild>
                         <Link 
                           href={member.role === 'director' ? '/admin/directeur' : 
                                 member.role === 'president' ? '/admin/president' :
-                                member.role === 'treasurer' ? '/admin/tresorier' :
-                                '/admin/cms'} 
+                                '/admin/tresorier'} 
                           className="flex items-center gap-2 cursor-pointer text-primary"
                         >
                           <Shield className="h-4 w-4" />
                           Espace Administration
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/admin/cms" className="flex items-center gap-2 cursor-pointer">
-                          <LayoutDashboard className="h-4 w-4" />
-                          Gestion CMS
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
@@ -257,28 +250,17 @@ export function Header() {
               {isLoggedIn && member ? (
                 <>
                   {/* Admin links for admin users */}
-                  {['director', 'president', 'treasurer', 'admin'].includes(member.role) && (
-                    <>
-                      <Link
-                        href={member.role === 'director' ? '/admin/directeur' : 
-                              member.role === 'president' ? '/admin/president' :
-                              member.role === 'treasurer' ? '/admin/tresorier' :
-                              '/admin/cms'}
-                        className="flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80 py-2"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        <Shield className="h-4 w-4" />
-                        Espace Administration
-                      </Link>
-                      <Link
-                        href="/admin/cms"
-                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground py-2"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        <LayoutDashboard className="h-4 w-4" />
-                        Gestion CMS
-                      </Link>
-                    </>
+                  {['director', 'president', 'treasurer'].includes(member.role) && (
+                    <Link
+                      href={member.role === 'director' ? '/admin/directeur' : 
+                            member.role === 'president' ? '/admin/president' :
+                            '/admin/tresorier'}
+                      className="flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80 py-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Shield className="h-4 w-4" />
+                      Espace Administration
+                    </Link>
                   )}
                   <Link
                     href="/membre/dashboard"
