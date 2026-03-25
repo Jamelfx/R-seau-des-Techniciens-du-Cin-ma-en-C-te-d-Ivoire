@@ -790,10 +790,6 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
     daily_rate: 0
   })
   
-  useEffect(() => {
-    fetchCMSData()
-  }, [])
-  
   const fetchCMSData = async () => {
     setLoading(true)
     try {
@@ -824,6 +820,10 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
     }
     setLoading(false)
   }
+  
+  useEffect(() => {
+    fetchCMSData()
+  }, [])
   
   // Create article
   const handleCreateArticle = async () => {
