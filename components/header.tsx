@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { User, Menu, X, LogIn, UserPlus, LayoutDashboard, LogOut } from "lucide-react"
+import { User, Menu, X, LogIn, UserPlus, LayoutDashboard, LogOut, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { LanguageToggle } from "@/components/language-toggle"
 import { useI18n } from "@/lib/i18n"
@@ -155,10 +156,42 @@ export function Header() {
                   <div className="px-3 py-2 border-b border-border">
                     <p className="font-medium text-sm">{member.name}</p>
                     <p className="text-xs text-muted-foreground">{member.id}</p>
+                    {member.role && member.role !== 'member' && (
+                      <Badge variant="outline" className="mt-1 text-xs capitalize">
+                        {member.role === 'director' ? 'Directeur' : 
+                         member.role === 'president' ? 'President' :
+                         member.role === 'treasurer' ? 'Tresoriere' :
+                         member.role === 'admin' ? 'Admin CMS' : member.role}
+                      </Badge>
+                    )}
                   </div>
+                  {/* Admin links for admin users */}
+                  {member.role && ['director', 'president', 'treasurer', 'admin'].includes(member.role) && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link 
+                          href={member.role === 'director' ? '/admin/directeur' : 
+                                member.role === 'president' ? '/admin/president' :
+                                member.role === 'treasurer' ? '/admin/tresorier' :
+                                '/admin/cms'} 
+                          className="flex items-center gap-2 cursor-pointer text-primary"
+                        >
+                          <Shield className="h-4 w-4" />
+                          Espace Administration
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin/cms" className="flex items-center gap-2 cursor-pointer">
+                          <LayoutDashboard className="h-4 w-4" />
+                          Gestion CMS
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   <DropdownMenuItem asChild>
                     <Link href="/membre/dashboard" className="flex items-center gap-2 cursor-pointer">
-                      <LayoutDashboard className="h-4 w-4" />
+                      <User className="h-4 w-4" />
                       Mon Espace Membre
                     </Link>
                   </DropdownMenuItem>
@@ -221,14 +254,38 @@ export function Header() {
               </Link>
             ))}
             <div className="border-t border-border pt-4 mt-2 flex flex-col gap-2">
-              {isLoggedIn ? (
+              {isLoggedIn && member ? (
                 <>
+                  {/* Admin links for admin users */}
+                  {['director', 'president', 'treasurer', 'admin'].includes(member.role) && (
+                    <>
+                      <Link
+                        href={member.role === 'director' ? '/admin/directeur' : 
+                              member.role === 'president' ? '/admin/president' :
+                              member.role === 'treasurer' ? '/admin/tresorier' :
+                              '/admin/cms'}
+                        className="flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80 py-2"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <Shield className="h-4 w-4" />
+                        Espace Administration
+                      </Link>
+                      <Link
+                        href="/admin/cms"
+                        className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground py-2"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <LayoutDashboard className="h-4 w-4" />
+                        Gestion CMS
+                      </Link>
+                    </>
+                  )}
                   <Link
                     href="/membre/dashboard"
                     className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground py-2"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    <LayoutDashboard className="h-4 w-4" />
+                    <User className="h-4 w-4" />
                     Mon Espace Membre
                   </Link>
                   <button
