@@ -36,12 +36,13 @@ const councilMembers = [
 ]
 
 // Portrait rectangular card with rounded corners
-function MemberCard({ name, role, image, initials, hasImage }: {
+function MemberCard({ name, role, image, initials, hasImage, priority = false }: {
   name: string
   role: string
   image?: string
   initials?: string
   hasImage?: boolean
+  priority?: boolean
 }) {
   return (
     <div className="flex flex-col items-center group">
@@ -53,6 +54,7 @@ function MemberCard({ name, role, image, initials, hasImage }: {
             alt={name}
             fill
             className="object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+            priority={priority}
           />
         ) : hasImage ? (
           <div className="w-full h-full bg-gradient-to-br from-secondary to-muted flex items-center justify-center">
@@ -180,11 +182,11 @@ export default function AboutPage() {
               </p>
 
               {/* Portrait Grid - 4 columns on desktop */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-8">
-                {bureauMembers.slice(0, 4).map((member) => (
-                  <MemberCard key={member.name} {...member} />
-                ))}
-              </div>
+<div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-8">
+  {bureauMembers.slice(0, 4).map((member, index) => (
+    <MemberCard key={member.name} {...member} priority={index < 2} />
+  ))}
+  </div>
               {/* Second row - 3 columns centered */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-6 lg:gap-8 mt-8 max-w-3xl mx-auto">
                 {bureauMembers.slice(4).map((member) => (

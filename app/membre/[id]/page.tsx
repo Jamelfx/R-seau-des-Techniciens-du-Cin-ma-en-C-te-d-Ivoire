@@ -237,12 +237,13 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
               <Card className="bg-card border-border overflow-hidden">
                 <CardContent className="p-0">
                   <div className="relative aspect-[3/4] w-full">
-                    <Image
-                      src={member.photo}
-                      alt={`${member.firstName} ${member.lastName}`}
-                      fill
-                      className="object-cover"
-                    />
+<Image
+  src={member.photo}
+  alt={`${member.firstName} ${member.lastName}`}
+  fill
+  className="object-cover"
+  priority
+/>
                     {/* Overlay with info */}
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4">
                       <h3 className="text-xl font-bold text-white">{member.firstName} {member.lastName}</h3>
