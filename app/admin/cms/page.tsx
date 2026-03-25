@@ -20,12 +20,11 @@ import {
   Wand2, RefreshCw, Type, Move, MapPin, Camera
 } from "lucide-react"
 import Image from "next/image"
+import { createClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
 
-// CMS credentials
-const CMS_CREDENTIALS = {
-  email: "cms@retechci.org",
-  password: "cms2024"
-}
+// Allowed roles for CMS access
+const CMS_ALLOWED_ROLES = ["admin", "director", "president", "treasurer"]
 
 // CMS Content Types
 const pages = [
@@ -100,27 +99,43 @@ function CMSLogin({ onLogin }: { onLogin: () => void }) {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
 
-    await new Promise(resolve => setTimeout(resolve, 500))
+    const supabase = createClient()
+    
+    // Sign in with Supabase
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
 
-    if (email === CMS_CREDENTIALS.email && password === CMS_CREDENTIALS.password) {
-      sessionStorage.setItem("cmsAuth", "true")
-      onLogin()
-    } else {
+    if (authError) {
       setError("Email ou mot de passe incorrect")
+      setLoading(false)
+      return
     }
 
-    setLoading(false)
-  }
+    // Check if user has CMS access
+    const { data: memberData } = await supabase
+      .from('members')
+      .select('role')
+      .eq('email', email)
+      .single()
 
-  const fillCredentials = () => {
-    setEmail(CMS_CREDENTIALS.email)
-    setPassword(CMS_CREDENTIALS.password)
+    if (!memberData || !CMS_ALLOWED_ROLES.includes(memberData.role)) {
+      setError("Vous n'avez pas acces au CMS")
+      await supabase.auth.signOut()
+      setLoading(false)
+      return
+    }
+
+    onLogin()
+    setLoading(false)
   }
 
   return (
@@ -136,9 +151,9 @@ function CMSLogin({ onLogin }: { onLogin: () => void }) {
 
         <Card className="border-border">
           <CardHeader className="text-center pb-2">
-            <CardTitle className="text-2xl">Système de Gestion de Contenu</CardTitle>
+            <CardTitle className="text-2xl">Systeme de Gestion de Contenu</CardTitle>
             <CardDescription>
-              Connectez-vous pour gérer le site web
+              Connectez-vous avec votre compte administrateur
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
@@ -181,23 +196,6 @@ function CMSLogin({ onLogin }: { onLogin: () => void }) {
                   {error}
                 </div>
               )}
-
-              <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-1">
-                  Identifiants CMS :
-                </p>
-                <p className="text-xs font-mono">{CMS_CREDENTIALS.email}</p>
-                <p className="text-xs font-mono">Mot de passe: {CMS_CREDENTIALS.password}</p>
-                <Button 
-                  type="button" 
-                  variant="link" 
-                  size="sm" 
-                  className="text-xs p-0 h-auto mt-1 text-purple-600 dark:text-purple-400"
-                  onClick={fillCredentials}
-                >
-                  Remplir automatiquement
-                </Button>
-              </div>
 
               <Button type="submit" className="w-full bg-purple-500 hover:bg-purple-600" disabled={loading}>
                 {loading ? "Connexion..." : "Accéder au CMS"}
@@ -1977,20 +1975,40 @@ function CMSDashboard({ onLogout }: { onLogout: () => void }) {
 export default function CMSPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
-    const authStatus = sessionStorage.getItem("cmsAuth")
-    setIsAuthenticated(authStatus === "true")
-    setIsLoading(false)
+    const checkAuth = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (user) {
+        // Check if user has CMS access
+        const { data: memberData } = await supabase
+          .from('members')
+          .select('role')
+          .eq('email', user.email)
+          .single()
+        
+        if (memberData && CMS_ALLOWED_ROLES.includes(memberData.role)) {
+          setIsAuthenticated(true)
+        }
+      }
+      setIsLoading(false)
+    }
+    
+    checkAuth()
   }, [])
 
   const handleLogin = () => {
     setIsAuthenticated(true)
   }
 
-  const handleLogout = () => {
-    sessionStorage.removeItem("cmsAuth")
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
     setIsAuthenticated(false)
+    router.push('/')
   }
 
   if (isLoading) {
