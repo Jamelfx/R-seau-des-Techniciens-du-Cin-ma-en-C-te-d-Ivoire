@@ -7,42 +7,46 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Clapperboard, Lock, User, AlertCircle, UserCog, Crown, Wallet } from "lucide-react"
+import { Clapperboard, Lock, User, AlertCircle, UserCog, Crown, Wallet, Settings } from "lucide-react"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
 
-type AdminRole = "directeur" | "president" | "tresorier"
+type AdminRole = "directeur" | "president" | "tresorier" | "cms"
 
 const adminRoles: { 
   value: AdminRole
   label: string
   description: string
   icon: React.ReactNode
-  email: string
-  password: string
+  dbRole: string
 }[] = [
   { 
     value: "directeur", 
-    label: "Directeur Exécutif", 
-    description: "Gestion des membres, adhésions et opérations",
+    label: "Directeur Executif", 
+    description: "Gestion des membres, adhesions et operations",
     icon: <UserCog className="h-6 w-6" />,
-    email: "directeur@retechci.org",
-    password: "admin123"
+    dbRole: "director"
   },
   { 
     value: "president", 
-    label: "Président du CA", 
-    description: "Validation des adhésions, convocation AG",
+    label: "President du CA", 
+    description: "Validation des adhesions, convocation AG",
     icon: <Crown className="h-6 w-6" />,
-    email: "president@retechci.org",
-    password: "admin123"
+    dbRole: "president"
   },
   { 
     value: "tresorier", 
-    label: "Trésorière", 
-    description: "Gestion financière et cotisations",
+    label: "Tresoriere", 
+    description: "Gestion financiere et cotisations",
     icon: <Wallet className="h-6 w-6" />,
-    email: "tresorier@retechci.org",
-    password: "admin123"
+    dbRole: "treasurer"
+  },
+  { 
+    value: "cms", 
+    label: "CMS Admin", 
+    description: "Gestion du contenu du site",
+    icon: <Settings className="h-6 w-6" />,
+    dbRole: "cms_admin"
   },
 ]
 
@@ -61,24 +65,62 @@ export default function AdminLoginPage() {
     setError("")
     setLoading(true)
 
-    // Simulate authentication
-    await new Promise(resolve => setTimeout(resolve, 500))
+    const supabase = createClient()
 
-    // Check credentials
-    if (email === currentRole.email && password === currentRole.password) {
-      sessionStorage.setItem("adminRole", selectedRole)
-      sessionStorage.setItem("adminEmail", email)
-      router.push(`/admin/${selectedRole}`)
-    } else {
-      setError("Email ou mot de passe incorrect")
+    // Authenticate with Supabase
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (signInError) {
+      setError(signInError.message === "Invalid login credentials" 
+        ? "Email ou mot de passe incorrect"
+        : signInError.message)
+      setLoading(false)
+      return
     }
 
-    setLoading(false)
-  }
+    // Check if user has the correct role in the members table
+    const { data: memberData, error: memberError } = await supabase
+      .from('members')
+      .select('role, first_name, last_name')
+      .eq('email', email)
+      .single()
 
-  const fillCredentials = () => {
-    setEmail(currentRole.email)
-    setPassword(currentRole.password)
+    if (memberError || !memberData) {
+      setError("Compte non trouve. Verifiez vos identifiants.")
+      setLoading(false)
+      return
+    }
+
+    // Check if the user role matches the selected admin role
+    const allowedRoles = {
+      directeur: ["director", "admin"],
+      president: ["president", "admin"],
+      tresorier: ["treasurer", "admin"],
+      cms: ["admin", "director", "president", "treasurer"]
+    }
+
+    if (!allowedRoles[selectedRole].includes(memberData.role)) {
+      setError(`Vous n'avez pas les droits d'acces pour le role ${currentRole.label}`)
+      // Sign out the user since they don't have the right role
+      await supabase.auth.signOut()
+      setLoading(false)
+      return
+    }
+
+    // Store admin info in sessionStorage
+    sessionStorage.setItem("adminRole", selectedRole)
+    sessionStorage.setItem("adminEmail", email)
+    sessionStorage.setItem("adminName", `${memberData.first_name} ${memberData.last_name}`)
+
+    // Redirect to the appropriate dashboard
+    if (selectedRole === "cms") {
+      router.push("/admin/cms")
+    } else {
+      router.push(`/admin/${selectedRole}`)
+    }
   }
 
   return (
@@ -97,20 +139,20 @@ export default function AdminLoginPage() {
           <CardHeader className="text-center pb-2">
             <CardTitle className="text-2xl">Espace Administration</CardTitle>
             <CardDescription>
-              Sélectionnez votre rôle et connectez-vous
+              Selectionnez votre role et connectez-vous
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
             {/* Role Selection Tabs */}
             <Tabs value={selectedRole} onValueChange={(v) => setSelectedRole(v as AdminRole)} className="mb-6">
-              <TabsList className="grid grid-cols-3 w-full">
+              <TabsList className="grid grid-cols-4 w-full">
                 {adminRoles.map((role) => (
                   <TabsTrigger 
                     key={role.value} 
                     value={role.value}
-                    className="text-xs px-2"
+                    className="text-xs px-1"
                   >
-                    {role.label.split(' ')[0]}
+                    {role.value === "cms" ? "CMS" : role.label.split(' ')[0]}
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -139,7 +181,7 @@ export default function AdminLoginPage() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder={currentRole.email}
+                    placeholder="votre.email@retechci.org"
                     className="pl-10"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -173,31 +215,24 @@ export default function AdminLoginPage() {
                 </div>
               )}
 
-              {/* Demo Credentials */}
-              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-1">
-                  Identifiants de démonstration :
-                </p>
-                <p className="text-xs font-mono">{currentRole.email}</p>
-                <p className="text-xs font-mono">Mot de passe: admin123</p>
-                <Button 
-                  type="button" 
-                  variant="link" 
-                  size="sm" 
-                  className="text-xs p-0 h-auto mt-1 text-amber-600 dark:text-amber-400"
-                  onClick={fillCredentials}
-                >
-                  Remplir automatiquement
-                </Button>
-              </div>
-
               {/* Submit Button */}
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Connexion..." : `Se connecter en tant que ${currentRole.label}`}
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Connexion...
+                  </span>
+                ) : (
+                  `Se connecter en tant que ${currentRole.label}`
+                )}
               </Button>
             </form>
 
-            
+            <div className="mt-4 p-3 bg-secondary/30 rounded-lg">
+              <p className="text-xs text-muted-foreground text-center">
+                Contactez le Directeur Executif si vous avez oublie vos identifiants.
+              </p>
+            </div>
 
             <p className="text-xs text-center text-muted-foreground mt-4">
               <Link href="/connexion" className="text-primary hover:underline">
@@ -205,7 +240,7 @@ export default function AdminLoginPage() {
               </Link>
               {" | "}
               <Link href="/" className="hover:underline">
-                Retour à l'accueil
+                Retour a l&apos;accueil
               </Link>
             </p>
           </CardContent>
