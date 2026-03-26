@@ -1,69 +1,46 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Partners } from "@/components/partners"
 import { useI18n } from "@/lib/i18n"
 import { Check, Quote } from "lucide-react"
 import Image from "next/image"
+import { createClient } from "@/lib/supabase/client"
 
-// Bureau Exécutif members
-const bureauMembers = [
-  { name: "Jamel Basiru", role: "Directeur Exécutif", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=400&fit=crop", hasImage: true },
-  { name: "Biata Yoane", role: "Vice-Présidente", image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&h=400&fit=crop", hasImage: true },
-  { name: "Backet Diarra", initials: "BD", role: "Secrétaire Général" },
-  { name: "Raymonde Lucas", image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=300&h=400&fit=crop", hasImage: true, role: "Trésorière" },
-  { name: "Vincent Goultau", initials: "VG", role: "Commissaire aux comptes" },
-  { name: "Orlane M'guessan", image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&h=400&fit=crop", hasImage: true, role: "Chargée de Communication" },
-  { name: "Ailith Brahins", initials: "AI", role: "Secrétaire Adjoint" },
-]
-
-// Conseil d'Administration members
-const councilMembers = [
-  { name: "Jean Aristide Eloa", role: "Président du CA", hasImage: true },
-  { name: "Sanga'Oudol", role: "Membre actif" },
-  { name: "Amalia Basora P.", role: "Membre actif" },
-  { name: "Guy Toliviet", role: "Membre actif" },
-  { name: "Mathieu Ohouagri", role: "Membre actif" },
-  { name: "Jean Marc Croidliny", role: "Membre actif" },
-  { name: "Fabrice Al Chaya", role: "Membre actif" },
-  { name: "Conny Fransy", role: "Membre actif" },
-  { name: "Modjesuka Diamoda", role: "Membre actif" },
-  { name: "Clément Kouasil", role: "Membre actif" },
-  { name: "Diata Sylvie Obit", role: "Membre actif" },
-  { name: "Tresorphe Essono", role: "Membre actif" },
-  { name: "Wily Benga", role: "Membre actif" },
-]
-
-// Portrait rectangular card with rounded corners
-function MemberCard({ name, role, image, initials, hasImage, priority = false }: {
+interface BoardMember {
+  id: string
   name: string
   role: string
-  image?: string
-  initials?: string
-  hasImage?: boolean
+  board_type: string
+  photo_url: string | null
+  order_index: number
+}
+
+// Portrait rectangular card with rounded corners
+function MemberCard({ name, role, photo_url, priority = false }: {
+  name: string
+  role: string
+  photo_url?: string | null
   priority?: boolean
 }) {
+  const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+  
   return (
     <div className="flex flex-col items-center group">
       {/* Portrait rectangle card - 3:4 aspect ratio */}
       <div className="relative w-full aspect-[3/4] bg-secondary rounded-2xl overflow-hidden mb-4 border-2 border-border group-hover:border-primary/50 transition-all duration-300">
-        {hasImage && image ? (
+        {photo_url ? (
           <Image
-            src={image}
+            src={photo_url}
             alt={name}
             fill
             className="object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
             priority={priority}
           />
-        ) : hasImage ? (
-          <div className="w-full h-full bg-gradient-to-br from-secondary to-muted flex items-center justify-center">
-            <span className="text-5xl font-bold text-muted-foreground">
-              {name.split(' ').map(n => n[0]).join('')}
-            </span>
-          </div>
         ) : (
-          <div className="w-full h-full bg-card flex items-center justify-center">
+          <div className="w-full h-full bg-gradient-to-br from-secondary to-muted flex items-center justify-center">
             <span className="text-5xl font-bold text-muted-foreground">{initials}</span>
           </div>
         )}
@@ -76,13 +53,17 @@ function MemberCard({ name, role, image, initials, hasImage, priority = false }:
   )
 }
 
-function CouncilMemberRow({ name, role }: { name: string; role: string }) {
+function CouncilMemberRow({ name, role, photo_url }: { name: string; role: string; photo_url?: string | null }) {
+  const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+  
   return (
     <div className="flex items-center gap-3 py-3 px-4 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors">
-      <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-        <span className="text-sm font-medium text-muted-foreground">
-          {name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-        </span>
+      <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 overflow-hidden">
+        {photo_url ? (
+          <Image src={photo_url} alt={name} width={40} height={40} className="object-cover" />
+        ) : (
+          <span className="text-sm font-medium text-muted-foreground">{initials}</span>
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-foreground truncate">{name}</p>
@@ -94,6 +75,37 @@ function CouncilMemberRow({ name, role }: { name: string; role: string }) {
 
 export default function AboutPage() {
   const { t } = useI18n()
+  const [bureauMembers, setBureauMembers] = useState<BoardMember[]>([])
+  const [conseilMembers, setConseilMembers] = useState<BoardMember[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchBoardMembers = async () => {
+      const supabase = createClient()
+      
+      // Fetch Bureau members
+      const { data: bureau } = await supabase
+        .from('board_members')
+        .select('*')
+        .eq('board_type', 'bureau')
+        .eq('active', true)
+        .order('order_index', { ascending: true })
+      
+      // Fetch Conseil members
+      const { data: conseil } = await supabase
+        .from('board_members')
+        .select('*')
+        .eq('board_type', 'conseil')
+        .eq('active', true)
+        .order('order_index', { ascending: true })
+      
+      setBureauMembers(bureau || [])
+      setConseilMembers(conseil || [])
+      setLoading(false)
+    }
+    
+    fetchBoardMembers()
+  }, [])
 
   return (
     <div className="min-h-screen bg-background">
@@ -121,10 +133,10 @@ export default function AboutPage() {
               {/* Left Column - Text */}
               <div className="space-y-6">
                 <p className="text-muted-foreground leading-relaxed">
-                  Formellement créée le <span className="text-primary font-semibold">16 Juillet 2022</span>, le <span className="text-primary font-semibold">RETECHCI</span> est la toute première association regroupant uniquement les <span className="text-primary font-semibold">techniciens du cinéma</span> de Côte d'Ivoire.
+                  Formellement creee le <span className="text-primary font-semibold">16 Juillet 2022</span>, le <span className="text-primary font-semibold">RETECHCI</span> est la toute premiere association regroupant uniquement les <span className="text-primary font-semibold">techniciens du cinema</span> de Cote d&apos;Ivoire.
                 </p>
                 <p className="text-muted-foreground leading-relaxed">
-                  Face à la négligence dont fait l'objet la grande famille des techniciens dans notre pays, nous avons décidé de nous unir pour défendre nos intérêts et professionnaliser notre secteur.
+                  Face a la negligence dont fait l&apos;objet la grande famille des techniciens dans notre pays, nous avons decide de nous unir pour defendre nos interets et professionnaliser notre secteur.
                 </p>
 
                 {/* Objectives */}
@@ -149,7 +161,7 @@ export default function AboutPage() {
                 <div className="bg-card border border-border rounded-xl p-6 relative">
                   <Quote className="w-8 h-8 text-primary/30 absolute top-4 right-4" />
                   <p className="text-sm text-muted-foreground italic leading-relaxed mb-4">
-                    "Loin d'un style de syndicat contre les entreprises de cinéma, le RETECHCI veut plutôt apporter sa pierre à l'édifice en militant activement pour la réglementation et le développement du secteur."
+                    &quot;Loin d&apos;un style de syndicat contre les entreprises de cinema, le RETECHCI veut plutot apporter sa pierre a l&apos;edifice en militant activement pour la reglementation et le developpement du secteur.&quot;
                   </p>
                   <p className="text-xs text-primary font-medium">{t("about.quoteAuthor")}</p>
                 </div>
@@ -158,7 +170,7 @@ export default function AboutPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-card border border-border rounded-xl p-6 text-center">
                     <p className="text-3xl font-bold text-foreground">2022</p>
-                    <p className="text-xs text-primary uppercase tracking-wider mt-1">Année de création</p>
+                    <p className="text-xs text-primary uppercase tracking-wider mt-1">Annee de creation</p>
                   </div>
                   <div className="bg-card border border-border rounded-xl p-6 text-center">
                     <p className="text-3xl font-bold text-foreground">500+</p>
@@ -170,29 +182,52 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* Bureau Exécutif */}
+        {/* Bureau Executif */}
         <section className="py-16 border-t border-border">
           <div className="container mx-auto px-4">
             <div className="max-w-6xl mx-auto">
               <h2 className="text-2xl font-bold mb-2">
-                <span className="text-primary">Bureau Exécutif</span>
+                <span className="text-primary">Bureau Executif</span>
               </h2>
               <p className="text-sm text-muted-foreground mb-10">
                 {t("about.bureauSubtitle")}
               </p>
 
-              {/* Portrait Grid - 4 columns on desktop */}
-<div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-8">
-  {bureauMembers.slice(0, 4).map((member, index) => (
-    <MemberCard key={member.name} {...member} priority={index < 2} />
-  ))}
-  </div>
-              {/* Second row - 3 columns centered */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6 lg:gap-8 mt-8 max-w-3xl mx-auto">
-                {bureauMembers.slice(4).map((member) => (
-                  <MemberCard key={member.name} {...member} />
-                ))}
-              </div>
+              {loading ? (
+                <div className="flex justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : bureauMembers.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Aucun membre du bureau enregistre</p>
+              ) : (
+                <>
+                  {/* Portrait Grid - 4 columns on desktop */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-8">
+                    {bureauMembers.slice(0, 4).map((member, index) => (
+                      <MemberCard 
+                        key={member.id} 
+                        name={member.name}
+                        role={member.role}
+                        photo_url={member.photo_url}
+                        priority={index < 2} 
+                      />
+                    ))}
+                  </div>
+                  {/* Second row - 3 columns centered */}
+                  {bureauMembers.length > 4 && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6 lg:gap-8 mt-8 max-w-3xl mx-auto">
+                      {bureauMembers.slice(4).map((member) => (
+                        <MemberCard 
+                          key={member.id}
+                          name={member.name}
+                          role={member.role}
+                          photo_url={member.photo_url}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </section>
@@ -202,17 +237,30 @@ export default function AboutPage() {
           <div className="container mx-auto px-4">
             <div className="max-w-6xl mx-auto">
               <h2 className="text-2xl font-bold mb-2">
-                <span className="text-primary">Conseil d'Administration</span>
+                <span className="text-primary">Conseil d&apos;Administration</span>
               </h2>
               <p className="text-sm text-muted-foreground mb-10">
                 {t("about.councilSubtitle")}
               </p>
 
-              <div className="grid md:grid-cols-3 gap-3">
-                {councilMembers.map((member) => (
-                  <CouncilMemberRow key={member.name} {...member} />
-                ))}
-              </div>
+              {loading ? (
+                <div className="flex justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : conseilMembers.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Aucun membre du conseil enregistre</p>
+              ) : (
+                <div className="grid md:grid-cols-3 gap-3">
+                  {conseilMembers.map((member) => (
+                    <CouncilMemberRow 
+                      key={member.id} 
+                      name={member.name}
+                      role={member.role}
+                      photo_url={member.photo_url}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </section>
