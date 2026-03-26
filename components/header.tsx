@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { User, Menu, X, LogIn, UserPlus, LayoutDashboard, LogOut, Shield } from "lucide-react"
+import { User, Menu, X, LogIn, UserPlus, LogOut, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -26,6 +26,11 @@ interface MemberInfo {
   role: string
 }
 
+interface BrandingContent {
+  logo_url?: string
+  logo_text?: string
+}
+
 export function Header() {
   const { t } = useI18n()
   const router = useRouter()
@@ -33,10 +38,25 @@ export function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [member, setMember] = useState<MemberInfo | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [branding, setBranding] = useState<BrandingContent>({})
 
   useEffect(() => {
     const checkAuth = async () => {
       const supabase = createClient()
+      
+      // Fetch branding
+      const { data: brandingData } = await supabase
+        .from('site_content')
+        .select('key, value')
+        .eq('section', 'branding')
+      
+      if (brandingData) {
+        const brand: BrandingContent = {}
+        brandingData.forEach(item => {
+          brand[item.key as keyof BrandingContent] = item.value
+        })
+        setBranding(brand)
+      }
       
       const { data: { user } } = await supabase.auth.getUser()
       
@@ -100,10 +120,20 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-primary-foreground font-bold">
-            R
-          </div>
-          <span className="text-lg font-semibold text-foreground">RETECHCI</span>
+          {branding.logo_url && branding.logo_url !== '/logo-retechci.png' ? (
+            <Image
+              src={branding.logo_url}
+              alt={branding.logo_text || 'RETECHCI'}
+              width={32}
+              height={32}
+              className="w-8 h-8 object-contain"
+            />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-primary-foreground font-bold">
+              R
+            </div>
+          )}
+          <span className="text-lg font-semibold text-foreground">{branding.logo_text || 'RETECHCI'}</span>
         </Link>
 
         <nav className="hidden items-center gap-6 lg:flex">
