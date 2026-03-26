@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { useI18n } from "@/lib/i18n"
 import { SectionContent } from "@/lib/content"
+import Link from "next/link"
 
 interface SitechSectionProps {
   content?: SectionContent
@@ -63,8 +64,11 @@ export function SitechSection({ content }: SitechSectionProps) {
           
           <Button 
             className="bg-amber-500 hover:bg-amber-600 text-black font-semibold px-8 py-6 text-base"
+            asChild
           >
-            {ctaText}
+            <Link href={content?.cta_link || "/sitech-2027"}>
+              {ctaText}
+            </Link>
           </Button>
         </div>
       </div>
