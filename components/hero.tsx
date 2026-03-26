@@ -6,9 +6,30 @@ import { Button } from "@/components/ui/button"
 import { useI18n } from "@/lib/i18n"
 import { useState, useEffect } from "react"
 
-export function Hero() {
+export type HeroContent = {
+  title?: string | null
+  subtitle?: string | null
+  image?: string | null
+  cta_primary_text?: string | null
+  cta_primary_link?: string | null
+  cta_secondary_text?: string | null
+  cta_secondary_link?: string | null
+  stat_members?: string | null
+  stat_members_label?: string | null
+  stat_productions?: string | null
+  stat_productions_label?: string | null
+  stat_experience?: string | null
+  stat_experience_label?: string | null
+}
+
+export function Hero({ content }: { content?: HeroContent }) {
   const { t } = useI18n()
   const [isVideoLoaded, setIsVideoLoaded] = useState(false)
+
+  // Use Supabase content if available, otherwise fall back to i18n
+  const heroImage = content?.image || "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=1920&h=1080&fit=crop"
+  const ctaPrimaryLink = content?.cta_primary_link || "/annuaire"
+  const ctaSecondaryLink = content?.cta_secondary_link || "/sitech-2027"
 
   return (
     <section className="relative flex min-h-[90vh] flex-col items-center justify-center px-4 py-24 text-center overflow-hidden">
@@ -16,7 +37,7 @@ export function Hero() {
       <div className="absolute inset-0 z-0">
         {/* Fallback image */}
         <Image
-          src="https://images.unsplash.com/photo-1485846234645-a62644f84728?w=1920&h=1080&fit=crop"
+          src={heroImage}
           alt="Cinema background"
           fill
           className="object-cover"
@@ -59,23 +80,41 @@ export function Hero() {
         </h1>
 
         <p className="mt-8 max-w-2xl mx-auto text-pretty text-lg text-muted-foreground">
-          {t("hero.description")}
+          {content?.subtitle || t("hero.description")}
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <Button asChild size="lg" className="min-w-[180px] bg-primary text-primary-foreground hover:bg-primary/90">
-            <Link href="/annuaire">{t("hero.cta1")}</Link>
+            <Link href={ctaPrimaryLink}>{content?.cta_primary_text || t("hero.cta1")}</Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="min-w-[180px] border-muted-foreground/30 text-foreground hover:bg-muted backdrop-blur-sm">
-            <Link href="/sitech-2027">{t("hero.cta2")}</Link>
+            <Link href={ctaSecondaryLink}>{content?.cta_secondary_text || t("hero.cta2")}</Link>
           </Button>
         </div>
+
+        {/* Stats from Supabase */}
+        {content?.stat_members && (
+          <div className="mt-12 flex flex-wrap justify-center gap-8 sm:gap-12">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-primary">{content.stat_members}</div>
+              <div className="text-sm text-muted-foreground">{content.stat_members_label}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-primary">{content.stat_productions}</div>
+              <div className="text-sm text-muted-foreground">{content.stat_productions_label}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-primary">{content.stat_experience}</div>
+              <div className="text-sm text-muted-foreground">{content.stat_experience_label}</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Scroll indicator */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10">
         <div className="flex flex-col items-center gap-2 text-muted-foreground/50">
-          <span className="text-xs uppercase tracking-widest">Défiler</span>
+          <span className="text-xs uppercase tracking-widest">Defiler</span>
           <div className="w-6 h-10 border-2 border-muted-foreground/30 rounded-full flex justify-center">
             <div className="w-1 h-2 bg-muted-foreground/50 rounded-full mt-2 animate-bounce" />
           </div>

@@ -7,11 +7,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Clapperboard, Lock, User, AlertCircle, UserCog, Crown, Wallet, Settings } from "lucide-react"
+import { Clapperboard, Lock, User, AlertCircle, UserCog, Crown, Wallet } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 
-type AdminRole = "directeur" | "president" | "tresorier" | "cms"
+type AdminRole = "directeur" | "president" | "tresorier"
 
 const adminRoles: { 
   value: AdminRole
@@ -40,13 +40,6 @@ const adminRoles: {
     description: "Gestion financiere et cotisations",
     icon: <Wallet className="h-6 w-6" />,
     dbRole: "treasurer"
-  },
-  { 
-    value: "cms", 
-    label: "CMS Admin", 
-    description: "Gestion du contenu du site",
-    icon: <Settings className="h-6 w-6" />,
-    dbRole: "cms_admin"
   },
 ]
 
@@ -96,10 +89,9 @@ export default function AdminLoginPage() {
 
     // Check if the user role matches the selected admin role
     const allowedRoles = {
-      directeur: ["director", "admin"],
-      president: ["president", "admin"],
-      tresorier: ["treasurer", "admin"],
-      cms: ["admin", "director", "president", "treasurer"]
+      directeur: ["director"],
+      president: ["president"],
+      tresorier: ["treasurer"]
     }
 
     if (!allowedRoles[selectedRole].includes(memberData.role)) {
@@ -116,11 +108,7 @@ export default function AdminLoginPage() {
     sessionStorage.setItem("adminName", `${memberData.first_name} ${memberData.last_name}`)
 
     // Redirect to the appropriate dashboard
-    if (selectedRole === "cms") {
-      router.push("/admin/cms")
-    } else {
-      router.push(`/admin/${selectedRole}`)
-    }
+    router.push(`/admin/${selectedRole}`)
   }
 
   return (
@@ -145,14 +133,14 @@ export default function AdminLoginPage() {
           <CardContent className="pt-4">
             {/* Role Selection Tabs */}
             <Tabs value={selectedRole} onValueChange={(v) => setSelectedRole(v as AdminRole)} className="mb-6">
-              <TabsList className="grid grid-cols-4 w-full">
+              <TabsList className="grid grid-cols-3 w-full">
                 {adminRoles.map((role) => (
                   <TabsTrigger 
                     key={role.value} 
                     value={role.value}
-                    className="text-xs px-1"
+                    className="text-xs px-2"
                   >
-                    {role.value === "cms" ? "CMS" : role.label.split(' ')[0]}
+                    {role.label.split(' ')[0]}
                   </TabsTrigger>
                 ))}
               </TabsList>
