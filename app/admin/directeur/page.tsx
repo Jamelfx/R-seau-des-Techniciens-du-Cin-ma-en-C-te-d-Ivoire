@@ -296,11 +296,34 @@ export default function DirectorDashboard() {
     
     setActionLoading('invite')
     try {
-      // Send invitation email (in production, this would send an actual email)
-      alert(`Invitation envoyee a ${inviteEmail}`)
-      setInviteEmail("")
+      // Get the current site URL
+      const siteUrl = window.location.origin
+      
+      // Use Supabase Auth to send magic link invitation
+      const { error } = await supabase.auth.signInWithOtp({
+        email: inviteEmail,
+        options: {
+          emailRedirectTo: `${siteUrl}/adhesion?invited=true&email=${encodeURIComponent(inviteEmail)}`,
+          data: {
+            invited_by: 'directeur',
+            invitation_date: new Date().toISOString()
+          }
+        }
+      })
+      
+      if (error) {
+        if (error.message.includes('rate limit')) {
+          alert("Trop de demandes. Veuillez attendre quelques minutes avant de renvoyer.")
+        } else {
+          throw error
+        }
+      } else {
+        alert(`Email d'invitation envoyé à ${inviteEmail}.\n\nLe destinataire recevra un lien pour rejoindre le réseau RETECHCI.`)
+        setInviteEmail("")
+      }
     } catch (error) {
       console.error("Error:", error)
+      alert("Erreur lors de l'envoi de l'invitation. Vérifiez que l'email est valide.")
     }
     setActionLoading(null)
   }
