@@ -155,21 +155,21 @@ export function Footer() {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12">
             {/* Logo & Description */}
             <div className="space-y-6">
-              <Link href="/" className="flex items-center gap-2">
+              <Link href="/" className="flex items-center gap-3">
                 {branding.logo_url && branding.logo_url !== '/logo-retechci.png' ? (
                   <Image
                     src={branding.logo_url}
                     alt={branding.logo_text || 'RETECHCI'}
-                    width={32}
-                    height={32}
-                    className="w-8 h-8 object-contain"
+                    width={48}
+                    height={48}
+                    className="w-12 h-12 object-contain"
                   />
                 ) : (
-                  <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
-                    <span className="text-primary-foreground font-bold text-sm">R</span>
+                  <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
+                    <span className="text-primary-foreground font-bold text-xl">R</span>
                   </div>
                 )}
-                <span className="font-bold text-lg text-foreground">
+                <span className="font-bold text-xl text-foreground">
                   {branding.logo_text || 'RETECHCI'}
                 </span>
               </Link>

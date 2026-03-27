@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Partners } from "@/components/partners"
 import { Footer } from "@/components/footer"
@@ -17,9 +17,21 @@ import {
   Calendar, MapPin, Users, Monitor, Mic, Clock, Bell, 
   CreditCard, Smartphone, Wallet, Building2, CheckCircle,
   QrCode, Download, Play, Image as ImageIcon, Sparkles, Wand2,
-  X, ChevronLeft, ChevronRight
+  X, ChevronLeft, ChevronRight, GraduationCap, Briefcase
 } from "lucide-react"
 import Image from "next/image"
+import { createClient } from "@/lib/supabase/client"
+
+interface SitechContent {
+  hero_type?: string
+  hero_image?: string
+  hero_video?: string
+  student_price?: string
+  professional_price?: string
+  vip_price?: string
+  event_date?: string
+  event_location?: string
+}
 
 // Previous editions gallery data
 const galleryData = {
@@ -333,6 +345,116 @@ function RegistrationDialog({ type, onSuccess }: { type: "exposant" | "participa
   )
 }
 
+// Student Registration Form (FREE)
+function StudentRegistrationForm({ onSuccess }: { onSuccess: (data: { name: string; email: string; type: string; company: string; qrCode: string }) => void }) {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    school: "",
+    studentId: ""
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    
+    // Simulate registration
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    const qrCode = `SITECH-STU-${Date.now().toString(36).toUpperCase()}`
+    onSuccess({
+      name: formData.name,
+      email: formData.email,
+      type: "Etudiant (Gratuit)",
+      company: formData.school,
+      qrCode
+    })
+    setIsSubmitting(false)
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-center mb-4">
+        <Badge className="bg-green-600 text-white mb-2">GRATUIT</Badge>
+        <p className="text-sm text-muted-foreground">
+          Inscription gratuite pour les eleves et etudiants
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Nom complet *</Label>
+          <Input 
+            required
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="Votre nom"
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <Label>Email *</Label>
+          <Input 
+            type="email"
+            required
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            placeholder="email@exemple.com"
+            className="mt-1"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Telephone *</Label>
+          <Input 
+            required
+            value={formData.phone}
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            placeholder="+225 XX XX XX XX"
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <Label>Etablissement *</Label>
+          <Input 
+            required
+            value={formData.school}
+            onChange={(e) => setFormData({ ...formData, school: e.target.value })}
+            placeholder="Nom de l'ecole/universite"
+            className="mt-1"
+          />
+        </div>
+      </div>
+
+      <div>
+        <Label>Numero de carte etudiante *</Label>
+        <Input 
+          required
+          value={formData.studentId}
+          onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
+          placeholder="Numero de carte scolaire/etudiante"
+          className="mt-1"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Vous devrez presenter votre carte etudiante valide a l&apos;entree
+        </p>
+      </div>
+
+      <Button 
+        type="submit" 
+        className="w-full bg-green-600 hover:bg-green-700"
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? "Inscription en cours..." : "S'inscrire gratuitement"}
+      </Button>
+    </form>
+  )
+}
+
 // Gallery Lightbox Component
 function GalleryLightbox({ images, initialIndex, onClose }: { images: typeof galleryData["2024"]; initialIndex: number; onClose: () => void }) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
@@ -372,10 +494,31 @@ export default function SitechPage() {
   const [activeDay, setActiveDay] = useState(0)
   const [exposantDialogOpen, setExposantDialogOpen] = useState(false)
   const [participantDialogOpen, setParticipantDialogOpen] = useState(false)
+  const [studentDialogOpen, setStudentDialogOpen] = useState(false)
   const [accessCard, setAccessCard] = useState<{ name: string; email: string; type: string; company: string; qrCode: string } | null>(null)
   const [lightbox, setLightbox] = useState<{ images: typeof galleryData["2024"]; index: number } | null>(null)
   const [selectedGalleryYear, setSelectedGalleryYear] = useState("2024")
   const [aiPrompt, setAiPrompt] = useState("")
+  const [sitechContent, setSitechContent] = useState<SitechContent>({})
+  
+  useEffect(() => {
+    const fetchContent = async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('site_content')
+        .select('key, value')
+        .eq('section', 'sitech')
+      
+      if (data) {
+        const content: SitechContent = {}
+        data.forEach(item => {
+          content[item.key as keyof SitechContent] = item.value
+        })
+        setSitechContent(content)
+      }
+    }
+    fetchContent()
+  }, [])
 
   const stats = [
     { value: "1500+", label: "PARTICIPANTS" },
@@ -434,12 +577,23 @@ export default function SitechPage() {
       <main>
         {/* Hero Section */}
         <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
-          <div 
-            className="absolute inset-0 bg-cover bg-center"
-            style={{
-              backgroundImage: "url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1920&q=80')",
-            }}
-          />
+          {sitechContent.hero_type === 'video' && sitechContent.hero_video ? (
+            <div className="absolute inset-0">
+              <iframe
+                src={`https://www.youtube.com/embed/${sitechContent.hero_video.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([^&?]+)/)?.[1]}?autoplay=1&mute=1&loop=1&controls=0&playlist=${sitechContent.hero_video.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([^&?]+)/)?.[1]}`}
+                className="w-full h-full object-cover"
+                allow="autoplay; encrypted-media"
+                style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', minWidth: '100%', minHeight: '100%' }}
+              />
+            </div>
+          ) : (
+            <div 
+              className="absolute inset-0 bg-cover bg-center"
+              style={{
+                backgroundImage: `url('${sitechContent.hero_image || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1920&q=80'}')`,
+              }}
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background" />
           
           <div className="relative z-10 container mx-auto px-4 text-center py-16">
@@ -459,34 +613,39 @@ export default function SitechPage() {
             </p>
             
             <div className="flex flex-wrap justify-center gap-4">
-              {/* Exposant Dialog */}
-              <Dialog open={exposantDialogOpen} onOpenChange={setExposantDialogOpen}>
+              {/* Student Dialog - FREE */}
+              <Dialog open={studentDialogOpen} onOpenChange={setStudentDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8">
-                    Inscription Exposant
+                  <Button size="lg" className="bg-green-600 hover:bg-green-700 text-white px-8">
+                    <GraduationCap className="h-5 w-5 mr-2" />
+                    Etudiant / Eleve (Gratuit)
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-lg">
                   <DialogHeader>
-                    <DialogTitle>Inscription Exposant - SITECH 2027</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                      <GraduationCap className="h-5 w-5 text-green-600" />
+                      Inscription Etudiant - SITECH 2027
+                    </DialogTitle>
                     <DialogDescription>
-                      Reservez votre stand au plus grand salon tech du cinema africain
+                      Acces gratuit pour les eleves et etudiants avec carte valide
                     </DialogDescription>
                   </DialogHeader>
-                  <RegistrationDialog type="exposant" onSuccess={handleRegistrationSuccess} />
+                  <StudentRegistrationForm onSuccess={handleRegistrationSuccess} />
                 </DialogContent>
               </Dialog>
 
-              {/* Participant Dialog */}
+              {/* Professional Dialog */}
               <Dialog open={participantDialogOpen} onOpenChange={setParticipantDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="lg" variant="outline" className="border-amber-500 text-amber-500 hover:bg-amber-500/10 px-8">
-                    Inscription Participant
+                    <Briefcase className="h-5 w-5 mr-2" />
+                    Professionnel / Exposant
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-lg">
                   <DialogHeader>
-                    <DialogTitle>Inscription Participant - SITECH 2027</DialogTitle>
+                    <DialogTitle>Inscription Professionnel - SITECH 2027</DialogTitle>
                     <DialogDescription>
                       Rejoignez-nous pour 3 jours de conferences, ateliers et networking
                     </DialogDescription>
