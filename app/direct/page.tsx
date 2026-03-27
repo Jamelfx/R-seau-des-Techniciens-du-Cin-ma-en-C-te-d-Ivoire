@@ -204,7 +204,19 @@ export default function DirectPage() {
     setFeaturedVideo(video)
     setLikes(video.like_count || 0)
     setHasLiked(false)
-    setIsPlaying(false)
+    setIsPlaying(true) // Auto-play when selecting
+    
+    // Scroll to player
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }, 100)
+    
+    // Update view count
+    const supabase = createClient()
+    supabase
+      .from('videos')
+      .update({ view_count: (video.view_count || 0) + 1 })
+      .eq('id', video.id)
   }
 
   return (
