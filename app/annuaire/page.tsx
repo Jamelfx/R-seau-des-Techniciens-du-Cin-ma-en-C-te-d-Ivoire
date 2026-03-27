@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Partners } from "@/components/partners"
@@ -75,15 +75,7 @@ interface FilmLocation {
   coordinates: { lat: number; lng: number }
 }
 
-// Sample data
-const technicians: Technician[] = [
-  { id: "CI-2024-0001", name: "Marc Zadi", role: "Chef Opérateur", level: "senior", status: "available", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face" },
-  { id: "CI-2024-0002", name: "Aicha Toure", role: "Ingénieure Son", level: "intermediate", status: "filming", image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face" },
-  { id: "CI-2024-0003", name: "Eric Kouassi", role: "Chef Electro", level: "senior", status: "available", image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face" },
-  { id: "CI-2024-0004", name: "Fatou Diallo", role: "Directrice Photo", level: "senior", status: "unavailable", image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face" },
-  { id: "CI-2024-0005", name: "Konan Yao", role: "Machiniste", level: "intermediate", status: "available", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face" },
-  { id: "CI-2024-0006", name: "Aminata Sanogo", role: "Scripte", level: "junior", status: "available", image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face" },
-]
+// Sample data removed - technicians loaded from Supabase
 
 const companies: Company[] = [
   { 
@@ -461,6 +453,45 @@ export default function DirectoryPage() {
   const [locationFilter, setLocationFilter] = useState<LocationFilter>("all")
   const [locationSearch, setLocationSearch] = useState("")
   const [expandedCompanies, setExpandedCompanies] = useState<string[]>([])
+  const [realTechnicians, setRealTechnicians] = useState<Technician[]>([])
+  const [loadingTechnicians, setLoadingTechnicians] = useState(true)
+
+  // Placeholder text based on active tab
+  const searchPlaceholders = {
+    technicians: "Rechercher un technicien...",
+    companies: "Rechercher une société ou du matériel...",
+    costumes: "Rechercher un costume ou styliste...",
+    locations: "Rechercher un décor..."
+  }
+
+  // Fetch real technicians from Supabase
+  useEffect(() => {
+    const fetchTechnicians = async () => {
+      const { createClient } = await import("@/lib/supabase/client")
+      const supabase = createClient()
+      
+      const { data } = await supabase
+        .from('members')
+        .select('id, first_name, last_name, profession, experience_years, profile_photo, availability, status')
+        .eq('status', 'active')
+        .not('email', 'like', '%@retechci.org')
+        .order('created_at', { ascending: false })
+      
+      if (data && data.length > 0) {
+        const mapped = data.map(m => ({
+          id: m.id,
+          name: `${m.first_name} ${m.last_name}`,
+          role: m.profession || "Technicien",
+          level: (m.experience_years || 0) >= 10 ? "senior" : (m.experience_years || 0) >= 5 ? "intermediate" : "junior" as ExperienceLevel,
+          status: m.availability === "available" ? "available" : m.availability === "filming" ? "filming" : "available" as AvailabilityStatus,
+          image: m.profile_photo || undefined
+        }))
+        setRealTechnicians(mapped)
+      }
+      setLoadingTechnicians(false)
+    }
+    fetchTechnicians()
+  }, [])
   const [expandedCostumes, setExpandedCostumes] = useState<string[]>([])
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
 
@@ -488,7 +519,9 @@ export default function DirectoryPage() {
     }
   }
 
-  const filteredTechnicians = technicians.filter(tech =>
+  // Use real technicians if available, otherwise show empty state
+  const displayTechnicians = realTechnicians.length > 0 ? realTechnicians : []
+  const filteredTechnicians = displayTechnicians.filter(tech =>
     tech.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     tech.role.toLowerCase().includes(searchQuery.toLowerCase())
   )
@@ -524,7 +557,7 @@ export default function DirectoryPage() {
             </div>
             <div className="relative w-full lg:w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder={t("directory.search")} className="pl-10 bg-secondary border-border" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              <Input placeholder={searchPlaceholders[activeTab]} className="pl-10 bg-secondary border-border" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </div>
           </div>
         </section>
@@ -556,10 +589,40 @@ export default function DirectoryPage() {
 
         {/* Tab Content */}
         <section className="px-6 lg:px-20 py-12">
-          {/* Technicians Tab */}
-          {activeTab === "technicians" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredTechnicians.map((tech) => (
+{/* Technicians Tab */}
+  {activeTab === "technicians" && (
+  loadingTechnicians ? (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={i} className="bg-card border border-border rounded-xl p-6 animate-pulse">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-14 h-14 rounded-full bg-secondary" />
+            <div className="flex-1">
+              <div className="h-4 bg-secondary rounded w-24 mb-2" />
+              <div className="h-3 bg-secondary rounded w-32" />
+            </div>
+          </div>
+          <div className="h-10 bg-secondary rounded" />
+        </div>
+      ))}
+    </div>
+  ) : filteredTechnicians.length === 0 ? (
+    <div className="text-center py-16 bg-card border border-dashed border-border rounded-xl">
+      <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
+        <Search className="h-8 w-8 text-primary" />
+      </div>
+      <h3 className="text-xl font-semibold mb-2">Bientôt disponible</h3>
+      <p className="text-muted-foreground max-w-md mx-auto mb-6">
+        Notre annuaire de techniciens est en cours de constitution. 
+        Rejoignez le réseau pour être parmi les premiers membres affichés.
+      </p>
+      <Link href="/adhesion">
+        <Button>Rejoindre le réseau</Button>
+      </Link>
+    </div>
+  ) : (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  {filteredTechnicians.map((tech) => (
                 <div key={tech.id} className="bg-card border border-border rounded-xl p-6 hover:border-primary/50 transition-colors">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -595,6 +658,7 @@ export default function DirectoryPage() {
                 </div>
               ))}
             </div>
+          )
           )}
 
           {/* Companies Tab */}
