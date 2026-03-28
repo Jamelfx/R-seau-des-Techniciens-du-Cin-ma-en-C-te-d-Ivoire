@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -31,38 +31,54 @@ import {
   Wallet,
   Smartphone,
   Building2,
-  Globe
+  Loader2,
+  Calendar,
+  MapPin
 } from "lucide-react"
 import Image from "next/image"
+import { createClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
 
-// Simulated member data
-const memberData = {
-  id: "CI-2024-8842",
-  nom: "BASIRU",
-  prenoms: "Jamel",
-  email: "jamel.basiru@email.com",
-  phone: "+225 07 XX XX XX XX",
-  fonction: "Monteur Image",
-  category: "A" as const,
-  title: "Directeur Exécutif",
-  dateNaissance: "1990-05-15",
-  lieuNaissance: "Abidjan",
-  anneesExperience: 8,
-  photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
-  disponibilite: "available",
-  cotisationStatus: "paid",
-  memberSince: "2024-01-15",
-  biography: "Monteur image passionné avec plus de 8 ans d'expérience dans le cinéma ivoirien. J'ai travaillé sur de nombreuses productions locales et internationales.",
-  filmography: [
-    { title: "La Vie en Rose", year: "2024", role: "Monteur Principal" },
-    { title: "Abidjan Dreams", year: "2023", role: "Monteur" },
-    { title: "Les Chemins de la Sagesse", year: "2022", role: "Assistant Monteur" },
-  ],
-  workPhotos: [
-    "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=400&h=300&fit=crop",
-    "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=400&h=300&fit=crop",
-  ]
+interface MemberData {
+  id: string
+  member_id: string
+  first_name: string
+  last_name: string
+  email: string
+  phone: string
+  profession: string
+  specialties: string[]
+  experience_years: number
+  profile_photo: string | null
+  availability: string
+  status: string
+  role: string
+  birth_date: string | null
+  birth_place: string | null
+  biography: string | null
+  work_photos: string[]
+  membership_level: string
+  created_at: string
 }
+
+interface FilmographyItem {
+  id?: string
+  film_title: string
+  film_format: string
+  episode_count?: number
+  production_company: string
+  release_year: number
+  role: string
+}
+
+const filmFormats = [
+  { value: "fiction_long", label: "Fiction Long métrage" },
+  { value: "doc_long", label: "Documentaire Long métrage" },
+  { value: "fiction_court", label: "Fiction Court métrage" },
+  { value: "doc_court", label: "Documentaire Court métrage" },
+  { value: "serie_fiction", label: "Série Fiction" },
+  { value: "serie_doc", label: "Série Documentaire" },
+]
 
 // Payment Dialog Component
 function PaymentDialog({ memberName, memberId }: { memberName: string; memberId: string }) {
@@ -71,12 +87,10 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
   const [phone, setPhone] = useState("")
   
   const paymentMethods = [
+    { id: "wave", name: "Wave", icon: Wallet, color: "bg-cyan-500", description: "Paiement Wave" },
     { id: "orange", name: "Orange Money", icon: Smartphone, color: "bg-orange-500", description: "Paiement mobile Orange CI" },
     { id: "mtn", name: "MTN Mobile Money", icon: Smartphone, color: "bg-yellow-500", description: "Paiement mobile MTN CI" },
-    { id: "moov", name: "Moov Money", icon: Smartphone, color: "bg-blue-500", description: "Paiement mobile Moov CI" },
-    { id: "wave", name: "Wave", icon: Wallet, color: "bg-cyan-500", description: "Paiement Wave" },
-    { id: "bank", name: "Virement Bancaire", icon: Building2, color: "bg-gray-500", description: "BCEAO / Banques locales" },
-    { id: "card", name: "Carte Bancaire", icon: CreditCard, color: "bg-purple-500", description: "Visa / Mastercard" },
+    { id: "card", name: "Carte Visa Prépayée", icon: CreditCard, color: "bg-purple-500", description: "Visa prépayée" },
   ]
 
   const handlePayment = () => {
@@ -86,8 +100,7 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
   }
 
   const confirmPayment = () => {
-    // In production, this would call a payment API
-    console.log("Payment confirmed:", { method: selectedMethod, phone, memberId, amount: 2000 })
+    console.log("Payment confirmed:", { method: selectedMethod, phone, memberId, amount: 5000 })
     setStep("success")
   }
 
@@ -98,680 +111,876 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
           <CheckCircle className="h-10 w-10 text-green-500" />
         </div>
         <h3 className="text-xl font-bold text-foreground mb-2">Paiement reussi !</h3>
-        <p className="text-muted-foreground mb-4">
-          Votre cotisation de 2 000 FCFA a ete enregistree.
-        </p>
-        <div className="p-4 bg-secondary/30 rounded-xl text-left">
-          <p className="text-sm"><span className="text-muted-foreground">Membre:</span> {memberName}</p>
-          <p className="text-sm"><span className="text-muted-foreground">ID:</span> {memberId}</p>
-          <p className="text-sm"><span className="text-muted-foreground">Montant:</span> 2 000 FCFA</p>
-          <p className="text-sm"><span className="text-muted-foreground">Date:</span> {new Date().toLocaleDateString('fr-FR')}</p>
-        </div>
+        <p className="text-muted-foreground mb-4">Votre cotisation a ete enregistree</p>
+        <Badge className="bg-green-500/20 text-green-400">Cotisation a jour</Badge>
       </div>
     )
   }
 
   if (step === "confirm") {
-    const method = paymentMethods.find(m => m.id === selectedMethod)
     return (
       <div className="space-y-6">
-        <div className="text-center">
-          <h3 className="text-lg font-semibold mb-2">Confirmer le paiement</h3>
-          <p className="text-3xl font-bold text-primary">2 000 FCFA</p>
-          <p className="text-muted-foreground text-sm">Cotisation mensuelle</p>
-        </div>
-        <div className="p-4 bg-secondary/30 rounded-xl space-y-2">
+        <div className="bg-secondary/50 rounded-xl p-4 space-y-2">
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Methode</span>
-            <span className="font-medium">{method?.name}</span>
+            <span className="text-muted-foreground">Montant:</span>
+            <span className="font-bold">5 000 FCFA</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Numero</span>
-            <span className="font-medium">{phone}</span>
+            <span className="text-muted-foreground">Methode:</span>
+            <span>{paymentMethods.find(m => m.id === selectedMethod)?.name}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Membre</span>
-            <span className="font-medium">{memberName}</span>
+            <span className="text-muted-foreground">Numero:</span>
+            <span>{phone}</span>
           </div>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={() => setStep("select")}>
-            Retour
-          </Button>
-          <Button className="flex-1" onClick={confirmPayment}>
-            Confirmer le paiement
-          </Button>
-        </div>
+        <Button onClick={confirmPayment} className="w-full">Confirmer le paiement</Button>
+        <Button variant="outline" onClick={() => setStep("select")} className="w-full">Modifier</Button>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="text-center pb-4 border-b border-border">
-        <p className="text-3xl font-bold text-primary">2 000 FCFA</p>
-        <p className="text-muted-foreground text-sm">Cotisation mensuelle RETECHCI</p>
-      </div>
-
-      <div>
-        <Label className="text-sm font-medium mb-3 block">Choisissez votre moyen de paiement</Label>
-        <div className="grid grid-cols-2 gap-3">
-          {paymentMethods.map((method) => (
-            <button
-              key={method.id}
-              onClick={() => setSelectedMethod(method.id)}
-              className={`p-4 rounded-xl border-2 transition-all text-left ${
-                selectedMethod === method.id 
-                  ? "border-primary bg-primary/5" 
-                  : "border-border hover:border-primary/50"
-              }`}
-            >
-              <div className={`w-10 h-10 ${method.color} rounded-lg flex items-center justify-center mb-2`}>
-                <method.icon className="h-5 w-5 text-white" />
-              </div>
-              <p className="font-medium text-sm">{method.name}</p>
-              <p className="text-xs text-muted-foreground">{method.description}</p>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {selectedMethod && selectedMethod !== "bank" && selectedMethod !== "card" && (
-        <div className="space-y-2">
-          <Label>Numero de telephone</Label>
-          <Input
-            type="tel"
-            placeholder="+225 XX XX XX XX XX"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-        </div>
-      )}
-
-      {selectedMethod === "bank" && (
-        <div className="p-4 bg-secondary/30 rounded-xl text-sm space-y-2">
-          <p className="font-medium">Informations bancaires RETECHCI</p>
-          <p><span className="text-muted-foreground">Banque:</span> BCEAO Abidjan</p>
-          <p><span className="text-muted-foreground">IBAN:</span> CI93 XXXX XXXX XXXX XXXX</p>
-          <p><span className="text-muted-foreground">Reference:</span> COT-{memberId}</p>
-        </div>
-      )}
-
-      {selectedMethod === "card" && (
-        <div className="space-y-3">
-          <div className="space-y-2">
-            <Label>Numero de carte</Label>
-            <Input placeholder="1234 5678 9012 3456" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Expiration</Label>
-              <Input placeholder="MM/AA" />
+      <div className="grid grid-cols-2 gap-3">
+        {paymentMethods.map((method) => (
+          <button
+            key={method.id}
+            onClick={() => setSelectedMethod(method.id)}
+            className={`p-4 rounded-xl border-2 transition-all ${
+              selectedMethod === method.id 
+                ? 'border-primary bg-primary/10' 
+                : 'border-border hover:border-primary/50'
+            }`}
+          >
+            <div className={`w-10 h-10 ${method.color} rounded-lg flex items-center justify-center mb-2 mx-auto`}>
+              <method.icon className="h-5 w-5 text-white" />
             </div>
-            <div className="space-y-2">
-              <Label>CVV</Label>
-              <Input placeholder="123" type="password" />
-            </div>
+            <p className="font-medium text-sm">{method.name}</p>
+          </button>
+        ))}
+      </div>
+      
+      {selectedMethod && (
+        <div className="space-y-4">
+          <div>
+            <Label>Numero de telephone</Label>
+            <Input 
+              placeholder="+225 XX XX XX XX XX" 
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="mt-1"
+            />
           </div>
+          <Button onClick={handlePayment} className="w-full" disabled={!phone}>
+            Payer 5 000 FCFA
+          </Button>
         </div>
       )}
-
-      <Button 
-        className="w-full" 
-        disabled={!selectedMethod || (!phone && selectedMethod !== "bank" && selectedMethod !== "card")}
-        onClick={handlePayment}
-      >
-        <Wallet className="h-4 w-4 mr-2" />
-        Payer 2 000 FCFA
-      </Button>
-
-      <p className="text-xs text-muted-foreground text-center">
-        Paiement securise. Votre recu sera envoye par email.
-      </p>
     </div>
   )
 }
 
 export default function MemberDashboard() {
-  const [activeTab, setActiveTab] = useState("profile")
-  const [isEditing, setIsEditing] = useState(false)
-  const [profileData, setProfileData] = useState(memberData)
-  const [newFilm, setNewFilm] = useState({ title: "", year: "", role: "" })
-  const [paymentOpen, setPaymentOpen] = useState(false)
+  const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const workPhotoInputRef = useRef<HTMLInputElement>(null)
+  
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [member, setMember] = useState<MemberData | null>(null)
+  const [filmography, setFilmography] = useState<FilmographyItem[]>([])
+  const [activeTab, setActiveTab] = useState("profile")
+  const [photoError, setPhotoError] = useState("")
+  
+  // Form states
+  const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
+    phone: "",
+    profession: "",
+    experience_years: 0,
+    birth_date: "",
+    birth_place: "",
+    biography: "",
+    availability: "available"
+  })
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
+  const [workPhotos, setWorkPhotos] = useState<string[]>([])
+  
+  // New filmography form
+  const [newFilm, setNewFilm] = useState<FilmographyItem>({
+    film_title: "",
+    film_format: "",
+    episode_count: undefined,
+    production_company: "",
+    release_year: new Date().getFullYear(),
+    role: ""
+  })
+  const [showFilmForm, setShowFilmForm] = useState(false)
 
-  const updateProfile = (field: string, value: string) => {
-    setProfileData(prev => ({ ...prev, [field]: value }))
-  }
-
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        updateProfile("photo", reader.result as string)
+  // Fetch member data on mount
+  useEffect(() => {
+    const fetchMemberData = async () => {
+      const supabase = createClient()
+      
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        router.push('/connexion')
+        return
       }
-      reader.readAsDataURL(file)
-    }
-  }
 
-  const handleWorkPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setProfileData(prev => ({
-          ...prev,
-          workPhotos: [...prev.workPhotos, reader.result as string]
-        }))
+      // Fetch member data
+      const { data: memberData, error } = await supabase
+        .from('members')
+        .select('*')
+        .eq('email', user.email)
+        .single()
+
+      if (error || !memberData) {
+        console.error("Error fetching member:", error)
+        router.push('/connexion')
+        return
       }
-      reader.readAsDataURL(file)
+
+      setMember(memberData)
+      setFormData({
+        first_name: memberData.first_name || "",
+        last_name: memberData.last_name || "",
+        phone: memberData.phone || "",
+        profession: memberData.profession || "",
+        experience_years: memberData.experience_years || 0,
+        birth_date: memberData.birth_date || "",
+        birth_place: memberData.birth_place || "",
+        biography: memberData.biography || "",
+        availability: memberData.availability || "available"
+      })
+      setProfilePhoto(memberData.profile_photo)
+      setWorkPhotos(memberData.work_photos || [])
+
+      // Fetch filmography
+      const { data: filmoData } = await supabase
+        .from('member_filmography')
+        .select('*')
+        .eq('member_id', memberData.id)
+        .order('release_year', { ascending: false })
+
+      if (filmoData) {
+        setFilmography(filmoData)
+      }
+
+      setLoading(false)
     }
+
+    fetchMemberData()
+  }, [router])
+
+  // Handle profile photo upload
+  const handleProfilePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setPhotoError("")
+
+    // Check file type
+    if (!file.type.includes('jpeg') && !file.type.includes('jpg')) {
+      setPhotoError("Seuls les fichiers JPEG sont acceptes")
+      return
+    }
+
+    // Check file size (1MB max)
+    if (file.size > 1 * 1024 * 1024) {
+      setPhotoError("La photo doit faire moins de 1 Mo")
+      return
+    }
+
+    // Convert to base64 for preview (in production, upload to storage)
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setProfilePhoto(reader.result as string)
+    }
+    reader.readAsDataURL(file)
   }
 
+  // Handle work photo upload
+  const handleWorkPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setPhotoError("")
+
+    // Check max photos (2)
+    if (workPhotos.length >= 2) {
+      setPhotoError("Maximum 2 photos de travail autorisees")
+      return
+    }
+
+    // Check file type
+    if (!file.type.includes('jpeg') && !file.type.includes('jpg')) {
+      setPhotoError("Seuls les fichiers JPEG sont acceptes")
+      return
+    }
+
+    // Check file size (1MB max)
+    if (file.size > 1 * 1024 * 1024) {
+      setPhotoError("La photo doit faire moins de 1 Mo")
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setWorkPhotos([...workPhotos, reader.result as string])
+    }
+    reader.readAsDataURL(file)
+  }
+
+  // Remove work photo
   const removeWorkPhoto = (index: number) => {
-    setProfileData(prev => ({
-      ...prev,
-      workPhotos: prev.workPhotos.filter((_, i) => i !== index)
-    }))
+    setWorkPhotos(workPhotos.filter((_, i) => i !== index))
   }
 
-  const addFilmography = () => {
-    if (newFilm.title && newFilm.year && newFilm.role) {
-      setProfileData(prev => ({
-        ...prev,
-        filmography: [...prev.filmography, newFilm]
-      }))
-      setNewFilm({ title: "", year: "", role: "" })
+  // Save profile
+  const handleSaveProfile = async () => {
+    if (!member) return
+    
+    setSaving(true)
+    const supabase = createClient()
+
+    const { error } = await supabase
+      .from('members')
+      .update({
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
+        profession: formData.profession,
+        experience_years: formData.experience_years,
+        birth_date: formData.birth_date || null,
+        birth_place: formData.birth_place || null,
+        biography: formData.biography,
+        availability: formData.availability,
+        profile_photo: profilePhoto,
+        work_photos: workPhotos,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', member.id)
+
+    if (error) {
+      console.error("Error saving:", error)
+      alert("Erreur lors de la sauvegarde")
+    } else {
+      alert("Profil sauvegarde avec succes ! Vos informations sont maintenant visibles dans l'annuaire.")
+      // Refresh member data
+      setMember({
+        ...member,
+        ...formData,
+        profile_photo: profilePhoto,
+        work_photos: workPhotos
+      })
+    }
+    
+    setSaving(false)
+  }
+
+  // Add filmography item
+  const handleAddFilm = async () => {
+    if (!member || !newFilm.film_title || !newFilm.film_format || !newFilm.role) return
+
+    const supabase = createClient()
+
+    const { data, error } = await supabase
+      .from('member_filmography')
+      .insert({
+        member_id: member.id,
+        film_title: newFilm.film_title,
+        film_format: newFilm.film_format,
+        episode_count: newFilm.episode_count,
+        production_company: newFilm.production_company,
+        release_year: newFilm.release_year,
+        role: newFilm.role
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Error adding film:", error)
+      alert("Erreur lors de l'ajout")
+    } else if (data) {
+      setFilmography([data, ...filmography])
+      setNewFilm({
+        film_title: "",
+        film_format: "",
+        episode_count: undefined,
+        production_company: "",
+        release_year: new Date().getFullYear(),
+        role: ""
+      })
+      setShowFilmForm(false)
     }
   }
 
-  const removeFilmography = (index: number) => {
-    setProfileData(prev => ({
-      ...prev,
-      filmography: prev.filmography.filter((_, i) => i !== index)
-    }))
-  }
+  // Delete filmography item
+  const handleDeleteFilm = async (filmId: string) => {
+    const supabase = createClient()
+    
+    const { error } = await supabase
+      .from('member_filmography')
+      .delete()
+      .eq('id', filmId)
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "paid":
-        return <Badge className="bg-green-500/20 text-green-600 border-green-500/30"><CheckCircle className="h-3 w-3 mr-1" /> À jour</Badge>
-      case "pending":
-        return <Badge className="bg-amber-500/20 text-amber-600 border-amber-500/30"><Clock className="h-3 w-3 mr-1" /> En attente</Badge>
-      case "overdue":
-        return <Badge className="bg-red-500/20 text-red-600 border-red-500/30"><AlertCircle className="h-3 w-3 mr-1" /> En retard</Badge>
-      default:
-        return null
+    if (!error) {
+      setFilmography(filmography.filter(f => f.id !== filmId))
     }
   }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (!member) {
+    return null
+  }
+
+  const memberCategory = member.experience_years >= 10 ? "A" : member.experience_years >= 5 ? "B" : "C"
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="pt-8 px-4 lg:px-20 py-12">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
-                Bienvenue, {profileData.prenoms} !
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                Gérez votre profil et votre carte professionnelle
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Cotisation</p>
-                {getStatusBadge(profileData.cotisationStatus)}
-              </div>
-              <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-green-600 hover:bg-green-700">
-                    <Wallet className="h-4 w-4 mr-2" />
-                    Payer ma cotisation
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Paiement de cotisation</DialogTitle>
-                    <DialogDescription>
-                      Reglez votre cotisation mensuelle de 2 000 FCFA
-                    </DialogDescription>
-                  </DialogHeader>
-                  <PaymentDialog 
-                    memberName={`${profileData.prenoms} ${profileData.nom}`} 
-                    memberId={profileData.id} 
-                  />
-                </DialogContent>
-              </Dialog>
-              <Button variant="outline" size="icon">
-                <Bell className="h-4 w-4" />
-              </Button>
-            </div>
+      <main className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Espace Membre</h1>
+            <p className="text-muted-foreground">Bienvenue, {formData.first_name} {formData.last_name}</p>
           </div>
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="text-primary border-primary">
+              ID: {member.member_id || 'N/A'}
+            </Badge>
+            <Badge className={member.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}>
+              {member.status === 'active' ? 'Actif' : 'En attente'}
+            </Badge>
+          </div>
+        </div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid grid-cols-4 w-full max-w-lg">
-              <TabsTrigger value="profile" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                <span className="hidden sm:inline">Profil</span>
-              </TabsTrigger>
-              <TabsTrigger value="card" className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                <span className="hidden sm:inline">Carte</span>
-              </TabsTrigger>
-              <TabsTrigger value="cv" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                <span className="hidden sm:inline">CV</span>
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                <span className="hidden sm:inline">Paramètres</span>
-              </TabsTrigger>
-            </TabsList>
+        <div className="grid lg:grid-cols-[1fr_320px] gap-8">
+          {/* Main Content */}
+          <div className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid grid-cols-4 w-full">
+                <TabsTrigger value="profile" className="text-xs md:text-sm">
+                  <User className="h-4 w-4 mr-1 md:mr-2" />
+                  <span className="hidden md:inline">Profil</span>
+                </TabsTrigger>
+                <TabsTrigger value="cv" className="text-xs md:text-sm">
+                  <FileText className="h-4 w-4 mr-1 md:mr-2" />
+                  <span className="hidden md:inline">CV</span>
+                </TabsTrigger>
+                <TabsTrigger value="payments" className="text-xs md:text-sm">
+                  <CreditCard className="h-4 w-4 mr-1 md:mr-2" />
+                  <span className="hidden md:inline">Cotisation</span>
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="text-xs md:text-sm">
+                  <Settings className="h-4 w-4 mr-1 md:mr-2" />
+                  <span className="hidden md:inline">Paramètres</span>
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Profile Tab */}
-            <TabsContent value="profile" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Photo & Basic Info */}
-                <Card className="lg:col-span-1">
+              {/* Profile Tab */}
+              <TabsContent value="profile" className="space-y-6 mt-6">
+                {photoError && (
+                  <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-3 rounded-lg flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    {photoError}
+                  </div>
+                )}
+
+                {/* Photo de profil */}
+                <Card>
                   <CardHeader>
-                    <CardTitle>Photo de profil</CardTitle>
-                    <CardDescription>Cette photo apparaîtra sur votre carte et dans l&apos;annuaire</CardDescription>
+                    <CardTitle className="flex items-center gap-2">
+                      <Camera className="h-5 w-5" />
+                      Photo de profil
+                    </CardTitle>
+                    <CardDescription>
+                      Format JPEG uniquement, maximum 1 Mo
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="flex flex-col items-center gap-4">
-                    <div className="relative">
-                      <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-primary/20">
-                        {profileData.photo ? (
-<Image
-  src={profileData.photo}
-  alt={profileData.prenoms}
-  width={160}
-  height={160}
-  className="object-cover"
-  priority
-/>
+                  <CardContent>
+                    <div className="flex items-center gap-6">
+                      <div className="relative w-24 h-24 rounded-full overflow-hidden bg-secondary">
+                        {profilePhoto ? (
+                          <Image
+                            src={profilePhoto}
+                            alt="Photo de profil"
+                            fill
+                            className="object-cover"
+                          />
                         ) : (
-                          <div className="w-full h-full bg-muted flex items-center justify-center">
-                            <User className="h-16 w-16 text-muted-foreground" />
+                          <div className="w-full h-full flex items-center justify-center">
+                            <User className="h-12 w-12 text-muted-foreground" />
                           </div>
                         )}
                       </div>
-                      <Button
-                        size="icon"
-                        className="absolute bottom-0 right-0 rounded-full"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <Camera className="h-4 w-4" />
-                      </Button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handlePhotoUpload}
-                      />
-                    </div>
-                    <div className="text-center">
-                      <h3 className="font-semibold text-lg">{profileData.prenoms} {profileData.nom}</h3>
-                      <p className="text-primary">{profileData.fonction}</p>
-                      <p className="text-sm text-muted-foreground">ID: {profileData.id}</p>
+                      <div className="space-y-2">
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleProfilePhotoChange}
+                          accept="image/jpeg,image/jpg"
+                          className="hidden"
+                        />
+                        <Button 
+                          variant="outline" 
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Changer la photo
+                        </Button>
+                        <p className="text-xs text-muted-foreground">JPEG, max 1 Mo</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Profile Form */}
-                <Card className="lg:col-span-2">
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle>Informations personnelles</CardTitle>
-                      <CardDescription>Ces informations sont visibles sur votre profil public</CardDescription>
-                    </div>
-                    <Button 
-                      variant={isEditing ? "default" : "outline"} 
-                      onClick={() => setIsEditing(!isEditing)}
-                    >
-                      {isEditing ? <><Save className="h-4 w-4 mr-2" /> Enregistrer</> : "Modifier"}
-                    </Button>
+                {/* Informations personnelles */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Informations personnelles</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                      <div>
                         <Label>Nom</Label>
-                        <Input
-                          value={profileData.nom}
-                          onChange={(e) => updateProfile("nom", e.target.value)}
-                          disabled={!isEditing}
+                        <Input 
+                          value={formData.last_name}
+                          onChange={(e) => setFormData({...formData, last_name: e.target.value})}
+                          className="mt-1"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Prénoms</Label>
-                        <Input
-                          value={profileData.prenoms}
-                          onChange={(e) => updateProfile("prenoms", e.target.value)}
-                          disabled={!isEditing}
+                      <div>
+                        <Label>Prenoms</Label>
+                        <Input 
+                          value={formData.first_name}
+                          onChange={(e) => setFormData({...formData, first_name: e.target.value})}
+                          className="mt-1"
                         />
                       </div>
                     </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Email</Label>
-                        <Input
-                          type="email"
-                          value={profileData.email}
-                          onChange={(e) => updateProfile("email", e.target.value)}
-                          disabled={!isEditing}
+                      <div>
+                        <Label className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          Date de naissance
+                        </Label>
+                        <Input 
+                          type="date"
+                          value={formData.birth_date}
+                          onChange={(e) => setFormData({...formData, birth_date: e.target.value})}
+                          className="mt-1"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Téléphone</Label>
-                        <Input
-                          value={profileData.phone}
-                          onChange={(e) => updateProfile("phone", e.target.value)}
-                          disabled={!isEditing}
+                      <div>
+                        <Label className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4" />
+                          Lieu de naissance
+                        </Label>
+                        <Input 
+                          value={formData.birth_place}
+                          onChange={(e) => setFormData({...formData, birth_place: e.target.value})}
+                          placeholder="Ex: Abidjan"
+                          className="mt-1"
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Disponibilité</Label>
-                      <Select
-                        value={profileData.disponibilite}
-                        onValueChange={(value) => updateProfile("disponibilite", value)}
-                        disabled={!isEditing}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Telephone</Label>
+                        <Input 
+                          value={formData.phone}
+                          onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                          placeholder="+225 XX XX XX XX XX"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label>Email</Label>
+                        <Input 
+                          value={member.email}
+                          disabled
+                          className="mt-1 bg-secondary/50"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Profession / Metier</Label>
+                        <Input 
+                          value={formData.profession}
+                          onChange={(e) => setFormData({...formData, profession: e.target.value})}
+                          placeholder="Ex: Chef Operateur"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label>Annees d&apos;experience</Label>
+                        <Input 
+                          type="number"
+                          value={formData.experience_years}
+                          onChange={(e) => setFormData({...formData, experience_years: parseInt(e.target.value) || 0})}
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label>Disponibilite</Label>
+                      <Select 
+                        value={formData.availability} 
+                        onValueChange={(value) => setFormData({...formData, availability: value})}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="mt-1">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="available">Disponible</SelectItem>
-                          <SelectItem value="filming">En Tournage</SelectItem>
-                          <SelectItem value="unavailable">Indisponible</SelectItem>
+                          <SelectItem value="filming">En tournage</SelectItem>
+                          <SelectItem value="unavailable">Non disponible</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
+
+                    <div>
                       <Label>Biographie</Label>
-                      <Textarea
-                        value={profileData.biography}
-                        onChange={(e) => updateProfile("biography", e.target.value)}
-                        disabled={!isEditing}
-                        rows={4}
+                      <Textarea 
+                        value={formData.biography}
+                        onChange={(e) => setFormData({...formData, biography: e.target.value})}
+                        placeholder="Presentez-vous en quelques lignes..."
+                        className="mt-1 min-h-[100px]"
                       />
                     </div>
                   </CardContent>
                 </Card>
-              </div>
 
-              {/* Work Photos */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ImageIcon className="h-5 w-5" />
-                    Photos de travail
-                  </CardTitle>
-                  <CardDescription>
-                    Ajoutez des photos de vous en conditions de travail. Elles apparaîtront sur votre profil public.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {profileData.workPhotos.map((photo, index) => (
-                      <div key={index} className="relative group aspect-video rounded-lg overflow-hidden">
-                        <Image
-                          src={photo}
-                          alt={`Photo de travail ${index + 1}`}
-                          fill
-                          className="object-cover"
-                        />
-                        <Button
-                          size="icon"
-                          variant="destructive"
-                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                          onClick={() => removeWorkPhoto(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => workPhotoInputRef.current?.click()}
-                      className="aspect-video rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-                    >
-                      <Upload className="h-6 w-6" />
-                      <span className="text-sm">Ajouter</span>
-                    </button>
-                    <input
-                      ref={workPhotoInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleWorkPhotoUpload}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Card Tab */}
-            <TabsContent value="card" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Carte Professionnelle Digitale</CardTitle>
-                  <CardDescription>
-                    Votre carte professionnelle unique avec QR code. Utilisez-la pour le pointage lors des événements 
-                    et pour bénéficier des avantages partenaires.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center py-8">
-                  <ProfessionalCard
-                    member={{
-                      id: profileData.id,
-                      name: `${profileData.prenoms} ${profileData.nom}`,
-                      role: profileData.fonction,
-                      category: profileData.category,
-                      title: profileData.title,
-                      photo: profileData.photo
-                    }}
-                    size="lg"
-                  />
-                </CardContent>
-              </Card>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Photos de travail */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Utilisations du QR Code</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Pointage de présence</p>
-                        <p className="text-sm text-muted-foreground">Réunions, AG, événements RETECHCI</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                        <CreditCard className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Avantages partenaires</p>
-                        <p className="text-sm text-muted-foreground">Bons d&apos;achat, réductions, assurances</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0">
-                        <User className="h-4 w-4 text-purple-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Vérification d&apos;identité</p>
-                        <p className="text-sm text-muted-foreground">Accès plateaux, locations matériel</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Historique des pointages</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <ImageIcon className="h-5 w-5" />
+                      Photos de travail
+                    </CardTitle>
+                    <CardDescription>
+                      Maximum 2 photos, format JPEG, max 1 Mo chacune
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center py-2 border-b border-border">
-                        <div>
-                          <p className="font-medium">AG Trimestrielle</p>
-                          <p className="text-xs text-muted-foreground">15 Mars 2024</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {workPhotos.map((photo, index) => (
+                        <div key={index} className="relative aspect-video rounded-lg overflow-hidden bg-secondary group">
+                          <Image
+                            src={photo}
+                            alt={`Photo de travail ${index + 1}`}
+                            fill
+                            className="object-cover"
+                          />
+                          <button
+                            onClick={() => removeWorkPhoto(index)}
+                            className="absolute top-2 right-2 p-1 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 className="h-4 w-4 text-white" />
+                          </button>
                         </div>
-                        <Badge variant="secondary">Présent</Badge>
-                      </div>
-                      <div className="flex justify-between items-center py-2 border-b border-border">
-                        <div>
-                          <p className="font-medium">Réunion Bureau</p>
-                          <p className="text-xs text-muted-foreground">28 Février 2024</p>
+                      ))}
+                      {workPhotos.length < 2 && (
+                        <button
+                          onClick={() => workPhotoInputRef.current?.click()}
+                          className="aspect-video rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-2 transition-colors"
+                        >
+                          <Plus className="h-8 w-8 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">Ajouter</span>
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      ref={workPhotoInputRef}
+                      onChange={handleWorkPhotoChange}
+                      accept="image/jpeg,image/jpg"
+                      className="hidden"
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Save Button */}
+                <Button 
+                  onClick={handleSaveProfile} 
+                  className="w-full"
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Sauvegarde en cours...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Sauvegarder le profil
+                    </>
+                  )}
+                </Button>
+              </TabsContent>
+
+              {/* CV / Filmography Tab */}
+              <TabsContent value="cv" className="space-y-6 mt-6">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Filmographie</CardTitle>
+                      <CardDescription>
+                        Ajoutez vos experiences cinematographiques
+                      </CardDescription>
+                    </div>
+                    <Button onClick={() => setShowFilmForm(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Ajouter un film
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Add Film Form */}
+                    {showFilmForm && (
+                      <div className="bg-secondary/30 rounded-xl p-4 mb-6 space-y-4">
+                        <h4 className="font-semibold">Nouveau film / Serie</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label>Nom du film / Serie *</Label>
+                            <Input 
+                              value={newFilm.film_title}
+                              onChange={(e) => setNewFilm({...newFilm, film_title: e.target.value})}
+                              placeholder="Ex: La Vie en Rose"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label>Format *</Label>
+                            <Select 
+                              value={newFilm.film_format}
+                              onValueChange={(value) => setNewFilm({...newFilm, film_format: value})}
+                            >
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Selectionnez..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {filmFormats.map(format => (
+                                  <SelectItem key={format.value} value={format.value}>
+                                    {format.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                        <Badge variant="secondary">Présent</Badge>
-                      </div>
-                      <div className="flex justify-between items-center py-2">
-                        <div>
-                          <p className="font-medium">Formation DaVinci</p>
-                          <p className="text-xs text-muted-foreground">10 Février 2024</p>
+
+                        {(newFilm.film_format === 'serie_fiction' || newFilm.film_format === 'serie_doc') && (
+                          <div>
+                            <Label>Nombre d&apos;episodes</Label>
+                            <Input 
+                              type="number"
+                              value={newFilm.episode_count || ''}
+                              onChange={(e) => setNewFilm({...newFilm, episode_count: parseInt(e.target.value) || undefined})}
+                              placeholder="Ex: 26"
+                              className="mt-1"
+                            />
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label>Production</Label>
+                            <Input 
+                              value={newFilm.production_company}
+                              onChange={(e) => setNewFilm({...newFilm, production_company: e.target.value})}
+                              placeholder="Nom de la societe de production"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label>Annee</Label>
+                            <Input 
+                              type="number"
+                              value={newFilm.release_year}
+                              onChange={(e) => setNewFilm({...newFilm, release_year: parseInt(e.target.value) || new Date().getFullYear()})}
+                              className="mt-1"
+                            />
+                          </div>
                         </div>
-                        <Badge variant="secondary">Présent</Badge>
+
+                        <div>
+                          <Label>Votre poste / Role *</Label>
+                          <Input 
+                            value={newFilm.role}
+                            onChange={(e) => setNewFilm({...newFilm, role: e.target.value})}
+                            placeholder="Ex: Chef Operateur, Monteur Principal, etc."
+                            className="mt-1"
+                          />
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button onClick={handleAddFilm} disabled={!newFilm.film_title || !newFilm.film_format || !newFilm.role}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Ajouter
+                          </Button>
+                          <Button variant="outline" onClick={() => setShowFilmForm(false)}>
+                            Annuler
+                          </Button>
+                        </div>
                       </div>
+                    )}
+
+                    {/* Filmography List */}
+                    {filmography.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>Aucune filmographie ajoutee</p>
+                        <p className="text-sm">Cliquez sur &quot;Ajouter un film&quot; pour commencer</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {filmography.map((film) => (
+                          <div 
+                            key={film.id} 
+                            className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg"
+                          >
+                            <div>
+                              <h4 className="font-semibold">{film.film_title}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {filmFormats.find(f => f.value === film.film_format)?.label || film.film_format}
+                                {film.episode_count && ` (${film.episode_count} episodes)`}
+                                {' '}&bull;{' '}{film.release_year}
+                              </p>
+                              <p className="text-sm text-primary">{film.role}</p>
+                              {film.production_company && (
+                                <p className="text-xs text-muted-foreground">Production: {film.production_company}</p>
+                              )}
+                            </div>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => film.id && handleDeleteFilm(film.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Payments Tab */}
+              <TabsContent value="payments" className="space-y-6 mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Cotisation mensuelle</CardTitle>
+                    <CardDescription>
+                      5 000 FCFA / mois - Votre cotisation soutient le reseau
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg">
+                      <div>
+                        <p className="font-medium">Statut actuel</p>
+                        <p className="text-sm text-muted-foreground">
+                          Membre depuis {new Date(member.created_at).toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                      <Badge className="bg-green-500/20 text-green-400">
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        A jour
+                      </Badge>
+                    </div>
+
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button className="w-full">
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Payer ma cotisation
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Paiement cotisation</DialogTitle>
+                          <DialogDescription>
+                            Cotisation mensuelle RETECHCI - 5 000 FCFA
+                          </DialogDescription>
+                        </DialogHeader>
+                        <PaymentDialog 
+                          memberName={`${formData.first_name} ${formData.last_name}`}
+                          memberId={member.member_id || member.id}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Settings Tab */}
+              <TabsContent value="settings" className="space-y-6 mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Notifications</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">Rappels de cotisation</p>
+                        <p className="text-sm text-muted-foreground">Recevoir des rappels par email</p>
+                      </div>
+                      <input type="checkbox" defaultChecked className="h-5 w-5" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">Nouvelles opportunites</p>
+                        <p className="text-sm text-muted-foreground">Etre informe des offres d&apos;emploi</p>
+                      </div>
+                      <input type="checkbox" defaultChecked className="h-5 w-5" />
                     </div>
                   </CardContent>
                 </Card>
-              </div>
-            </TabsContent>
+              </TabsContent>
+            </Tabs>
+          </div>
 
-            {/* CV Tab */}
-            <TabsContent value="cv" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Filmographie</CardTitle>
-                  <CardDescription>
-                    Votre filmographie sera visible sur votre profil public et dans la section &quot;Talents à la Une&quot;
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {profileData.filmography.map((film, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                      <div>
-                        <h4 className="font-medium">{film.title}</h4>
-                        <p className="text-sm text-muted-foreground">{film.role} - {film.year}</p>
-                      </div>
-                      <Button variant="ghost" size="icon" onClick={() => removeFilmography(index)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  ))}
-
-                  <div className="border-t border-border pt-4">
-                    <h4 className="font-medium mb-3">Ajouter un film</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                      <Input
-                        placeholder="Titre du film"
-                        value={newFilm.title}
-                        onChange={(e) => setNewFilm(prev => ({ ...prev, title: e.target.value }))}
-                      />
-                      <Input
-                        placeholder="Année"
-                        value={newFilm.year}
-                        onChange={(e) => setNewFilm(prev => ({ ...prev, year: e.target.value }))}
-                      />
-                      <Input
-                        placeholder="Votre rôle"
-                        value={newFilm.role}
-                        onChange={(e) => setNewFilm(prev => ({ ...prev, role: e.target.value }))}
-                      />
-                      <Button onClick={addFilmography}>
-                        <Plus className="h-4 w-4 mr-2" /> Ajouter
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>CV / Document</CardTitle>
-                  <CardDescription>Téléchargez votre CV au format PDF</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
-                    <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-                    <p className="font-medium">Glissez votre CV ici ou cliquez pour parcourir</p>
-                    <p className="text-sm text-muted-foreground mt-1">PDF, DOC ou DOCX (max 10 MB)</p>
-                    <Button variant="outline" className="mt-4">
-                      Choisir un fichier
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Settings Tab */}
-            <TabsContent value="settings" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Notifications</CardTitle>
-                  <CardDescription>Gérez vos préférences de notification</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Rappels de cotisation</p>
-                      <p className="text-sm text-muted-foreground">Recevez un rappel avant l&apos;échéance</p>
-                    </div>
-                    <input type="checkbox" defaultChecked className="toggle" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Événements RETECHCI</p>
-                      <p className="text-sm text-muted-foreground">Réunions, AG, formations</p>
-                    </div>
-                    <input type="checkbox" defaultChecked className="toggle" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Opportunités de travail</p>
-                      <p className="text-sm text-muted-foreground">Nouvelles offres correspondant à votre profil</p>
-                    </div>
-                    <input type="checkbox" defaultChecked className="toggle" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Cotisation</CardTitle>
-                  <CardDescription>Informations sur votre cotisation</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                    <div>
-                      <p className="font-medium">Cotisation mensuelle</p>
-                      <p className="text-2xl font-bold text-foreground">2 000 FCFA</p>
-                      <p className="text-sm text-muted-foreground">Prochaine échéance : 1er Avril 2024</p>
-                    </div>
-                    {getStatusBadge(profileData.cotisationStatus)}
-                  </div>
-                  <Button className="w-full mt-4">
-                    Payer ma cotisation
-                  </Button>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          {/* Sidebar - Member Card */}
+          <div className="space-y-6">
+            <Card className="sticky top-24">
+              <CardHeader>
+                <CardTitle className="text-lg">Ma carte professionnelle</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProfessionalCard
+                  name={`${formData.first_name} ${formData.last_name}`}
+                  role={formData.profession || "Technicien"}
+                  title={member.role === 'director' ? 'Directeur Executif' : undefined}
+                  category={memberCategory}
+                  memberId={member.member_id || 'N/A'}
+                  image={profilePhoto || undefined}
+                />
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   )
