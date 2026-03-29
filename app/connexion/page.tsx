@@ -217,13 +217,7 @@ export default function ConnexionPage() {
               </p>
             </div>
             
-            <div className="mt-4 pt-4 border-t border-border">
-              <Link href="/admin" className="block">
-                <Button variant="outline" className="w-full text-sm">
-                  Accès Administration
-                </Button>
-              </Link>
-            </div>
+          
             
             <div className="mt-6 pt-6 border-t border-border">
               <p className="text-xs text-muted-foreground text-center">
