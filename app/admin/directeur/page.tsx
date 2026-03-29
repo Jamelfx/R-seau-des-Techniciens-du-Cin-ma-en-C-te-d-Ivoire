@@ -291,42 +291,62 @@ export default function DirectorDashboard() {
   }
 
   // Invite new member directly
-  const handleInviteMember = async () => {
-    if (!inviteEmail) return
-    
-    setActionLoading('invite')
-    try {
-      // Get the current site URL
-      const siteUrl = window.location.origin
-      
-      // Use Supabase Auth to send magic link invitation
-      const { error } = await supabase.auth.signInWithOtp({
-        email: inviteEmail,
-        options: {
-          emailRedirectTo: `${siteUrl}/adhesion?invited=true&email=${encodeURIComponent(inviteEmail)}`,
-          data: {
-            invited_by: 'directeur',
-            invitation_date: new Date().toISOString()
-          }
-        }
-      })
-      
-      if (error) {
-        if (error.message.includes('rate limit')) {
-          alert("Trop de demandes. Veuillez attendre quelques minutes avant de renvoyer.")
-        } else {
-          throw error
-        }
-      } else {
-        alert(`Email d'invitation envoyé à ${inviteEmail}.\n\nLe destinataire recevra un lien pour rejoindre le réseau RETECHCI.`)
-        setInviteEmail("")
-      }
-    } catch (error) {
-      console.error("Error:", error)
-      alert("Erreur lors de l'envoi de l'invitation. Vérifiez que l'email est valide.")
+  // REMPLACE la fonction handleInviteMember dans app/admin/directeur/page.tsx
+// Trouve "const handleInviteMember = async () => {" et remplace tout le bloc
+
+const handleInviteMember = async () => {
+  if (!inviteEmail) return
+
+  setActionLoading('invite')
+  try {
+    const siteUrl = window.location.origin
+
+    // ÉTAPE 1 — Enregistrer l'email dans la table invited_members
+    // Cela permet de vérifier plus tard que la personne est bien invitée
+    const { error: insertError } = await supabase
+      .from('invited_members')
+      .upsert({ 
+        email: inviteEmail.toLowerCase().trim(),
+        invited_by: 'directeur',
+        invited_at: new Date().toISOString(),
+        used: false
+      }, { onConflict: 'email' })
+
+    if (insertError) {
+      console.error("Erreur enregistrement invitation:", insertError)
+      alert("Erreur lors de l'enregistrement de l'invitation.")
+      setActionLoading(null)
+      return
     }
-    setActionLoading(null)
+
+    // ÉTAPE 2 — Envoyer le magic link d'invitation via Supabase
+    const { error } = await supabase.auth.signInWithOtp({
+      email: inviteEmail.toLowerCase().trim(),
+      options: {
+        emailRedirectTo: `${siteUrl}/auth/callback?invited=true`,
+        data: {
+          invited_by: 'directeur',
+          invitation_date: new Date().toISOString()
+        }
+      }
+    })
+
+    if (error) {
+      if (error.message.includes('rate limit')) {
+        alert("Trop de demandes. Veuillez attendre quelques minutes avant de renvoyer.")
+      } else {
+        throw error
+      }
+    } else {
+      alert(`✅ Invitation envoyée à ${inviteEmail}.\n\nLe membre recevra un lien sécurisé pour créer son espace RETECHCI.`)
+      setInviteEmail("")
+    }
+  } catch (error) {
+    console.error("Error:", error)
+    alert("Erreur lors de l'envoi de l'invitation. Vérifiez que l'email est valide.")
   }
+  setActionLoading(null)
+}
 
   // Create new admin
   const handleCreateAdmin = async () => {
