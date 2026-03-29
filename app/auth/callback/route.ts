@@ -22,9 +22,10 @@ export async function GET(request: NextRequest) {
           },
           setAll(cookiesToSet) {
             try {
-              cookiesToSet.forEach(({ name, value, options }) =>
+              cookiesToSet.forEach(({ name, value, options }) => {
                 cookieStore.set(name, value, options)
-            } catch {
+              })
+            } catch (e) {
               // Ignoré dans les Server Components
             }
           },
@@ -37,9 +38,7 @@ export async function GET(request: NextRequest) {
     if (!error && data.user) {
       const userEmail = data.user.email?.toLowerCase().trim()
 
-      // ✅ CAS 1 — Connexion via lien d'invitation du Directeur
       if (invited === 'true') {
-        // Vérifier que cet email est bien dans la liste des invités
         const { data: invitedData } = await supabase
           .from('invited_members')
           .select('id, used')
@@ -47,17 +46,14 @@ export async function GET(request: NextRequest) {
           .single()
 
         if (!invitedData) {
-          // Email non invité → accès refusé
           return NextResponse.redirect(`${origin}/acces-refuse`)
         }
 
-        // Marquer l'invitation comme utilisée
         await supabase
           .from('invited_members')
           .update({ used: true })
           .eq('email', userEmail)
 
-        // Créer ou mettre à jour le membre dans la table members
         const { data: existingMember } = await supabase
           .from('members')
           .select('id')
@@ -65,7 +61,6 @@ export async function GET(request: NextRequest) {
           .single()
 
         if (!existingMember) {
-          // Créer le profil membre de base
           const memberId = `CI-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
           await supabase.from('members').insert({
             member_id: memberId,
@@ -76,10 +71,9 @@ export async function GET(request: NextRequest) {
             profile_photo: data.user.user_metadata?.avatar_url || null,
             status: 'active',
             role: 'member',
-            adhesion_paid: true, // Invité directement par le Directeur
+            adhesion_paid: true,
           })
         } else {
-          // Mettre à jour l'auth_user_id si le membre existe déjà
           await supabase
             .from('members')
             .update({ auth_user_id: data.user.id, status: 'active' })
@@ -89,17 +83,13 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(`${origin}/membre/dashboard`)
       }
 
-      // ✅ CAS 2 — Connexion normale (email + mot de passe ou Google)
-      // Vérifier le rôle du membre pour rediriger au bon endroit
       const { data: memberData } = await supabase
         .from('members')
         .select('role, status')
         .eq('auth_user_id', data.user.id)
         .single()
 
-      // Si le membre n'existe pas dans la table → accès refusé
       if (!memberData) {
-        // Vérifier par email comme fallback
         const { data: memberByEmail } = await supabase
           .from('members')
           .select('role, status')
@@ -111,16 +101,13 @@ export async function GET(request: NextRequest) {
           return NextResponse.redirect(`${origin}/acces-refuse`)
         }
 
-        const role = memberByEmail.role || 'member'
-        return NextResponse.redirect(`${origin}/${getRoleRedirect(role)}`)
+        return NextResponse.redirect(`${origin}/${getRoleRedirect(memberByEmail.role || 'member')}`)
       }
 
-      const role = memberData.role || 'member'
-      return NextResponse.redirect(`${origin}/${getRoleRedirect(role)}`)
+      return NextResponse.redirect(`${origin}/${getRoleRedirect(memberData.role || 'member')}`)
     }
   }
 
-  // En cas d'erreur → page de connexion
   return NextResponse.redirect(`${origin}/connexion?error=auth_error`)
 }
 
