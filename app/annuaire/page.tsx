@@ -75,8 +75,6 @@ interface FilmLocation {
   coordinates: { lat: number; lng: number }
 }
 
-// Sample data removed - technicians loaded from Supabase
-
 const companies: Company[] = [
   { 
     id: "1", 
@@ -245,11 +243,6 @@ function ContactDialog({ companyName, serviceName }: { companyName?: string, ser
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Contact request sent to Directeur Exécutif:", {
-      ...formData,
-      company: companyName,
-      service: serviceName
-    })
     setSubmitted(true)
   }
 
@@ -338,10 +331,6 @@ function ScoutingRequestDialog({ locationName }: { locationName: string }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Scouting request sent to Directeur Executif:", {
-      ...formData,
-      location: locationName
-    })
     setSubmitted(true)
   }
 
@@ -364,79 +353,36 @@ function ScoutingRequestDialog({ locationName }: { locationName: string }) {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="scout-name">Nom complet *</Label>
-          <Input 
-            id="scout-name" 
-            required 
-            value={formData.name} 
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
-            placeholder="Votre nom" 
-          />
+          <Input id="scout-name" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Votre nom" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="scout-email">Email *</Label>
-          <Input 
-            id="scout-email" 
-            type="email" 
-            required 
-            value={formData.email} 
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
-            placeholder="votre@email.com" 
-          />
+          <Input id="scout-email" type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="votre@email.com" />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="scout-phone">Telephone *</Label>
-          <Input 
-            id="scout-phone" 
-            type="tel"
-            required 
-            value={formData.phone} 
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })} 
-            placeholder="+225 XX XX XX XX XX" 
-          />
+          <Input id="scout-phone" type="tel" required value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+225 XX XX XX XX XX" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="scout-company">Societe de production</Label>
-          <Input 
-            id="scout-company" 
-            value={formData.company} 
-            onChange={(e) => setFormData({ ...formData, company: e.target.value })} 
-            placeholder="Nom de la societe" 
-          />
+          <Input id="scout-company" value={formData.company} onChange={(e) => setFormData({ ...formData, company: e.target.value })} placeholder="Nom de la societe" />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="scout-type">Type de projet *</Label>
-          <Input 
-            id="scout-type" 
-            required 
-            value={formData.projectType} 
-            onChange={(e) => setFormData({ ...formData, projectType: e.target.value })} 
-            placeholder="Film, Serie, Publicite..." 
-          />
+          <Input id="scout-type" required value={formData.projectType} onChange={(e) => setFormData({ ...formData, projectType: e.target.value })} placeholder="Film, Serie, Publicite..." />
         </div>
         <div className="space-y-2">
           <Label htmlFor="scout-dates">Dates souhaitees</Label>
-          <Input 
-            id="scout-dates" 
-            value={formData.dates} 
-            onChange={(e) => setFormData({ ...formData, dates: e.target.value })} 
-            placeholder="Ex: Mars 2024" 
-          />
+          <Input id="scout-dates" value={formData.dates} onChange={(e) => setFormData({ ...formData, dates: e.target.value })} placeholder="Ex: Mars 2024" />
         </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="scout-message">Description du projet *</Label>
-        <Textarea 
-          id="scout-message" 
-          required 
-          value={formData.message} 
-          onChange={(e) => setFormData({ ...formData, message: e.target.value })} 
-          placeholder="Decrivez votre projet, vos besoins specifiques pour ce decor..." 
-          rows={4} 
-        />
+        <Textarea id="scout-message" required value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} placeholder="Decrivez votre projet, vos besoins specifiques pour ce decor..." rows={4} />
       </div>
       <Button type="submit" className="w-full">Envoyer la demande de reperage</Button>
       <p className="text-xs text-muted-foreground text-center">
@@ -455,8 +401,9 @@ export default function DirectoryPage() {
   const [expandedCompanies, setExpandedCompanies] = useState<string[]>([])
   const [realTechnicians, setRealTechnicians] = useState<Technician[]>([])
   const [loadingTechnicians, setLoadingTechnicians] = useState(true)
+  const [expandedCostumes, setExpandedCostumes] = useState<string[]>([])
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
 
-  // Placeholder text based on active tab
   const searchPlaceholders = {
     technicians: "Rechercher un technicien...",
     companies: "Rechercher une société ou du matériel...",
@@ -464,31 +411,31 @@ export default function DirectoryPage() {
     locations: "Rechercher un décor..."
   }
 
- // Fetch real technicians from Supabase
+  // Fetch real technicians from Supabase — version corrigée
   useEffect(() => {
     const fetchTechnicians = async () => {
       const { createClient } = await import("@/lib/supabase/client")
       const supabase = createClient()
-      
+
       const { data, error } = await supabase
         .from('members')
         .select('id, first_name, last_name, profession, experience_years, profile_photo, availability, status')
         .eq('status', 'active')
         .order('created_at', { ascending: false })
-      
-      console.log("Membres:", data, "Erreur:", error)
-      
+
+      console.log("Membres Supabase:", data, "Erreur:", error)
+
       if (data && data.length > 0) {
         const mapped = data.map(m => ({
           id: m.id,
           name: `${m.first_name} ${m.last_name}`,
           role: m.profession || "Technicien",
-          level: (m.experience_years || 0) >= 10 ? "senior" 
-               : (m.experience_years || 0) >= 5 ? "intermediate" 
-               : "junior" as ExperienceLevel,
-          status: m.availability === "filming" ? "filming" 
+          level: ((m.experience_years || 0) >= 10 ? "senior"
+               : (m.experience_years || 0) >= 5 ? "intermediate"
+               : "junior") as ExperienceLevel,
+          status: (m.availability === "filming" ? "filming"
                 : m.availability === "unavailable" ? "unavailable"
-                : "available" as AvailabilityStatus,
+                : "available") as AvailabilityStatus,
           image: m.profile_photo || undefined
         }))
         setRealTechnicians(mapped)
@@ -497,8 +444,6 @@ export default function DirectoryPage() {
     }
     fetchTechnicians()
   }, [])
-  const [expandedCostumes, setExpandedCostumes] = useState<string[]>([])
-  const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
 
   const toggleCompanyExpand = (id: string) => {
     setExpandedCompanies(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id])
@@ -524,7 +469,6 @@ export default function DirectoryPage() {
     }
   }
 
-  // Use real technicians if available, otherwise show empty state
   const displayTechnicians = realTechnicians.length > 0 ? realTechnicians : []
   const filteredTechnicians = displayTechnicians.filter(tech =>
     tech.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -594,76 +538,77 @@ export default function DirectoryPage() {
 
         {/* Tab Content */}
         <section className="px-6 lg:px-20 py-12">
-{/* Technicians Tab */}
-  {activeTab === "technicians" && (
-  loadingTechnicians ? (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {[1, 2, 3, 4, 5, 6].map((i) => (
-        <div key={i} className="bg-card border border-border rounded-xl p-6 animate-pulse">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-14 h-14 rounded-full bg-secondary" />
-            <div className="flex-1">
-              <div className="h-4 bg-secondary rounded w-24 mb-2" />
-              <div className="h-3 bg-secondary rounded w-32" />
-            </div>
-          </div>
-          <div className="h-10 bg-secondary rounded" />
-        </div>
-      ))}
-    </div>
-  ) : filteredTechnicians.length === 0 ? (
-    <div className="text-center py-16 bg-card border border-dashed border-border rounded-xl">
-      <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
-        <Search className="h-8 w-8 text-primary" />
-      </div>
-      <h3 className="text-xl font-semibold mb-2">Bientôt disponible</h3>
-      <p className="text-muted-foreground max-w-md mx-auto mb-6">
-        Notre annuaire de techniciens est en cours de constitution. 
-        Rejoignez le réseau pour être parmi les premiers membres affichés.
-      </p>
-      <Link href="/adhesion">
-        <Button>Rejoindre le réseau</Button>
-      </Link>
-    </div>
-  ) : (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-  {filteredTechnicians.map((tech) => (
-                <div key={tech.id} className="bg-card border border-border rounded-xl p-6 hover:border-primary/50 transition-colors">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="relative h-12 w-12 rounded-full overflow-hidden bg-secondary">
-                        {tech.image ? (
-                          <Image src={tech.image} alt={tech.name} fill className="object-cover" />
-                        ) : (
-                          <div className="h-full w-full flex items-center justify-center text-muted-foreground font-semibold">
-                            {tech.name.split(" ").map(n => n[0]).join("")}
-                          </div>
-                        )}
+
+          {/* Technicians Tab */}
+          {activeTab === "technicians" && (
+            loadingTechnicians ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="bg-card border border-border rounded-xl p-6 animate-pulse">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-14 h-14 rounded-full bg-secondary" />
+                      <div className="flex-1">
+                        <div className="h-4 bg-secondary rounded w-24 mb-2" />
+                        <div className="h-3 bg-secondary rounded w-32" />
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-foreground">{tech.name}</h3>
-                        <p className="text-sm text-primary">{tech.role}</p>
-                        <div className="flex items-center gap-1 mt-1">
-                          <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-                          <span className="text-xs text-muted-foreground">{getLevelText(tech.level)}</span>
+                    </div>
+                    <div className="h-10 bg-secondary rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredTechnicians.length === 0 ? (
+              <div className="text-center py-16 bg-card border border-dashed border-border rounded-xl">
+                <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                  <Search className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Bientôt disponible</h3>
+                <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                  Notre annuaire de techniciens est en cours de constitution. 
+                  Rejoignez le réseau pour être parmi les premiers membres affichés.
+                </p>
+                <Link href="/adhesion">
+                  <Button>Rejoindre le réseau</Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredTechnicians.map((tech) => (
+                  <div key={tech.id} className="bg-card border border-border rounded-xl p-6 hover:border-primary/50 transition-colors">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="relative h-12 w-12 rounded-full overflow-hidden bg-secondary">
+                          {tech.image ? (
+                            <Image src={tech.image} alt={tech.name} fill className="object-cover" />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center text-muted-foreground font-semibold">
+                              {tech.name.split(" ").map(n => n[0]).join("")}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-foreground">{tech.name}</h3>
+                          <p className="text-sm text-primary">{tech.role}</p>
+                          <div className="flex items-center gap-1 mt-1">
+                            <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                            <span className="text-xs text-muted-foreground">{getLevelText(tech.level)}</span>
+                          </div>
                         </div>
                       </div>
+                      <div className={`px-2 py-1 rounded text-xs font-medium ${
+                        tech.status === "available" ? "bg-green-500/20 text-green-500" :
+                        tech.status === "filming" ? "bg-amber-500/20 text-amber-500" :
+                        "bg-red-500/20 text-red-500"
+                      }`}>
+                        {getStatusText(tech.status)}
+                      </div>
                     </div>
-                    <div className={`px-2 py-1 rounded text-xs font-medium ${
-                      tech.status === "available" ? "bg-green-500/20 text-green-500" :
-                      tech.status === "filming" ? "bg-amber-500/20 text-amber-500" :
-                      "bg-red-500/20 text-red-500"
-                    }`}>
-                      {getStatusText(tech.status)}
-                    </div>
+                    <Link href={`/membre/${tech.id}`}>
+                      <Button variant="outline" className="w-full">{t("directory.viewProfile")}</Button>
+                    </Link>
                   </div>
-                  <Link href={`/membre/${tech.id}`}>
-                    <Button variant="outline" className="w-full">{t("directory.viewProfile")}</Button>
-                  </Link>
-                </div>
-              ))}
-            </div>
-          )
+                ))}
+              </div>
+            )
           )}
 
           {/* Companies Tab */}
@@ -671,7 +616,6 @@ export default function DirectoryPage() {
             <div className="space-y-6">
               {companies.map((company) => (
                 <div key={company.id} className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-colors">
-                  {/* Company Header with Image */}
                   <div className="relative h-48 w-full">
                     <Image src={company.image} alt={company.name} fill className="object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
@@ -699,27 +643,18 @@ export default function DirectoryPage() {
                       </Dialog>
                     </div>
                   </div>
-                  
                   <div className="p-6">
                     <p className="text-muted-foreground mb-4">{company.description}</p>
-                    
                     <button
                       onClick={() => toggleCompanyExpand(company.id)}
                       className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
                     >
                       {expandedCompanies.includes(company.id) ? (
-                        <>
-                          <ChevronUp className="h-4 w-4" />
-                          Masquer le catalogue
-                        </>
+                        <><ChevronUp className="h-4 w-4" />Masquer le catalogue</>
                       ) : (
-                        <>
-                          <ChevronDown className="h-4 w-4" />
-                          Voir le catalogue ({company.equipment.length} équipements)
-                        </>
+                        <><ChevronDown className="h-4 w-4" />Voir le catalogue ({company.equipment.length} équipements)</>
                       )}
                     </button>
-                    
                     {expandedCompanies.includes(company.id) && (
                       <EquipmentTable equipment={company.equipment} />
                     )}
@@ -734,7 +669,6 @@ export default function DirectoryPage() {
             <div className="space-y-8">
               {costumeServices.map((service) => (
                 <div key={service.id} className="bg-card border border-border rounded-xl overflow-hidden">
-                  {/* Service Header with Image */}
                   <div className="relative h-48 w-full">
                     <Image src={service.image} alt={service.name} fill className="object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
@@ -762,27 +696,18 @@ export default function DirectoryPage() {
                       </Dialog>
                     </div>
                   </div>
-
                   <div className="p-6">
                     <p className="text-muted-foreground mb-4">{service.description}</p>
-                    
                     <button
                       onClick={() => toggleCostumeExpand(service.id)}
                       className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors mb-4"
                     >
                       {expandedCostumes.includes(service.id) ? (
-                        <>
-                          <ChevronUp className="h-4 w-4" />
-                          Masquer les costumes
-                        </>
+                        <><ChevronUp className="h-4 w-4" />Masquer les costumes</>
                       ) : (
-                        <>
-                          <ChevronDown className="h-4 w-4" />
-                          Voir les costumes disponibles ({service.costumes.length})
-                        </>
+                        <><ChevronDown className="h-4 w-4" />Voir les costumes disponibles ({service.costumes.length})</>
                       )}
                     </button>
-                    
                     {expandedCostumes.includes(service.id) && (
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {service.costumes.map((costume) => (
@@ -816,7 +741,6 @@ export default function DirectoryPage() {
           {/* Locations Tab */}
           {activeTab === "locations" && (
             <div className="grid lg:grid-cols-2 gap-8">
-              {/* Map Column */}
               <div className="space-y-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -827,7 +751,6 @@ export default function DirectoryPage() {
                     onChange={(e) => setLocationSearch(e.target.value)}
                   />
                 </div>
-                
                 <div className="flex flex-wrap gap-2">
                   {locationFilters.map((filter) => (
                     <button
@@ -843,7 +766,6 @@ export default function DirectoryPage() {
                     </button>
                   ))}
                 </div>
-
                 <CoteIvoireMap 
                   locations={filteredLocations} 
                   selectedLocation={selectedLocation}
@@ -851,7 +773,6 @@ export default function DirectoryPage() {
                 />
               </div>
 
-              {/* Locations List Column */}
               <div className="space-y-4 max-h-[800px] overflow-y-auto">
                 {filteredLocations.map((loc) => (
                   <div 
@@ -867,14 +788,10 @@ export default function DirectoryPage() {
                         <span className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded">Disponible</span>
                       </div>
                       <div className="py-3 pr-4 flex-1">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="font-semibold text-foreground">{loc.name}</h3>
-                            <p className="text-sm text-muted-foreground flex items-center gap-1">
-                              <MapPin className="h-3 w-3" /> {loc.city}
-                            </p>
-                          </div>
-                        </div>
+                        <h3 className="font-semibold text-foreground">{loc.name}</h3>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <MapPin className="h-3 w-3" /> {loc.city}
+                        </p>
                         <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{loc.description}</p>
                         <div className="flex flex-wrap gap-1 mt-2">
                           {loc.tags.slice(0, 3).map((tag) => (
@@ -891,7 +808,7 @@ export default function DirectoryPage() {
                               <DialogHeader>
                                 <DialogTitle>Demander un reperage - {loc.name}</DialogTitle>
                                 <DialogDescription>
-                                  Remplissez ce formulaire pour demander un reperage. Le Directeur Executif vous contactera.
+                                  Remplissez ce formulaire pour demander un reperage.
                                 </DialogDescription>
                               </DialogHeader>
                               <ScoutingRequestDialog locationName={loc.name} />
