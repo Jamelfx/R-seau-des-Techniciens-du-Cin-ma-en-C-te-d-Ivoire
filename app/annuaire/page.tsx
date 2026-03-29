@@ -464,42 +464,31 @@ export default function DirectoryPage() {
     locations: "Rechercher un décor..."
   }
 
-  // Fetch real technicians from Supabase
+ // Fetch real technicians from Supabase
   useEffect(() => {
     const fetchTechnicians = async () => {
       const { createClient } = await import("@/lib/supabase/client")
       const supabase = createClient()
       
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('members')
         .select('id, first_name, last_name, profession, experience_years, profile_photo, availability, status')
         .eq('status', 'active')
-       const { data, error } = await supabase
-  .from('members')
-  .select('id, first_name, last_name, profession, experience_years, profile_photo, availability, status')
-  .eq('status', 'active')
-  .order('created_at', { ascending: false })
-
-console.log("Membres:", data, "Erreur:", error)
-```
-
----
-
-### Ensuite — Vérifie les variables d'environnement Vercel
-
-Va sur **vercel.com → ton projet RETECHCI → Settings → Environment Variables** et confirme que ces deux variables existent :
-```
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
         .order('created_at', { ascending: false })
+      
+      console.log("Membres:", data, "Erreur:", error)
       
       if (data && data.length > 0) {
         const mapped = data.map(m => ({
           id: m.id,
           name: `${m.first_name} ${m.last_name}`,
           role: m.profession || "Technicien",
-          level: (m.experience_years || 0) >= 10 ? "senior" : (m.experience_years || 0) >= 5 ? "intermediate" : "junior" as ExperienceLevel,
-          status: m.availability === "available" ? "available" : m.availability === "filming" ? "filming" : "available" as AvailabilityStatus,
+          level: (m.experience_years || 0) >= 10 ? "senior" 
+               : (m.experience_years || 0) >= 5 ? "intermediate" 
+               : "junior" as ExperienceLevel,
+          status: m.availability === "filming" ? "filming" 
+                : m.availability === "unavailable" ? "unavailable"
+                : "available" as AvailabilityStatus,
           image: m.profile_photo || undefined
         }))
         setRealTechnicians(mapped)
