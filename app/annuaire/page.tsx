@@ -474,7 +474,23 @@ export default function DirectoryPage() {
         .from('members')
         .select('id, first_name, last_name, profession, experience_years, profile_photo, availability, status')
         .eq('status', 'active')
-        .not('email', 'like', '%@retechci.org')
+       const { data, error } = await supabase
+  .from('members')
+  .select('id, first_name, last_name, profession, experience_years, profile_photo, availability, status')
+  .eq('status', 'active')
+  .order('created_at', { ascending: false })
+
+console.log("Membres:", data, "Erreur:", error)
+```
+
+---
+
+### Ensuite — Vérifie les variables d'environnement Vercel
+
+Va sur **vercel.com → ton projet RETECHCI → Settings → Environment Variables** et confirme que ces deux variables existent :
+```
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
         .order('created_at', { ascending: false })
       
       if (data && data.length > 0) {
