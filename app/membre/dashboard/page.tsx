@@ -246,16 +246,16 @@ export default function MemberDashboard() {
 
       setMember(memberData)
       setFormData({
-        first_name: memberData.first_name || "",
-        last_name: memberData.last_name || "",
-        phone: memberData.phone || "",
-        profession: memberData.profession || "",
-        experience_years: memberData.experience_years || 0,
-        birth_date: memberData.birth_date || "",
-        birth_place: memberData.birth_place || "",
-        biography: memberData.biography || "",
-        availability: memberData.availability || "available"
-      })
+  first_name: memberData.first_name || "",
+  last_name: memberData.last_name || "",
+  phone: memberData.phone || "",
+  profession: memberData.profession || "",
+  experience_years: memberData.years_experience || 0, // ← corrigé
+  birth_date: memberData.birth_date || "",
+  birth_place: memberData.birth_place || "",
+  biography: memberData.biography || "",
+  availability: memberData.availability || "available"
+})
       setProfilePhoto(memberData.profile_photo)
       setWorkPhotos(memberData.work_photos || [])
 
