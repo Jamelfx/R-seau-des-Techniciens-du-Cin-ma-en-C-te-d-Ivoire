@@ -420,7 +420,7 @@ export default function DirectoryPage() {
       const { data, error } = await supabase
         .from('members')
         .select('id, first_name, last_name, profession, experience_years, profile_photo, availability, status')
-        .eq('statut', 'actif')
+        .eq('status', 'active')
         .order('created_at', { ascending: false })
 
       console.log("Membres Supabase:", data, "Erreur:", error)
