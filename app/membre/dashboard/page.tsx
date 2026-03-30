@@ -212,7 +212,7 @@ export default function MemberDashboard() {
         birth_date: memberData.birth_date || "",
         birth_place: memberData.birth_place || "",
         biography: memberData.biography || "",
-        availability: memberData.availability || "available"
+        availability: memberData.disponibilite || "disponible"
       })
       setProfilePhoto(memberData.profile_photo)
       setWorkPhotos(memberData.work_photos || [])
