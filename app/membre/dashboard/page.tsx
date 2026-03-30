@@ -14,26 +14,9 @@ import { Badge } from "@/components/ui/badge"
 import { ProfessionalCard } from "@/components/professional-card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { 
-  User, 
-  CreditCard, 
-  FileText, 
-  Settings, 
-  Camera, 
-  Upload,
-  Plus,
-  Trash2,
-  Save,
-  Bell,
-  CheckCircle,
-  Clock,
-  AlertCircle,
-  ImageIcon,
-  Wallet,
-  Smartphone,
-  Building2,
-  Loader2,
-  Calendar,
-  MapPin
+  User, CreditCard, FileText, Settings, Camera, Upload,
+  Plus, Trash2, Save, CheckCircle, AlertCircle, ImageIcon,
+  Wallet, Smartphone, Loader2, Calendar, MapPin
 } from "lucide-react"
 import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
@@ -47,8 +30,7 @@ interface MemberData {
   email: string
   phone: string
   profession: string
-  specialties: string[]
-  experience_years: number
+  years_experience: number
   profile_photo: string | null
   availability: string
   status: string
@@ -59,6 +41,7 @@ interface MemberData {
   work_photos: string[]
   membership_level: string
   created_at: string
+  category: string
 }
 
 interface FilmographyItem {
@@ -87,22 +70,11 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
   const [phone, setPhone] = useState("")
   
   const paymentMethods = [
-    { id: "wave", name: "Wave", icon: Wallet, color: "bg-cyan-500", description: "Paiement Wave" },
-    { id: "orange", name: "Orange Money", icon: Smartphone, color: "bg-orange-500", description: "Paiement mobile Orange CI" },
-    { id: "mtn", name: "MTN Mobile Money", icon: Smartphone, color: "bg-yellow-500", description: "Paiement mobile MTN CI" },
-    { id: "card", name: "Carte Visa Prépayée", icon: CreditCard, color: "bg-purple-500", description: "Visa prépayée" },
+    { id: "wave", name: "Wave", icon: Wallet, color: "bg-cyan-500" },
+    { id: "orange", name: "Orange Money", icon: Smartphone, color: "bg-orange-500" },
+    { id: "mtn", name: "MTN Mobile Money", icon: Smartphone, color: "bg-yellow-500" },
+    { id: "card", name: "Carte Visa", icon: CreditCard, color: "bg-purple-500" },
   ]
-
-  const handlePayment = () => {
-    if (selectedMethod && phone) {
-      setStep("confirm")
-    }
-  }
-
-  const confirmPayment = () => {
-    console.log("Payment confirmed:", { method: selectedMethod, phone, memberId, amount: 5000 })
-    setStep("success")
-  }
 
   if (step === "success") {
     return (
@@ -110,8 +82,7 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
         <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle className="h-10 w-10 text-green-500" />
         </div>
-        <h3 className="text-xl font-bold text-foreground mb-2">Paiement reussi !</h3>
-        <p className="text-muted-foreground mb-4">Votre cotisation a ete enregistree</p>
+        <h3 className="text-xl font-bold mb-2">Paiement reussi !</h3>
         <Badge className="bg-green-500/20 text-green-400">Cotisation a jour</Badge>
       </div>
     )
@@ -134,7 +105,7 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
             <span>{phone}</span>
           </div>
         </div>
-        <Button onClick={confirmPayment} className="w-full">Confirmer le paiement</Button>
+        <Button onClick={() => setStep("success")} className="w-full">Confirmer le paiement</Button>
         <Button variant="outline" onClick={() => setStep("select")} className="w-full">Modifier</Button>
       </div>
     )
@@ -160,7 +131,6 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
           </button>
         ))}
       </div>
-      
       {selectedMethod && (
         <div className="space-y-4">
           <div>
@@ -172,7 +142,7 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
               className="mt-1"
             />
           </div>
-          <Button onClick={handlePayment} className="w-full" disabled={!phone}>
+          <Button onClick={() => phone && setStep("confirm")} className="w-full" disabled={!phone}>
             Payer 5 000 FCFA
           </Button>
         </div>
@@ -192,8 +162,8 @@ export default function MemberDashboard() {
   const [filmography, setFilmography] = useState<FilmographyItem[]>([])
   const [activeTab, setActiveTab] = useState("profile")
   const [photoError, setPhotoError] = useState("")
+  const [saveSuccess, setSaveSuccess] = useState(false)
   
-  // Form states
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -207,212 +177,207 @@ export default function MemberDashboard() {
   })
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
   const [workPhotos, setWorkPhotos] = useState<string[]>([])
-  
-  // New filmography form
   const [newFilm, setNewFilm] = useState<FilmographyItem>({
-    film_title: "",
-    film_format: "",
-    episode_count: undefined,
-    production_company: "",
-    release_year: new Date().getFullYear(),
-    role: ""
+    film_title: "", film_format: "", episode_count: undefined,
+    production_company: "", release_year: new Date().getFullYear(), role: ""
   })
   const [showFilmForm, setShowFilmForm] = useState(false)
 
-  // Fetch member data on mount
   useEffect(() => {
     const fetchMemberData = async () => {
       const supabase = createClient()
-      
       const { data: { user } } = await supabase.auth.getUser()
       
-      if (!user) {
-        router.push('/connexion')
-        return
-      }
+      if (!user) { router.push('/connexion'); return }
 
-      // Fetch member data
       const { data: memberData, error } = await supabase
         .from('members')
         .select('*')
-        .eq('email', user.email)
+        .or(`email.eq.${user.email},auth_user_id.eq.${user.id}`)
         .single()
 
       if (error || !memberData) {
-        console.error("Error fetching member:", error)
+        console.error("Erreur membre:", error)
         router.push('/connexion')
         return
       }
 
       setMember(memberData)
       setFormData({
-  first_name: memberData.first_name || "",
-  last_name: memberData.last_name || "",
-  phone: memberData.phone || "",
-  profession: memberData.profession || "",
-  experience_years: memberData.years_experience || 0, // ← corrigé
-  birth_date: memberData.birth_date || "",
-  birth_place: memberData.birth_place || "",
-  biography: memberData.biography || "",
-  availability: memberData.availability || "available"
-})
+        first_name: memberData.first_name || "",
+        last_name: memberData.last_name || "",
+        phone: memberData.phone || "",
+        profession: memberData.profession || "",
+        experience_years: memberData.years_experience || 0, // ✅ bon nom
+        birth_date: memberData.birth_date || "",
+        birth_place: memberData.birth_place || "",
+        biography: memberData.biography || "",
+        availability: memberData.availability || "available"
+      })
       setProfilePhoto(memberData.profile_photo)
       setWorkPhotos(memberData.work_photos || [])
 
-      // Fetch filmography
       const { data: filmoData } = await supabase
-        .from('member_filmography')
+        .from('filmographie')
         .select('*')
         .eq('member_id', memberData.id)
         .order('release_year', { ascending: false })
 
-      if (filmoData) {
-        setFilmography(filmoData)
-      }
-
+      if (filmoData) setFilmography(filmoData)
       setLoading(false)
     }
 
     fetchMemberData()
   }, [router])
 
-  // Handle profile photo upload
   const handleProfilePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
     setPhotoError("")
 
-    // Check file type
     if (!file.type.includes('jpeg') && !file.type.includes('jpg')) {
       setPhotoError("Seuls les fichiers JPEG sont acceptes")
       return
     }
-
-    // Check file size (1MB max)
     if (file.size > 1 * 1024 * 1024) {
       setPhotoError("La photo doit faire moins de 1 Mo")
       return
     }
 
-    // Convert to base64 for preview (in production, upload to storage)
     const reader = new FileReader()
-    reader.onloadend = () => {
-      setProfilePhoto(reader.result as string)
-    }
+    reader.onloadend = () => setProfilePhoto(reader.result as string)
     reader.readAsDataURL(file)
   }
 
-  // Handle work photo upload
   const handleWorkPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
     setPhotoError("")
 
-    // Check max photos (2)
     if (workPhotos.length >= 2) {
       setPhotoError("Maximum 2 photos de travail autorisees")
       return
     }
-
-    // Check file type
     if (!file.type.includes('jpeg') && !file.type.includes('jpg')) {
       setPhotoError("Seuls les fichiers JPEG sont acceptes")
       return
     }
-
-    // Check file size (1MB max)
     if (file.size > 1 * 1024 * 1024) {
       setPhotoError("La photo doit faire moins de 1 Mo")
       return
     }
 
     const reader = new FileReader()
-    reader.onloadend = () => {
-      setWorkPhotos([...workPhotos, reader.result as string])
-    }
+    reader.onloadend = () => setWorkPhotos([...workPhotos, reader.result as string])
     reader.readAsDataURL(file)
   }
 
-  // Remove work photo
   const removeWorkPhoto = (index: number) => {
     setWorkPhotos(workPhotos.filter((_, i) => i !== index))
   }
 
-  // Save profile
-  const handleSaveProfile = async () => {
-  if (!member) return
-  
-  setSaving(true)
-  const supabase = createClient()
-
-  let photoUrl = profilePhoto
-
-  // Upload photo vers Supabase Storage si c'est un base64
-  if (profilePhoto && profilePhoto.startsWith('data:')) {
+  // Upload base64 vers Supabase Storage
+  const uploadPhotoToStorage = async (
+    supabase: ReturnType<typeof createClient>,
+    base64: string,
+    path: string
+  ): Promise<string | null> => {
     try {
-      const base64Data = profilePhoto.split(',')[1]
+      const base64Data = base64.split(',')[1]
       const byteCharacters = atob(base64Data)
       const byteArray = new Uint8Array(byteCharacters.length)
       for (let i = 0; i < byteCharacters.length; i++) {
         byteArray[i] = byteCharacters.charCodeAt(i)
       }
       const blob = new Blob([byteArray], { type: 'image/jpeg' })
-      const fileName = `${member.id}/profile-${Date.now()}.jpg`
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { data, error } = await supabase.storage
         .from('member-photos')
-        .upload(fileName, blob, { upsert: true })
+        .upload(path, blob, { upsert: true })
 
-      if (!uploadError && uploadData) {
-        const { data: urlData } = supabase.storage
-          .from('member-photos')
-          .getPublicUrl(fileName)
-        photoUrl = urlData.publicUrl
-      }
+      if (error || !data) return null
+
+      const { data: urlData } = supabase.storage
+        .from('member-photos')
+        .getPublicUrl(path)
+
+      return urlData.publicUrl
     } catch (e) {
-      console.error("Erreur upload photo:", e)
+      console.error("Erreur upload:", e)
+      return null
     }
   }
 
-  const { error } = await supabase
-    .from('members')
-    .update({
-      first_name: formData.first_name,
-      last_name: formData.last_name,
-      phone: formData.phone,
-      profession: formData.profession,
-      years_experience: formData.experience_years, // ← nom corrigé
-      birth_date: formData.birth_date || null,
-      birth_place: formData.birth_place || null,
-      biography: formData.biography,
-      availability: formData.availability,
-      profile_photo: photoUrl,
-      work_photos: workPhotos, // JSONB accepte les arrays
-    })
-    .eq('id', member.id)
+  const handleSaveProfile = async () => {
+    if (!member) return
+    setSaving(true)
+    setSaveSuccess(false)
+    const supabase = createClient()
 
-  if (error) {
-    console.error("Erreur sauvegarde:", error)
-    alert(`Erreur: ${error.message}`)
-  } else {
-    setProfilePhoto(photoUrl)
-    setMember({ ...member, ...formData, profile_photo: photoUrl })
-    alert("✅ Profil sauvegardé avec succès !")
+    // Upload photo de profil si base64
+    let photoUrl = profilePhoto
+    if (profilePhoto && profilePhoto.startsWith('data:')) {
+      const uploaded = await uploadPhotoToStorage(
+        supabase,
+        profilePhoto,
+        `${member.id}/profile-${Date.now()}.jpg`
+      )
+      if (uploaded) photoUrl = uploaded
+    }
+
+    // Upload photos de travail si base64
+    const uploadedWorkPhotos: string[] = []
+    for (let i = 0; i < workPhotos.length; i++) {
+      const photo = workPhotos[i]
+      if (photo.startsWith('data:')) {
+        const uploaded = await uploadPhotoToStorage(
+          supabase,
+          photo,
+          `${member.id}/work-${Date.now()}-${i}.jpg`
+        )
+        if (uploaded) uploadedWorkPhotos.push(uploaded)
+      } else {
+        uploadedWorkPhotos.push(photo)
+      }
+    }
+
+    const { error } = await supabase
+      .from('members')
+      .update({
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
+        profession: formData.profession,
+        years_experience: formData.experience_years, // ✅ bon nom de colonne
+        birth_date: formData.birth_date || null,
+        birth_place: formData.birth_place || null,
+        biography: formData.biography,
+        availability: formData.availability,
+        profile_photo: photoUrl,
+        work_photos: uploadedWorkPhotos,
+      })
+      .eq('id', member.id)
+
+    if (error) {
+      console.error("Erreur sauvegarde:", error)
+      alert(`Erreur: ${error.message}`)
+    } else {
+      setProfilePhoto(photoUrl)
+      setWorkPhotos(uploadedWorkPhotos)
+      setMember({ ...member, ...formData, years_experience: formData.experience_years, profile_photo: photoUrl })
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
+    }
+    
+    setSaving(false)
   }
-  
-  setSaving(false)
-}
 
-  // Add filmography item
   const handleAddFilm = async () => {
     if (!member || !newFilm.film_title || !newFilm.film_format || !newFilm.role) return
-
     const supabase = createClient()
 
     const { data, error } = await supabase
-      .from('member_filmography')
+      .from('filmographie')
       .insert({
         member_id: member.id,
         film_title: newFilm.film_title,
@@ -425,35 +390,22 @@ export default function MemberDashboard() {
       .select()
       .single()
 
-    if (error) {
-      console.error("Error adding film:", error)
-      alert("Erreur lors de l'ajout")
-    } else if (data) {
+    if (!error && data) {
       setFilmography([data, ...filmography])
       setNewFilm({
-        film_title: "",
-        film_format: "",
-        episode_count: undefined,
-        production_company: "",
-        release_year: new Date().getFullYear(),
-        role: ""
+        film_title: "", film_format: "", episode_count: undefined,
+        production_company: "", release_year: new Date().getFullYear(), role: ""
       })
       setShowFilmForm(false)
+    } else {
+      alert("Erreur lors de l'ajout : " + error?.message)
     }
   }
 
-  // Delete filmography item
   const handleDeleteFilm = async (filmId: string) => {
     const supabase = createClient()
-    
-    const { error } = await supabase
-      .from('member_filmography')
-      .delete()
-      .eq('id', filmId)
-
-    if (!error) {
-      setFilmography(filmography.filter(f => f.id !== filmId))
-    }
+    const { error } = await supabase.from('filmographie').delete().eq('id', filmId)
+    if (!error) setFilmography(filmography.filter(f => f.id !== filmId))
   }
 
   if (loading) {
@@ -464,18 +416,18 @@ export default function MemberDashboard() {
     )
   }
 
-  if (!member) {
-    return null
-  }
+  if (!member) return null
 
-  const memberCategory = member.experience_years >= 10 ? "A" : member.experience_years >= 5 ? "B" : "C"
+  const memberCategory = member.category || (
+    (member.years_experience || 0) >= 10 ? "A" : 
+    (member.years_experience || 0) >= 5 ? "B" : "C"
+  )
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       
       <main className="container mx-auto px-4 py-8">
-        {/* Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Espace Membre</h1>
@@ -492,7 +444,6 @@ export default function MemberDashboard() {
         </div>
 
         <div className="grid lg:grid-cols-[1fr_320px] gap-8">
-          {/* Main Content */}
           <div className="space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid grid-cols-4 w-full">
@@ -523,27 +474,26 @@ export default function MemberDashboard() {
                   </div>
                 )}
 
-                {/* Photo de profil */}
+                {saveSuccess && (
+                  <div className="bg-green-500/10 border border-green-500/20 text-green-500 p-3 rounded-lg flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Profil sauvegardé avec succès !
+                  </div>
+                )}
+
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Camera className="h-5 w-5" />
                       Photo de profil
                     </CardTitle>
-                    <CardDescription>
-                      Format JPEG uniquement, maximum 1 Mo
-                    </CardDescription>
+                    <CardDescription>Format JPEG uniquement, maximum 1 Mo</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center gap-6">
                       <div className="relative w-24 h-24 rounded-full overflow-hidden bg-secondary">
                         {profilePhoto ? (
-                          <Image
-                            src={profilePhoto}
-                            alt="Photo de profil"
-                            fill
-                            className="object-cover"
-                          />
+                          <Image src={profilePhoto} alt="Photo de profil" fill className="object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <User className="h-12 w-12 text-muted-foreground" />
@@ -552,16 +502,11 @@ export default function MemberDashboard() {
                       </div>
                       <div className="space-y-2">
                         <input
-                          type="file"
-                          ref={fileInputRef}
+                          type="file" ref={fileInputRef}
                           onChange={handleProfilePhotoChange}
-                          accept="image/jpeg,image/jpg"
-                          className="hidden"
+                          accept="image/jpeg,image/jpg" className="hidden"
                         />
-                        <Button 
-                          variant="outline" 
-                          onClick={() => fileInputRef.current?.click()}
-                        >
+                        <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
                           <Upload className="h-4 w-4 mr-2" />
                           Changer la photo
                         </Button>
@@ -571,108 +516,53 @@ export default function MemberDashboard() {
                   </CardContent>
                 </Card>
 
-                {/* Informations personnelles */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Informations personnelles</CardTitle>
-                  </CardHeader>
+                  <CardHeader><CardTitle>Informations personnelles</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label>Nom</Label>
-                        <Input 
-                          value={formData.last_name}
-                          onChange={(e) => setFormData({...formData, last_name: e.target.value})}
-                          className="mt-1"
-                        />
+                        <Input value={formData.last_name} onChange={(e) => setFormData({...formData, last_name: e.target.value})} className="mt-1" />
                       </div>
                       <div>
-                        <Label>Prenoms</Label>
-                        <Input 
-                          value={formData.first_name}
-                          onChange={(e) => setFormData({...formData, first_name: e.target.value})}
-                          className="mt-1"
-                        />
+                        <Label>Prénoms</Label>
+                        <Input value={formData.first_name} onChange={(e) => setFormData({...formData, first_name: e.target.value})} className="mt-1" />
                       </div>
                     </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          Date de naissance
-                        </Label>
-                        <Input 
-                          type="date"
-                          value={formData.birth_date}
-                          onChange={(e) => setFormData({...formData, birth_date: e.target.value})}
-                          className="mt-1"
-                        />
+                        <Label className="flex items-center gap-2"><Calendar className="h-4 w-4" />Date de naissance</Label>
+                        <Input type="date" value={formData.birth_date} onChange={(e) => setFormData({...formData, birth_date: e.target.value})} className="mt-1" />
                       </div>
                       <div>
-                        <Label className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4" />
-                          Lieu de naissance
-                        </Label>
-                        <Input 
-                          value={formData.birth_place}
-                          onChange={(e) => setFormData({...formData, birth_place: e.target.value})}
-                          placeholder="Ex: Abidjan"
-                          className="mt-1"
-                        />
+                        <Label className="flex items-center gap-2"><MapPin className="h-4 w-4" />Lieu de naissance</Label>
+                        <Input value={formData.birth_place} onChange={(e) => setFormData({...formData, birth_place: e.target.value})} placeholder="Ex: Abidjan" className="mt-1" />
                       </div>
                     </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label>Telephone</Label>
-                        <Input 
-                          value={formData.phone}
-                          onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                          placeholder="+225 XX XX XX XX XX"
-                          className="mt-1"
-                        />
+                        <Label>Téléphone</Label>
+                        <Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="+225 XX XX XX XX XX" className="mt-1" />
                       </div>
                       <div>
                         <Label>Email</Label>
-                        <Input 
-                          value={member.email}
-                          disabled
-                          className="mt-1 bg-secondary/50"
-                        />
+                        <Input value={member.email} disabled className="mt-1 bg-secondary/50" />
                       </div>
                     </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label>Profession / Metier</Label>
-                        <Input 
-                          value={formData.profession}
-                          onChange={(e) => setFormData({...formData, profession: e.target.value})}
-                          placeholder="Ex: Chef Operateur"
-                          className="mt-1"
-                        />
+                        <Label>Profession / Métier</Label>
+                        <Input value={formData.profession} onChange={(e) => setFormData({...formData, profession: e.target.value})} placeholder="Ex: Chef Opérateur" className="mt-1" />
                       </div>
                       <div>
-                        <Label>Annees d&apos;experience</Label>
-                        <Input 
-                          type="number"
-                          value={formData.experience_years}
-                          onChange={(e) => setFormData({...formData, experience_years: parseInt(e.target.value) || 0})}
-                          className="mt-1"
-                        />
+                        <Label>Années d&apos;expérience</Label>
+                        <Input type="number" value={formData.experience_years} onChange={(e) => setFormData({...formData, experience_years: parseInt(e.target.value) || 0})} className="mt-1" />
                       </div>
                     </div>
-
                     <div>
-                      <Label>Disponibilite</Label>
-                      <Select 
-                        value={formData.availability} 
-                        onValueChange={(value) => setFormData({...formData, availability: value})}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
+                      <Label>Disponibilité</Label>
+                      <Select value={formData.availability} onValueChange={(value) => setFormData({...formData, availability: value})}>
+                        <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="available">Disponible</SelectItem>
                           <SelectItem value="filming">En tournage</SelectItem>
@@ -680,225 +570,133 @@ export default function MemberDashboard() {
                         </SelectContent>
                       </Select>
                     </div>
-
                     <div>
                       <Label>Biographie</Label>
-                      <Textarea 
-                        value={formData.biography}
-                        onChange={(e) => setFormData({...formData, biography: e.target.value})}
-                        placeholder="Presentez-vous en quelques lignes..."
-                        className="mt-1 min-h-[100px]"
-                      />
+                      <Textarea value={formData.biography} onChange={(e) => setFormData({...formData, biography: e.target.value})} placeholder="Présentez-vous en quelques lignes..." className="mt-1 min-h-[100px]" />
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Photos de travail */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <ImageIcon className="h-5 w-5" />
-                      Photos de travail
-                    </CardTitle>
-                    <CardDescription>
-                      Maximum 2 photos, format JPEG, max 1 Mo chacune
-                    </CardDescription>
+                    <CardTitle className="flex items-center gap-2"><ImageIcon className="h-5 w-5" />Photos de travail</CardTitle>
+                    <CardDescription>Maximum 2 photos, format JPEG, max 1 Mo chacune</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       {workPhotos.map((photo, index) => (
                         <div key={index} className="relative aspect-video rounded-lg overflow-hidden bg-secondary group">
-                          <Image
-                            src={photo}
-                            alt={`Photo de travail ${index + 1}`}
-                            fill
-                            className="object-cover"
-                          />
-                          <button
-                            onClick={() => removeWorkPhoto(index)}
-                            className="absolute top-2 right-2 p-1 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
+                          <Image src={photo} alt={`Photo ${index + 1}`} fill className="object-cover" />
+                          <button onClick={() => removeWorkPhoto(index)} className="absolute top-2 right-2 p-1 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
                             <Trash2 className="h-4 w-4 text-white" />
                           </button>
                         </div>
                       ))}
                       {workPhotos.length < 2 && (
-                        <button
-                          onClick={() => workPhotoInputRef.current?.click()}
-                          className="aspect-video rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-2 transition-colors"
-                        >
+                        <button onClick={() => workPhotoInputRef.current?.click()} className="aspect-video rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-2 transition-colors">
                           <Plus className="h-8 w-8 text-muted-foreground" />
                           <span className="text-xs text-muted-foreground">Ajouter</span>
                         </button>
                       )}
                     </div>
-                    <input
-                      type="file"
-                      ref={workPhotoInputRef}
-                      onChange={handleWorkPhotoChange}
-                      accept="image/jpeg,image/jpg"
-                      className="hidden"
-                    />
+                    <input type="file" ref={workPhotoInputRef} onChange={handleWorkPhotoChange} accept="image/jpeg,image/jpg" className="hidden" />
                   </CardContent>
                 </Card>
 
-                {/* Save Button */}
-                <Button 
-                  onClick={handleSaveProfile} 
-                  className="w-full"
-                  disabled={saving}
-                >
+                <Button onClick={handleSaveProfile} className="w-full" disabled={saving}>
                   {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Sauvegarde en cours...
-                    </>
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sauvegarde en cours...</>
                   ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Sauvegarder le profil
-                    </>
+                    <><Save className="h-4 w-4 mr-2" />Sauvegarder le profil</>
                   )}
                 </Button>
               </TabsContent>
 
-              {/* CV / Filmography Tab */}
+              {/* CV Tab */}
               <TabsContent value="cv" className="space-y-6 mt-6">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <div>
                       <CardTitle>Filmographie</CardTitle>
-                      <CardDescription>
-                        Ajoutez vos experiences cinematographiques
-                      </CardDescription>
+                      <CardDescription>Ajoutez vos expériences cinématographiques</CardDescription>
                     </div>
                     <Button onClick={() => setShowFilmForm(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Ajouter un film
+                      <Plus className="h-4 w-4 mr-2" />Ajouter un film
                     </Button>
                   </CardHeader>
                   <CardContent>
-                    {/* Add Film Form */}
                     {showFilmForm && (
                       <div className="bg-secondary/30 rounded-xl p-4 mb-6 space-y-4">
-                        <h4 className="font-semibold">Nouveau film / Serie</h4>
+                        <h4 className="font-semibold">Nouveau film / Série</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <Label>Nom du film / Serie *</Label>
-                            <Input 
-                              value={newFilm.film_title}
-                              onChange={(e) => setNewFilm({...newFilm, film_title: e.target.value})}
-                              placeholder="Ex: La Vie en Rose"
-                              className="mt-1"
-                            />
+                            <Label>Nom du film / Série *</Label>
+                            <Input value={newFilm.film_title} onChange={(e) => setNewFilm({...newFilm, film_title: e.target.value})} placeholder="Ex: La Vie en Rose" className="mt-1" />
                           </div>
                           <div>
                             <Label>Format *</Label>
-                            <Select 
-                              value={newFilm.film_format}
-                              onValueChange={(value) => setNewFilm({...newFilm, film_format: value})}
-                            >
-                              <SelectTrigger className="mt-1">
-                                <SelectValue placeholder="Selectionnez..." />
-                              </SelectTrigger>
+                            <Select value={newFilm.film_format} onValueChange={(value) => setNewFilm({...newFilm, film_format: value})}>
+                              <SelectTrigger className="mt-1"><SelectValue placeholder="Sélectionnez..." /></SelectTrigger>
                               <SelectContent>
                                 {filmFormats.map(format => (
-                                  <SelectItem key={format.value} value={format.value}>
-                                    {format.label}
-                                  </SelectItem>
+                                  <SelectItem key={format.value} value={format.value}>{format.label}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
                           </div>
                         </div>
-
                         {(newFilm.film_format === 'serie_fiction' || newFilm.film_format === 'serie_doc') && (
                           <div>
-                            <Label>Nombre d&apos;episodes</Label>
-                            <Input 
-                              type="number"
-                              value={newFilm.episode_count || ''}
-                              onChange={(e) => setNewFilm({...newFilm, episode_count: parseInt(e.target.value) || undefined})}
-                              placeholder="Ex: 26"
-                              className="mt-1"
-                            />
+                            <Label>Nombre d&apos;épisodes</Label>
+                            <Input type="number" value={newFilm.episode_count || ''} onChange={(e) => setNewFilm({...newFilm, episode_count: parseInt(e.target.value) || undefined})} placeholder="Ex: 26" className="mt-1" />
                           </div>
                         )}
-
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <Label>Production</Label>
-                            <Input 
-                              value={newFilm.production_company}
-                              onChange={(e) => setNewFilm({...newFilm, production_company: e.target.value})}
-                              placeholder="Nom de la societe de production"
-                              className="mt-1"
-                            />
+                            <Input value={newFilm.production_company} onChange={(e) => setNewFilm({...newFilm, production_company: e.target.value})} placeholder="Société de production" className="mt-1" />
                           </div>
                           <div>
-                            <Label>Annee</Label>
-                            <Input 
-                              type="number"
-                              value={newFilm.release_year}
-                              onChange={(e) => setNewFilm({...newFilm, release_year: parseInt(e.target.value) || new Date().getFullYear()})}
-                              className="mt-1"
-                            />
+                            <Label>Année</Label>
+                            <Input type="number" value={newFilm.release_year} onChange={(e) => setNewFilm({...newFilm, release_year: parseInt(e.target.value) || new Date().getFullYear()})} className="mt-1" />
                           </div>
                         </div>
-
                         <div>
-                          <Label>Votre poste / Role *</Label>
-                          <Input 
-                            value={newFilm.role}
-                            onChange={(e) => setNewFilm({...newFilm, role: e.target.value})}
-                            placeholder="Ex: Chef Operateur, Monteur Principal, etc."
-                            className="mt-1"
-                          />
+                          <Label>Votre poste / Rôle *</Label>
+                          <Input value={newFilm.role} onChange={(e) => setNewFilm({...newFilm, role: e.target.value})} placeholder="Ex: Chef Opérateur" className="mt-1" />
                         </div>
-
                         <div className="flex gap-2">
                           <Button onClick={handleAddFilm} disabled={!newFilm.film_title || !newFilm.film_format || !newFilm.role}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Ajouter
+                            <Plus className="h-4 w-4 mr-2" />Ajouter
                           </Button>
-                          <Button variant="outline" onClick={() => setShowFilmForm(false)}>
-                            Annuler
-                          </Button>
+                          <Button variant="outline" onClick={() => setShowFilmForm(false)}>Annuler</Button>
                         </div>
                       </div>
                     )}
 
-                    {/* Filmography List */}
                     {filmography.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
                         <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>Aucune filmographie ajoutee</p>
+                        <p>Aucune filmographie ajoutée</p>
                         <p className="text-sm">Cliquez sur &quot;Ajouter un film&quot; pour commencer</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
                         {filmography.map((film) => (
-                          <div 
-                            key={film.id} 
-                            className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg"
-                          >
+                          <div key={film.id} className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg">
                             <div>
                               <h4 className="font-semibold">{film.film_title}</h4>
                               <p className="text-sm text-muted-foreground">
                                 {filmFormats.find(f => f.value === film.film_format)?.label || film.film_format}
-                                {film.episode_count && ` (${film.episode_count} episodes)`}
-                                {' '}&bull;{' '}{film.release_year}
+                                {film.episode_count && ` (${film.episode_count} épisodes)`}
+                                {' · '}{film.release_year}
                               </p>
                               <p className="text-sm text-primary">{film.role}</p>
                               {film.production_company && (
                                 <p className="text-xs text-muted-foreground">Production: {film.production_company}</p>
                               )}
                             </div>
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => film.id && handleDeleteFilm(film.id)}
-                            >
+                            <Button variant="ghost" size="icon" onClick={() => film.id && handleDeleteFilm(film.id)}>
                               <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
                           </div>
@@ -914,9 +712,7 @@ export default function MemberDashboard() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Cotisation mensuelle</CardTitle>
-                    <CardDescription>
-                      5 000 FCFA / mois - Votre cotisation soutient le reseau
-                    </CardDescription>
+                    <CardDescription>5 000 FCFA / mois</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg">
@@ -927,29 +723,21 @@ export default function MemberDashboard() {
                         </p>
                       </div>
                       <Badge className="bg-green-500/20 text-green-400">
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        A jour
+                        <CheckCircle className="h-4 w-4 mr-1" />À jour
                       </Badge>
                     </div>
-
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button className="w-full">
-                          <CreditCard className="h-4 w-4 mr-2" />
-                          Payer ma cotisation
+                          <CreditCard className="h-4 w-4 mr-2" />Payer ma cotisation
                         </Button>
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Paiement cotisation</DialogTitle>
-                          <DialogDescription>
-                            Cotisation mensuelle RETECHCI - 5 000 FCFA
-                          </DialogDescription>
+                          <DialogDescription>Cotisation mensuelle RETECHCI - 5 000 FCFA</DialogDescription>
                         </DialogHeader>
-                        <PaymentDialog 
-                          memberName={`${formData.first_name} ${formData.last_name}`}
-                          memberId={member.member_id || member.id}
-                        />
+                        <PaymentDialog memberName={`${formData.first_name} ${formData.last_name}`} memberId={member.member_id || member.id} />
                       </DialogContent>
                     </Dialog>
                   </CardContent>
@@ -959,9 +747,7 @@ export default function MemberDashboard() {
               {/* Settings Tab */}
               <TabsContent value="settings" className="space-y-6 mt-6">
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Notifications</CardTitle>
-                  </CardHeader>
+                  <CardHeader><CardTitle>Notifications</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -972,8 +758,8 @@ export default function MemberDashboard() {
                     </div>
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium">Nouvelles opportunites</p>
-                        <p className="text-sm text-muted-foreground">Etre informe des offres d&apos;emploi</p>
+                        <p className="font-medium">Nouvelles opportunités</p>
+                        <p className="text-sm text-muted-foreground">Être informé des offres d&apos;emploi</p>
                       </div>
                       <input type="checkbox" defaultChecked className="h-5 w-5" />
                     </div>
@@ -983,7 +769,7 @@ export default function MemberDashboard() {
             </Tabs>
           </div>
 
-          {/* Sidebar - Member Card */}
+          {/* Sidebar */}
           <div className="space-y-6">
             <Card className="sticky top-24">
               <CardHeader>
