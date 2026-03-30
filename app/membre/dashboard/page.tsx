@@ -342,45 +342,68 @@ export default function MemberDashboard() {
 
   // Save profile
   const handleSaveProfile = async () => {
-    if (!member) return
-    
-    setSaving(true)
-    const supabase = createClient()
+  if (!member) return
+  
+  setSaving(true)
+  const supabase = createClient()
 
-    const { error } = await supabase
-      .from('members')
-      .update({
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        phone: formData.phone,
-        profession: formData.profession,
-        experience_years: formData.experience_years,
-        birth_date: formData.birth_date || null,
-        birth_place: formData.birth_place || null,
-        biography: formData.biography,
-        availability: formData.availability,
-        profile_photo: profilePhoto,
-        work_photos: workPhotos,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', member.id)
+  let photoUrl = profilePhoto
 
-    if (error) {
-      console.error("Error saving:", error)
-      alert("Erreur lors de la sauvegarde")
-    } else {
-      alert("Profil sauvegarde avec succes ! Vos informations sont maintenant visibles dans l'annuaire.")
-      // Refresh member data
-      setMember({
-        ...member,
-        ...formData,
-        profile_photo: profilePhoto,
-        work_photos: workPhotos
-      })
+  // Upload photo vers Supabase Storage si c'est un base64
+  if (profilePhoto && profilePhoto.startsWith('data:')) {
+    try {
+      const base64Data = profilePhoto.split(',')[1]
+      const byteCharacters = atob(base64Data)
+      const byteArray = new Uint8Array(byteCharacters.length)
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteArray[i] = byteCharacters.charCodeAt(i)
+      }
+      const blob = new Blob([byteArray], { type: 'image/jpeg' })
+      const fileName = `${member.id}/profile-${Date.now()}.jpg`
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('member-photos')
+        .upload(fileName, blob, { upsert: true })
+
+      if (!uploadError && uploadData) {
+        const { data: urlData } = supabase.storage
+          .from('member-photos')
+          .getPublicUrl(fileName)
+        photoUrl = urlData.publicUrl
+      }
+    } catch (e) {
+      console.error("Erreur upload photo:", e)
     }
-    
-    setSaving(false)
   }
+
+  const { error } = await supabase
+    .from('members')
+    .update({
+      first_name: formData.first_name,
+      last_name: formData.last_name,
+      phone: formData.phone,
+      profession: formData.profession,
+      years_experience: formData.experience_years, // ← nom corrigé
+      birth_date: formData.birth_date || null,
+      birth_place: formData.birth_place || null,
+      biography: formData.biography,
+      availability: formData.availability,
+      profile_photo: photoUrl,
+      work_photos: workPhotos, // JSONB accepte les arrays
+    })
+    .eq('id', member.id)
+
+  if (error) {
+    console.error("Erreur sauvegarde:", error)
+    alert(`Erreur: ${error.message}`)
+  } else {
+    setProfilePhoto(photoUrl)
+    setMember({ ...member, ...formData, profile_photo: photoUrl })
+    alert("✅ Profil sauvegardé avec succès !")
+  }
+  
+  setSaving(false)
+}
 
   // Add filmography item
   const handleAddFilm = async () => {
