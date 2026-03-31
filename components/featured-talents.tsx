@@ -14,15 +14,15 @@ interface FeaturedTalentsProps {
 }
 
 const statusConfig = {
-  disponible: {
+  available: {
     label: "Disponible",
     className: "bg-green-500/20 text-green-400 border-green-500/30",
   },
-  "en-tournage": {
+  filming: {
     label: "En Tournage",
     className: "bg-amber-500/20 text-amber-400 border-amber-500/30",
   },
-  indisponible: {
+  unavailable: {
     label: "Indisponible",
     className: "bg-red-500/20 text-red-400 border-red-500/30",
   },
@@ -38,26 +38,26 @@ export function FeaturedTalents({ content }: FeaturedTalentsProps) {
   const subtitle = content?.subtitle || t("talents.subtitle")
 
   useEffect(() => {
-    const fetchMembers = async () => {
-      const supabase = createClient()
-      
-      // Fetch active members excluding admin accounts
-      const { data, error } = await supabase
-        .from('members')
-        .select('*')
-        .eq('status', 'active')
-        .not('email', 'like', '%@retechci.org') // Exclude admin accounts
-        .order('updated_at', { ascending: false })
-        .limit(4)
-      
-      if (!error && data) {
-        setMembers(data)
-      }
-      setLoading(false)
-    }
+  const fetchMembers = async () => {
+    const supabase = createClient()
     
-    fetchMembers()
-  }, [])
+    const { data, error } = await supabase
+      .from('members')
+      .select('*')
+      .eq('status', 'active')
+      .order('updated_at', { ascending: false })
+      .limit(4)
+    
+    console.log("Talents:", data, error)
+    
+    if (!error && data) {
+      setMembers(data)
+    }
+    setLoading(false)
+  }
+  
+  fetchMembers()
+}, [])
 
   return (
     <section className="border-t border-border bg-card/50 px-4 py-12 md:py-16">
@@ -112,7 +112,7 @@ export function FeaturedTalents({ content }: FeaturedTalentsProps) {
         ) : (
           <div className="grid gap-3 md:gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {members.map((member) => {
-              const availability = member.availability || "disponible"
+              const availability = member.availability || "available"
               const status = statusConfig[availability as keyof typeof statusConfig] || statusConfig.disponible
               
               return (
@@ -130,7 +130,7 @@ export function FeaturedTalents({ content }: FeaturedTalentsProps) {
                           className="w-full h-full object-cover"
                         />
                       </div>
-                      {availability === "disponible" && (
+                      {availability === "available" && (
                         <span className="absolute bottom-0 right-0 w-3 h-3 md:w-3.5 md:h-3.5 bg-green-500 border-2 border-card rounded-full" />
                       )}
                     </div>
