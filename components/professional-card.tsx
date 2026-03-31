@@ -1,11 +1,9 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useEffect, useState } from "react"
 import { Download, Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
-import QRCode from "qrcode"
-import { useEffect, useState } from "react"
 
 interface ProfessionalCardProps {
   member?: {
@@ -22,12 +20,11 @@ interface ProfessionalCardProps {
   category?: string
   title?: string
   photo?: string
-  image?: string // ← ajout pour compatibilité avec dashboard
+  image?: string
   showActions?: boolean
   size?: "sm" | "md" | "lg"
 }
 
-// Vrai logo RETECHCI SVG
 function RetechciLogo({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 40 40" className={className} fill="none">
@@ -46,7 +43,7 @@ export function ProfessionalCard({
   function: propFunction,
   title: propTitle,
   photo: propPhoto,
-  image: propImage, // ← compatibilité dashboard
+  image: propImage,
   showActions = true, 
   size = "md" 
 }: ProfessionalCardProps) {
@@ -57,18 +54,14 @@ export function ProfessionalCard({
   const name = member?.name || propName || ""
   const role = member?.role || propFunction || propRole || ""
   const title = member?.title || propTitle
-  // ✅ Accepte photo ou image (les deux formats)
   const photo = member?.photo || propPhoto || propImage
 
-  // ✅ Générer un vrai QR code scannable pointant vers le profil public
+  // ✅ QR code via API externe — aucune librairie nécessaire
   useEffect(() => {
     if (!id || id === "CI-0000-0000") return
     const profileUrl = `https://retechci.org/membre/${id}`
-    QRCode.toDataURL(profileUrl, {
-      width: 80,
-      margin: 1,
-      color: { dark: '#000000', light: '#ffffff' }
-    }).then(url => setQrDataUrl(url)).catch(() => {})
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(profileUrl)}`
+    setQrDataUrl(qrUrl)
   }, [id])
 
   const sizeClasses = {
@@ -131,7 +124,6 @@ export function ProfessionalCard({
   }
 
   const handleDownload = () => {
-    // Ouvrir le profil dans un nouvel onglet pour téléchargement
     window.open(`https://retechci.org/membre/${id}`, '_blank')
   }
 
@@ -163,7 +155,7 @@ export function ProfessionalCard({
                 width={120}
                 height={120}
                 className="w-full h-full object-cover"
-                unoptimized={photo.startsWith('data:')}
+                unoptimized
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gray-700 text-2xl font-bold text-white">
@@ -192,7 +184,6 @@ export function ProfessionalCard({
               <p className="text-[10px] text-gray-400 uppercase tracking-wider">ID Membre</p>
               <p className={`${textSizes[size].id} text-red-500 font-mono font-bold`}>{id}</p>
             </div>
-            {/* ✅ Vrai QR code scannable */}
             <div className="w-12 h-12 bg-white p-0.5 rounded">
               {qrDataUrl ? (
                 <Image 
