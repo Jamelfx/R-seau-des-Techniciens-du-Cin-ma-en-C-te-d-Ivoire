@@ -419,7 +419,7 @@ export default function DirectoryPage() {
 
       const { data, error } = await supabase
         .from('members')
-        .select('id, first_name, last_name, profession, experience_years, profile_photo, availability, status')
+        .select('id, first_name, last_name, profession, years_experience, profile_photo, availability, status')
         .eq('status', 'active')
         .order('created_at', { ascending: false })
 
@@ -430,9 +430,9 @@ export default function DirectoryPage() {
           id: m.id,
           name: `${m.first_name} ${m.last_name}`,
           role: m.profession || "Technicien",
-          level: ((m.experience_years || 0) >= 10 ? "senior"
-               : (m.experience_years || 0) >= 5 ? "intermediate"
-               : "junior") as ExperienceLevel,
+          level: ((m.years_experience || 0) >= 10 ? "senior"
+     : (m.years_experience || 0) >= 5 ? "intermediate"
+     : "junior") as ExperienceLevel,
           status: (m.availability === "filming" ? "filming"
                 : m.availability === "unavailable" ? "unavailable"
                 : "available") as AvailabilityStatus,
