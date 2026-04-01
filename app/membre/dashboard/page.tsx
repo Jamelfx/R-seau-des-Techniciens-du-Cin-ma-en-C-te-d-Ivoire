@@ -46,12 +46,17 @@ interface MemberData {
 
 interface FilmographyItem {
   id?: string
-  film_title: string
-  film_format: string
+  title?: string
+  year?: number
+  role_in_production?: string
+  production_company?: string
+  description?: string
+  // Champs du formulaire
+  film_title?: string
+  film_format?: string
   episode_count?: number
-  production_company: string
-  release_year: number
-  role: string
+  release_year?: number
+  role?: string
 }
 
 const filmFormats = [
@@ -63,7 +68,6 @@ const filmFormats = [
   { value: "serie_doc", label: "Série Documentaire" },
 ]
 
-// Payment Dialog Component
 function PaymentDialog({ memberName, memberId }: { memberName: string; memberId: string }) {
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null)
   const [step, setStep] = useState<"select" | "confirm" | "success">("select")
@@ -177,9 +181,13 @@ export default function MemberDashboard() {
   })
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
   const [workPhotos, setWorkPhotos] = useState<string[]>([])
-  const [newFilm, setNewFilm] = useState<FilmographyItem>({
-    film_title: "", film_format: "", episode_count: undefined,
-    production_company: "", release_year: new Date().getFullYear(), role: ""
+  const [newFilm, setNewFilm] = useState({
+    film_title: "",
+    film_format: "",
+    episode_count: undefined as number | undefined,
+    production_company: "",
+    release_year: new Date().getFullYear(),
+    role: ""
   })
   const [showFilmForm, setShowFilmForm] = useState(false)
 
@@ -208,7 +216,7 @@ export default function MemberDashboard() {
         last_name: memberData.last_name || "",
         phone: memberData.phone || "",
         profession: memberData.profession || "",
-        experience_years: memberData.years_experience || 0, // ✅ bon nom
+        experience_years: memberData.years_experience || 0,
         birth_date: memberData.birth_date || "",
         birth_place: memberData.birth_place || "",
         biography: memberData.biography || "",
@@ -218,10 +226,10 @@ export default function MemberDashboard() {
       setWorkPhotos(memberData.work_photos || [])
 
       const { data: filmoData } = await supabase
-  .from('filmography')
-  .select('*')
-  .eq('member_id', memberData.id)
-  .order('year', { ascending: false })
+        .from('filmography')
+        .select('*')
+        .eq('member_id', memberData.id)
+        .order('year', { ascending: false })
 
       if (filmoData) setFilmography(filmoData)
       setLoading(false)
@@ -234,7 +242,6 @@ export default function MemberDashboard() {
     const file = e.target.files?.[0]
     if (!file) return
     setPhotoError("")
-
     if (!file.type.includes('jpeg') && !file.type.includes('jpg')) {
       setPhotoError("Seuls les fichiers JPEG sont acceptes")
       return
@@ -243,7 +250,6 @@ export default function MemberDashboard() {
       setPhotoError("La photo doit faire moins de 1 Mo")
       return
     }
-
     const reader = new FileReader()
     reader.onloadend = () => setProfilePhoto(reader.result as string)
     reader.readAsDataURL(file)
@@ -253,7 +259,6 @@ export default function MemberDashboard() {
     const file = e.target.files?.[0]
     if (!file) return
     setPhotoError("")
-
     if (workPhotos.length >= 2) {
       setPhotoError("Maximum 2 photos de travail autorisees")
       return
@@ -266,7 +271,6 @@ export default function MemberDashboard() {
       setPhotoError("La photo doit faire moins de 1 Mo")
       return
     }
-
     const reader = new FileReader()
     reader.onloadend = () => setWorkPhotos([...workPhotos, reader.result as string])
     reader.readAsDataURL(file)
@@ -276,7 +280,6 @@ export default function MemberDashboard() {
     setWorkPhotos(workPhotos.filter((_, i) => i !== index))
   }
 
-  // Upload base64 vers Supabase Storage
   const uploadPhotoToStorage = async (
     supabase: ReturnType<typeof createClient>,
     base64: string,
@@ -290,17 +293,13 @@ export default function MemberDashboard() {
         byteArray[i] = byteCharacters.charCodeAt(i)
       }
       const blob = new Blob([byteArray], { type: 'image/jpeg' })
-
       const { data, error } = await supabase.storage
         .from('member-photos')
         .upload(path, blob, { upsert: true })
-
       if (error || !data) return null
-
       const { data: urlData } = supabase.storage
         .from('member-photos')
         .getPublicUrl(path)
-
       return urlData.publicUrl
     } catch (e) {
       console.error("Erreur upload:", e)
@@ -314,26 +313,20 @@ export default function MemberDashboard() {
     setSaveSuccess(false)
     const supabase = createClient()
 
-    // Upload photo de profil si base64
     let photoUrl = profilePhoto
     if (profilePhoto && profilePhoto.startsWith('data:')) {
       const uploaded = await uploadPhotoToStorage(
-        supabase,
-        profilePhoto,
-        `${member.id}/profile-${Date.now()}.jpg`
+        supabase, profilePhoto, `${member.id}/profile-${Date.now()}.jpg`
       )
       if (uploaded) photoUrl = uploaded
     }
 
-    // Upload photos de travail si base64
     const uploadedWorkPhotos: string[] = []
     for (let i = 0; i < workPhotos.length; i++) {
       const photo = workPhotos[i]
       if (photo.startsWith('data:')) {
         const uploaded = await uploadPhotoToStorage(
-          supabase,
-          photo,
-          `${member.id}/work-${Date.now()}-${i}.jpg`
+          supabase, photo, `${member.id}/work-${Date.now()}-${i}.jpg`
         )
         if (uploaded) uploadedWorkPhotos.push(uploaded)
       } else {
@@ -348,7 +341,7 @@ export default function MemberDashboard() {
         last_name: formData.last_name,
         phone: formData.phone,
         profession: formData.profession,
-        years_experience: formData.experience_years, // ✅ bon nom de colonne
+        years_experience: formData.experience_years,
         birth_date: formData.birth_date || null,
         birth_place: formData.birth_place || null,
         biography: formData.biography,
@@ -368,44 +361,43 @@ export default function MemberDashboard() {
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
     }
-    
     setSaving(false)
   }
 
   const handleAddFilm = async () => {
-  if (!member || !newFilm.film_title || !newFilm.role) return
-  const supabase = createClient()
+    if (!member || !newFilm.film_title || !newFilm.role) return
+    const supabase = createClient()
 
-  const { data, error } = await supabase
-    .from('filmography')
-    .insert({
-      member_id: member.id,
-      title: newFilm.film_title,
-      year: newFilm.release_year,
-      role_in_production: newFilm.role,
-      production_company: newFilm.production_company,
-      description: newFilm.film_format,
-    })
-    .select()
-    .single()
+    const { data, error } = await supabase
+      .from('filmography')
+      .insert({
+        member_id: member.id,
+        title: newFilm.film_title,
+        year: newFilm.release_year,
+        role_in_production: newFilm.role,
+        production_company: newFilm.production_company,
+        description: newFilm.film_format,
+      })
+      .select()
+      .single()
 
-  if (!error && data) {
-    setFilmography([data, ...filmography])
-    setNewFilm({
-      film_title: "", film_format: "", episode_count: undefined,
-      production_company: "", release_year: new Date().getFullYear(), role: ""
-    })
-    setShowFilmForm(false)
-  } else {
-    alert("Erreur : " + error?.message)
+    if (!error && data) {
+      setFilmography([data, ...filmography])
+      setNewFilm({
+        film_title: "", film_format: "", episode_count: undefined,
+        production_company: "", release_year: new Date().getFullYear(), role: ""
+      })
+      setShowFilmForm(false)
+    } else {
+      alert("Erreur : " + error?.message)
+    }
   }
-}
 
   const handleDeleteFilm = async (filmId: string) => {
-  const supabase = createClient()
-  const { error } = await supabase.from('filmography').delete().eq('id', filmId)
-  if (!error) setFilmography(filmography.filter(f => f.id !== filmId))
-}
+    const supabase = createClient()
+    const { error } = await supabase.from('filmography').delete().eq('id', filmId)
+    if (!error) setFilmography(filmography.filter(f => f.id !== filmId))
+  }
 
   if (loading) {
     return (
@@ -425,7 +417,6 @@ export default function MemberDashboard() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
       <main className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
           <div>
@@ -472,7 +463,6 @@ export default function MemberDashboard() {
                     {photoError}
                   </div>
                 )}
-
                 {saveSuccess && (
                   <div className="bg-green-500/10 border border-green-500/20 text-green-500 p-3 rounded-lg flex items-center gap-2">
                     <CheckCircle className="h-4 w-4" />
@@ -483,8 +473,7 @@ export default function MemberDashboard() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Camera className="h-5 w-5" />
-                      Photo de profil
+                      <Camera className="h-5 w-5" />Photo de profil
                     </CardTitle>
                     <CardDescription>Format JPEG uniquement, maximum 1 Mo</CardDescription>
                   </CardHeader>
@@ -500,14 +489,9 @@ export default function MemberDashboard() {
                         )}
                       </div>
                       <div className="space-y-2">
-                        <input
-                          type="file" ref={fileInputRef}
-                          onChange={handleProfilePhotoChange}
-                          accept="image/jpeg,image/jpg" className="hidden"
-                        />
+                        <input type="file" ref={fileInputRef} onChange={handleProfilePhotoChange} accept="image/jpeg,image/jpg" className="hidden" />
                         <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Changer la photo
+                          <Upload className="h-4 w-4 mr-2" />Changer la photo
                         </Button>
                         <p className="text-xs text-muted-foreground">JPEG, max 1 Mo</p>
                       </div>
@@ -571,7 +555,7 @@ export default function MemberDashboard() {
                     </div>
                     <div>
                       <Label>Biographie</Label>
-                      <Textarea value={formData.biography} onChange={(e) => setFormData({...formData, biography: e.target.value})} placeholder="Présentez-vous en quelques lignes..." className="mt-1 min-h-[100px]" />
+                      <Textarea value={formData.biography ?? ""} onChange={(e) => setFormData({...formData, biography: e.target.value})} placeholder="Présentez-vous en quelques lignes..." className="mt-1 min-h-[100px]" />
                     </div>
                   </CardContent>
                 </Card>
@@ -644,12 +628,6 @@ export default function MemberDashboard() {
                             </Select>
                           </div>
                         </div>
-                        {(newFilm.film_format === 'serie_fiction' || newFilm.film_format === 'serie_doc') && (
-                          <div>
-                            <Label>Nombre d&apos;épisodes</Label>
-                            <Input type="number" value={newFilm.episode_count || ''} onChange={(e) => setNewFilm({...newFilm, episode_count: parseInt(e.target.value) || undefined})} placeholder="Ex: 26" className="mt-1" />
-                          </div>
-                        )}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <Label>Production</Label>
@@ -665,7 +643,7 @@ export default function MemberDashboard() {
                           <Input value={newFilm.role} onChange={(e) => setNewFilm({...newFilm, role: e.target.value})} placeholder="Ex: Chef Opérateur" className="mt-1" />
                         </div>
                         <div className="flex gap-2">
-                          <Button onClick={handleAddFilm} disabled={!newFilm.film_title || !newFilm.film_format || !newFilm.role}>
+                          <Button onClick={handleAddFilm} disabled={!newFilm.film_title || !newFilm.role}>
                             <Plus className="h-4 w-4 mr-2" />Ajouter
                           </Button>
                           <Button variant="outline" onClick={() => setShowFilmForm(false)}>Annuler</Button>
@@ -684,16 +662,14 @@ export default function MemberDashboard() {
                         {filmography.map((film) => (
                           <div key={film.id} className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg">
                             <div>
-                             <h4 className="font-semibold">{film.title}</h4>
-<p className="text-sm text-muted-foreground">
-  {film.description || ""}
-  {' · '}{film.year}
-</p>
-<p className="text-sm text-primary">{film.role_in_production}</p>
-{film.production_company && (
-  <p className="text-xs text-muted-foreground">Production: {film.production_company}</p>
-)}
-                              )}
+                              <h4 className="font-semibold">{film.title}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {film.description ? film.description + ' · ' : ''}{film.year}
+                              </p>
+                              <p className="text-sm text-primary">{film.role_in_production}</p>
+                              {film.production_company ? (
+                                <p className="text-xs text-muted-foreground">Production: {film.production_company}</p>
+                              ) : null}
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => film.id && handleDeleteFilm(film.id)}>
                               <Trash2 className="h-4 w-4 text-red-500" />
@@ -788,7 +764,6 @@ export default function MemberDashboard() {
           </div>
         </div>
       </main>
-
       <Footer />
     </div>
   )
