@@ -218,7 +218,7 @@ export default function MemberDashboard() {
       setWorkPhotos(memberData.work_photos || [])
 
       const { data: filmoData } = await supabase
-        .from('filmographie')
+        .from('filmography')
         .select('*')
         .eq('member_id', memberData.id)
         .order('release_year', { ascending: false })
@@ -377,7 +377,7 @@ export default function MemberDashboard() {
     const supabase = createClient()
 
     const { data, error } = await supabase
-      .from('filmographie')
+      .from('filmography')
       .insert({
         member_id: member.id,
         film_title: newFilm.film_title,
