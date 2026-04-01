@@ -218,10 +218,10 @@ export default function MemberDashboard() {
       setWorkPhotos(memberData.work_photos || [])
 
       const { data: filmoData } = await supabase
-        .from('filmography')
-        .select('*')
-        .eq('member_id', memberData.id)
-        .order('release_year', { ascending: false })
+  .from('filmography')
+  .select('*')
+  .eq('member_id', memberData.id)
+  .order('year', { ascending: false })
 
       if (filmoData) setFilmography(filmoData)
       setLoading(false)
@@ -373,40 +373,39 @@ export default function MemberDashboard() {
   }
 
   const handleAddFilm = async () => {
-    if (!member || !newFilm.film_title || !newFilm.film_format || !newFilm.role) return
-    const supabase = createClient()
+  if (!member || !newFilm.film_title || !newFilm.role) return
+  const supabase = createClient()
 
-    const { data, error } = await supabase
-      .from('filmography')
-      .insert({
-        member_id: member.id,
-        film_title: newFilm.film_title,
-        film_format: newFilm.film_format,
-        episode_count: newFilm.episode_count,
-        production_company: newFilm.production_company,
-        release_year: newFilm.release_year,
-        role: newFilm.role
-      })
-      .select()
-      .single()
+  const { data, error } = await supabase
+    .from('filmography')
+    .insert({
+      member_id: member.id,
+      title: newFilm.film_title,
+      year: newFilm.release_year,
+      role_in_production: newFilm.role,
+      production_company: newFilm.production_company,
+      description: newFilm.film_format,
+    })
+    .select()
+    .single()
 
-    if (!error && data) {
-      setFilmography([data, ...filmography])
-      setNewFilm({
-        film_title: "", film_format: "", episode_count: undefined,
-        production_company: "", release_year: new Date().getFullYear(), role: ""
-      })
-      setShowFilmForm(false)
-    } else {
-      alert("Erreur lors de l'ajout : " + error?.message)
-    }
+  if (!error && data) {
+    setFilmography([data, ...filmography])
+    setNewFilm({
+      film_title: "", film_format: "", episode_count: undefined,
+      production_company: "", release_year: new Date().getFullYear(), role: ""
+    })
+    setShowFilmForm(false)
+  } else {
+    alert("Erreur : " + error?.message)
   }
+}
 
   const handleDeleteFilm = async (filmId: string) => {
-    const supabase = createClient()
-    const { error } = await supabase.from('filmographie').delete().eq('id', filmId)
-    if (!error) setFilmography(filmography.filter(f => f.id !== filmId))
-  }
+  const supabase = createClient()
+  const { error } = await supabase.from('filmography').delete().eq('id', filmId)
+  if (!error) setFilmography(filmography.filter(f => f.id !== filmId))
+}
 
   if (loading) {
     return (
@@ -685,15 +684,15 @@ export default function MemberDashboard() {
                         {filmography.map((film) => (
                           <div key={film.id} className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg">
                             <div>
-                              <h4 className="font-semibold">{film.film_title}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                {filmFormats.find(f => f.value === film.film_format)?.label || film.film_format}
-                                {film.episode_count && ` (${film.episode_count} épisodes)`}
-                                {' · '}{film.release_year}
-                              </p>
-                              <p className="text-sm text-primary">{film.role}</p>
-                              {film.production_company && (
-                                <p className="text-xs text-muted-foreground">Production: {film.production_company}</p>
+                             <h4 className="font-semibold">{film.title}</h4>
+<p className="text-sm text-muted-foreground">
+  {film.description || ""}
+  {' · '}{film.year}
+</p>
+<p className="text-sm text-primary">{film.role_in_production}</p>
+{film.production_company && (
+  <p className="text-xs text-muted-foreground">Production: {film.production_company}</p>
+)}
                               )}
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => film.id && handleDeleteFilm(film.id)}>
