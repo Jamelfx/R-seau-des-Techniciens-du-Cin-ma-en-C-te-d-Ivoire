@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { 
-  MapPin, Mail, Star, Film, Award, Clock,
+  MapPin, Mail, Star, Film, Clock,
   ChevronLeft, Share2, CheckCircle, Loader2
 } from "lucide-react"
 import Link from "next/link"
@@ -24,15 +24,6 @@ const availabilityLabels: Record<string, { label: string; color: string }> = {
   available: { label: "Disponible", color: "bg-green-500" },
   filming: { label: "En Tournage", color: "bg-amber-500" },
   unavailable: { label: "Indisponible", color: "bg-red-500" }
-}
-
-const filmFormatLabels: Record<string, string> = {
-  fiction_long: "Fiction Long métrage",
-  doc_long: "Documentaire Long métrage",
-  fiction_court: "Fiction Court métrage",
-  doc_court: "Documentaire Court métrage",
-  serie_fiction: "Série Fiction",
-  serie_doc: "Série Documentaire",
 }
 
 function ContactTechnicianDialog({ technicianName }: { technicianName: string }) {
@@ -105,7 +96,6 @@ export default function MemberProfilePage() {
       if (!id) return
       const supabase = createClient()
 
-      // Chercher par UUID ou par member_id
       const { data, error } = await supabase
         .from('members')
         .select('*')
@@ -120,12 +110,12 @@ export default function MemberProfilePage() {
 
       setMember(data)
 
-      // Récupérer la filmographie
+      // ✅ Bonne table + bonnes colonnes
       const { data: filmoData } = await supabase
-        .from('filmographie')
+        .from('filmography')
         .select('*')
         .eq('member_id', data.id)
-        .order('release_year', { ascending: false })
+        .order('year', { ascending: false })
 
       setFilmography(filmoData || [])
       setLoading(false)
@@ -149,9 +139,7 @@ export default function MemberProfilePage() {
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4">Membre introuvable</h1>
-            <Link href="/annuaire">
-              <Button>Retour à l'annuaire</Button>
-            </Link>
+            <Link href="/annuaire"><Button>Retour à l'annuaire</Button></Link>
           </div>
         </main>
         <Footer />
@@ -183,13 +171,7 @@ export default function MemberProfilePage() {
                 <CardContent className="p-0">
                   <div className="relative aspect-[3/4] w-full bg-secondary">
                     {member.profile_photo ? (
-                      <Image
-                        src={member.profile_photo}
-                        alt={fullName}
-                        fill
-                        className="object-cover"
-                        priority
-                      />
+                      <Image src={member.profile_photo} alt={fullName} fill className="object-cover" priority unoptimized />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-6xl font-bold text-muted-foreground">
                         {member.first_name?.[0]}{member.last_name?.[0]}
@@ -216,9 +198,7 @@ export default function MemberProfilePage() {
               <Card className="bg-card border-border">
                 <CardContent className="p-6 space-y-4">
                   <h3 className="font-semibold text-lg">Contacter ce technicien</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Le Directeur Exécutif vous mettra en relation.
-                  </p>
+                  <p className="text-sm text-muted-foreground">Le Directeur Exécutif vous mettra en relation.</p>
                   {member.birth_place && (
                     <div className="flex items-center gap-3 text-sm">
                       <MapPin className="h-4 w-4 text-primary" />
@@ -229,16 +209,13 @@ export default function MemberProfilePage() {
                     <Dialog open={contactOpen} onOpenChange={setContactOpen}>
                       <DialogTrigger asChild>
                         <Button className="flex-1">
-                          <Mail className="h-4 w-4 mr-2" />
-                          Contacter
+                          <Mail className="h-4 w-4 mr-2" />Contacter
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-md">
                         <DialogHeader>
                           <DialogTitle>Contacter {fullName}</DialogTitle>
-                          <DialogDescription>
-                            Le Directeur Exécutif du RETECHCI vous mettra en relation.
-                          </DialogDescription>
+                          <DialogDescription>Le Directeur Exécutif du RETECHCI vous mettra en relation.</DialogDescription>
                         </DialogHeader>
                         <ContactTechnicianDialog technicianName={fullName} />
                       </DialogContent>
@@ -254,9 +231,7 @@ export default function MemberProfilePage() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Disponibilité</span>
-                    <Badge className={`${availability.color} text-white`}>
-                      {availability.label}
-                    </Badge>
+                    <Badge className={`${availability.color} text-white`}>{availability.label}</Badge>
                   </div>
                 </CardContent>
               </Card>
@@ -271,22 +246,19 @@ export default function MemberProfilePage() {
                     <p className="text-xl text-primary mt-1">{member.profession}</p>
                   </div>
                   <Badge variant="outline" className="border-amber-500 text-amber-500">
-                    <Star className="h-3 w-3 mr-1 fill-current" />
-                    {level}
+                    <Star className="h-3 w-3 mr-1 fill-current" />{level}
                   </Badge>
                 </div>
                 
                 <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
                   {member.years_experience > 0 && (
                     <span className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {member.years_experience} ans d'expérience
+                      <Clock className="h-4 w-4" />{member.years_experience} ans d'expérience
                     </span>
                   )}
                   {filmography.length > 0 && (
                     <span className="flex items-center gap-1">
-                      <Film className="h-4 w-4" />
-                      {filmography.length} projets
+                      <Film className="h-4 w-4" />{filmography.length} projets
                     </span>
                   )}
                 </div>
@@ -315,25 +287,21 @@ export default function MemberProfilePage() {
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between">
                               <div>
-                                <h4 className="font-semibold text-lg">{film.film_title}</h4>
-                                <p className="text-primary text-sm">{film.role}</p>
-                                <div className="flex items-center gap-2 mt-2">
-                                  <Badge variant="secondary" className="text-xs">
-                                    {filmFormatLabels[film.film_format] || film.film_format}
+                                {/* ✅ Bonnes colonnes : title, role_in_production, year */}
+                                <h4 className="font-semibold text-lg">{film.title}</h4>
+                                <p className="text-primary text-sm">{film.role_in_production}</p>
+                                {film.description && (
+                                  <Badge variant="secondary" className="text-xs mt-2">
+                                    {film.description}
                                   </Badge>
-                                  {film.episode_count && (
-                                    <Badge variant="outline" className="text-xs">
-                                      {film.episode_count} épisodes
-                                    </Badge>
-                                  )}
-                                </div>
-                                {film.production_company && (
+                                )}
+                                {film.production_company ? (
                                   <p className="text-xs text-muted-foreground mt-1">
                                     Production: {film.production_company}
                                   </p>
-                                )}
+                                ) : null}
                               </div>
-                              <Badge variant="outline">{film.release_year}</Badge>
+                              <Badge variant="outline">{film.year}</Badge>
                             </div>
                           </CardContent>
                         </Card>
@@ -351,12 +319,7 @@ export default function MemberProfilePage() {
                     <div className="grid grid-cols-2 gap-4">
                       {workPhotos.map((photo: string, i: number) => (
                         <div key={i} className="relative aspect-video rounded-lg overflow-hidden group">
-                          <Image
-                            src={photo}
-                            alt={`Photo de travail ${i + 1}`}
-                            fill
-                            className="object-cover transition-transform group-hover:scale-105"
-                          />
+                          <Image src={photo} alt={`Photo de travail ${i + 1}`} fill className="object-cover transition-transform group-hover:scale-105" unoptimized />
                         </div>
                       ))}
                     </div>
