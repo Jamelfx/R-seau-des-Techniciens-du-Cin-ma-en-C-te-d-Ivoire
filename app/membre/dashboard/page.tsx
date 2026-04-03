@@ -425,13 +425,40 @@ export default function MemberDashboard() {
       if (!user) { router.push('/connexion'); return }
 
       const { data: memberData, error } = await supabase
-        .from('members')
-        .select('*')
-        .or(`email.eq.${user.email},auth_user_id.eq.${user.id}`)
-        .single()
+  .from('members')
+  .select('*')
+  .or(`email.eq.${user.email},auth_user_id.eq.${user.id}`)
+  .maybeSingle()
 
-      if (error || !memberData) { router.push('/connexion'); return }
+// Permettre l'acces aux administrateurs meme s'ils ne sont pas dans la table members
+const isAdmin = user.email && (
+  user.email.includes('directeur') ||
+  user.email.includes('president') ||
+  user.email.includes('tresorier') ||
+  user.email.includes('admin')
+)
 
+if (!memberData && !isAdmin) { router.push('/connexion'); return }
+
+if (memberData) {
+  setMember(memberData)
+} else if (isAdmin) {
+  // Creer un profil temporaire pour l'admin
+  setMember({
+    id: user.id,
+    email: user.email || '',
+    first_name: user.user_metadata?.full_name?.split(' ')[0] || 'Admin',
+    last_name: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
+    phone: '',
+    profession: '',
+    years_experience: 0,
+    gender: '',
+    birth_date: '',
+    role: 'director' as const,
+    status: 'active' as const,
+    date: new Date().toISOString(),
+  })
+}
       setMember(memberData)
       setFormData({
         first_name: memberData.first_name || "",
