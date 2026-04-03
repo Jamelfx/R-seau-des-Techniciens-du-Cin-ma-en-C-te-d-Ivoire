@@ -14,16 +14,26 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { 
   MapPin, Mail, Star, Film, Clock,
-  ChevronLeft, Share2, CheckCircle, Loader2, Video, ExternalLink
+  ChevronLeft, Share2, CheckCircle, Loader2, Video, ExternalLink,
+  Play, Award, Clapperboard, X, Tv
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 
-interface VideoLink {
-  url: string
-  title: string
-  thumbnail?: string
+// ─────────────────────────────────────────────────────────────────────
+// Types — filmographie avec les NOUVEAUX champs vidéo intégrés
+// ─────────────────────────────────────────────────────────────────────
+interface FilmographyItem {
+  id?: string
+  title?: string
+  year?: number
+  role_in_production?: string
+  production_company?: string
+  description?: string
+  // ✅ NOUVEAUX CHAMPS
+  video_url?: string | null
+  video_title?: string | null
 }
 
 const availabilityLabels: Record<string, { label: string; color: string }> = {
@@ -32,6 +42,9 @@ const availabilityLabels: Record<string, { label: string; color: string }> = {
   unavailable: { label: "Indisponible", color: "bg-red-500" }
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// ✅ Utilitaire : Extraire la miniature et la plateforme d'une URL vidéo
+// ─────────────────────────────────────────────────────────────────────
 function getVideoInfo(url: string): { thumbnail: string; embedUrl: string; platform: string } {
   const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)
   if (ytMatch) {
@@ -60,6 +73,25 @@ function getVideoInfo(url: string): { thumbnail: string; embedUrl: string; platf
   return { thumbnail: '', embedUrl: url, platform: 'Vidéo' }
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// ✅ Badge Plateforme — couleur selon la plateforme
+// ─────────────────────────────────────────────────────────────────────
+function PlatformBadge({ platform }: { platform: string }) {
+  const config: Record<string, string> = {
+    YouTube: 'bg-red-600/20 text-red-400 border-red-600/30',
+    Vimeo: 'bg-sky-500/20 text-sky-400 border-sky-500/30',
+    Dailymotion: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  }
+  return (
+    <Badge variant="outline" className={`text-[10px] font-medium ${config[platform] || 'bg-muted text-muted-foreground'}`}>
+      {platform}
+    </Badge>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Dialogue de contact (inchangé)
+// ─────────────────────────────────────────────────────────────────────
 function ContactTechnicianDialog({ technicianName }: { technicianName: string }) {
   const [formData, setFormData] = useState({ name: "", email: "", phone: "", project: "", message: "" })
   const [submitted, setSubmitted] = useState(false)
@@ -115,16 +147,143 @@ function ContactTechnicianDialog({ technicianName }: { technicianName: string })
   )
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// ✅ CARTE FILMOGRAPHIE AVEC MINIATURE VIDÉO INTÉGRÉE (Visiteur)
+// ─────────────────────────────────────────────────────────────────────
+function FilmographyCard({ 
+  film, 
+  onPlayVideo 
+}: { 
+  film: FilmographyItem
+  onPlayVideo: (film: FilmographyItem) => void
+}) {
+  const videoInfo = film.video_url ? getVideoInfo(film.video_url) : null
+
+  return (
+    <Card className="group overflow-hidden border-border/60 bg-card/80 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
+      <CardContent className="p-0">
+        <div className="flex flex-col sm:flex-row">
+          {/* ✅ Miniature vidéo ou placeholder */}
+          {videoInfo?.thumbnail ? (
+            <div 
+              className="relative w-full sm:w-48 md:w-56 flex-shrink-0 cursor-pointer"
+              onClick={() => onPlayVideo(film)}
+            >
+              <div className="aspect-video sm:aspect-[4/3] relative overflow-hidden bg-muted">
+                <img
+                  src={videoInfo.thumbnail}
+                  alt={film.video_title || film.title || "Vidéo"}
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                />
+                {/* Bouton Play */}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors group-hover:bg-black/20">
+                  <div className="flex size-12 items-center justify-center rounded-full bg-primary/90 text-primary-foreground shadow-xl transition-transform duration-300 group-hover:scale-110">
+                    <Play className="size-5 ml-0.5" fill="currentColor" />
+                  </div>
+                </div>
+                {/* Badge plateforme */}
+                <div className="absolute top-2 right-2">
+                  <PlatformBadge platform={videoInfo.platform} />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="relative w-full sm:w-48 md:w-56 flex-shrink-0">
+              <div className="aspect-video sm:aspect-[4/3] relative overflow-hidden bg-muted flex items-center justify-center">
+                <Film className="size-10 text-muted-foreground/30" />
+              </div>
+            </div>
+          )}
+
+          {/* ✅ Informations du film */}
+          <div className="flex flex-1 flex-col justify-between gap-2 p-4 md:p-5">
+            <div className="space-y-2">
+              {/* Titre + Année */}
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <h4 className="text-base md:text-lg font-bold tracking-tight text-foreground leading-tight">
+                  {film.title}
+                </h4>
+                {film.year && (
+                  <Badge variant="secondary" className="shrink-0 text-xs font-semibold tabular-nums">
+                    {film.year}
+                  </Badge>
+                )}
+              </div>
+
+              {/* Rôle */}
+              {film.role_in_production && (
+                <div className="flex items-center gap-2">
+                  <Award className="size-3.5 text-primary shrink-0" />
+                  <span className="text-sm font-semibold text-primary">{film.role_in_production}</span>
+                </div>
+              )}
+
+              {/* Format */}
+              {film.description && (
+                <div className="flex items-center gap-2">
+                  <Film className="size-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-sm text-muted-foreground">{film.description}</span>
+                </div>
+              )}
+
+              {/* Production */}
+              {film.production_company && (
+                <div className="flex items-center gap-2">
+                  <Clapperboard className="size-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-sm text-muted-foreground">{film.production_company}</span>
+                </div>
+              )}
+            </div>
+
+            {/* ✅ Lien vidéo */}
+            <div className="flex items-center justify-between pt-2 border-t border-border/50">
+              {film.video_url ? (
+                <button
+                  onClick={() => onPlayVideo(film)}
+                  className="flex items-center gap-2 min-w-0 flex-1 group/link"
+                >
+                  <Play className="size-3.5 text-primary shrink-0" />
+                  <span className="text-xs text-primary font-medium truncate group-hover/link:underline">
+                    {film.video_title || "Voir la vidéo"}
+                  </span>
+                </button>
+              ) : (
+                <span className="text-xs text-muted-foreground/60 italic">Aucun lien vidéo</span>
+              )}
+              {film.video_url && (
+                <a
+                  href={film.video_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-muted-foreground hover:text-primary transition-colors shrink-0"
+                >
+                  <ExternalLink className="size-3.5" />
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// COMPOSANT PRINCIPAL — PAGE PROFIL MEMBRE
+// ─────────────────────────────────────────────────────────────────────
 export default function MemberProfilePage() {
   const params = useParams()
   const id = params?.id as string
   const [member, setMember] = useState<any>(null)
-  const [filmography, setFilmography] = useState<any[]>([])
+  const [filmography, setFilmography] = useState<FilmographyItem[]>([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
-  const [activeTab, setActiveTab] = useState("filmography")
   const [contactOpen, setContactOpen] = useState(false)
-  const [selectedVideo, setSelectedVideo] = useState<VideoLink | null>(null)
+
+  // ✅ État pour le lecteur vidéo intégré (un seul film à la fois)
+  const [playingFilm, setPlayingFilm] = useState<FilmographyItem | null>(null)
 
   useEffect(() => {
     const fetchMember = async () => {
@@ -139,6 +298,7 @@ export default function MemberProfilePage() {
       if (error || !data) { setNotFound(true); setLoading(false); return }
       setMember(data)
 
+      // ✅ Récupérer la filmographie avec les champs vidéo
       const { data: filmoData } = await supabase
         .from('filmography')
         .select('*')
@@ -150,6 +310,9 @@ export default function MemberProfilePage() {
     }
     fetchMember()
   }, [id])
+
+  // ✅ Compter les films qui ont un lien vidéo
+  const videoCount = filmography.filter(f => f.video_url).length
 
   if (loading) {
     return (
@@ -177,7 +340,6 @@ export default function MemberProfilePage() {
   const fullName = `${member.first_name} ${member.last_name}`
   const availability = availabilityLabels[member.availability] || availabilityLabels.available
   const level = (member.years_experience || 0) >= 10 ? "Senior" : (member.years_experience || 0) >= 5 ? "Intermédiaire" : "Junior"
-  const videoLinks: VideoLink[] = Array.isArray(member.video_links) ? member.video_links : []
 
   return (
     <div className="min-h-screen bg-background">
@@ -191,7 +353,9 @@ export default function MemberProfilePage() {
 
         <section className="container mx-auto px-4 pb-12">
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* Colonne gauche */}
+            {/* ═══════════════════════════════════════════════════════
+                COLONNE GAUCHE — Profil
+                ═══════════════════════════════════════════════════════ */}
             <div className="space-y-6">
               <Card className="bg-card border-border overflow-hidden">
                 <CardContent className="p-0">
@@ -258,8 +422,11 @@ export default function MemberProfilePage() {
               </Card>
             </div>
 
-            {/* Colonne droite */}
+            {/* ═══════════════════════════════════════════════════════
+                COLONNE DROITE — Filmographie avec vidéos intégrées
+                ═══════════════════════════════════════════════════════ */}
             <div className="lg:col-span-2 space-y-6">
+              {/* En-tête profil */}
               <div>
                 <div className="flex items-start justify-between mb-4">
                   <div>
@@ -277,8 +444,8 @@ export default function MemberProfilePage() {
                   {filmography.length > 0 && (
                     <span className="flex items-center gap-1"><Film className="h-4 w-4" />{filmography.length} projets</span>
                   )}
-                  {videoLinks.length > 0 && (
-                    <span className="flex items-center gap-1"><Video className="h-4 w-4" />{videoLinks.length} vidéos</span>
+                  {videoCount > 0 && (
+                    <span className="flex items-center gap-1"><Video className="h-4 w-4" />{videoCount} vidéo{videoCount > 1 ? 's' : ''}</span>
                   )}
                 </div>
                 {member.biography && (
@@ -286,123 +453,77 @@ export default function MemberProfilePage() {
                 )}
               </div>
 
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="w-full justify-start bg-secondary/50">
-                  <TabsTrigger value="filmography">Filmographie</TabsTrigger>
-                  <TabsTrigger value="videos">Projets vidéo {videoLinks.length > 0 && `(${videoLinks.length})`}</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="filmography" className="mt-6">
-                  {filmography.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground bg-card border border-dashed border-border rounded-xl">
-                      <Film className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Aucune filmographie ajoutée</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {filmography.map((film) => (
-                        <Card key={film.id} className="bg-card border-border">
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <h4 className="font-semibold text-lg">{film.title}</h4>
-                                <p className="text-primary text-sm">{film.role_in_production}</p>
-                                {film.description && (
-                                  <Badge variant="secondary" className="text-xs mt-2">{film.description}</Badge>
-                                )}
-                                {film.production_company ? (
-                                  <p className="text-xs text-muted-foreground mt-1">Production: {film.production_company}</p>
-                                ) : null}
-                              </div>
-                              <Badge variant="outline">{film.year}</Badge>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </TabsContent>
-
-                {/* ✅ Onglet Vidéos avec miniatures et player */}
-                <TabsContent value="videos" className="mt-6">
-                  {videoLinks.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground bg-card border border-dashed border-border rounded-xl">
-                      <Video className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Aucun projet vidéo ajouté</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {/* Lecteur vidéo intégré */}
-                      {selectedVideo && (
-                        <div className="rounded-xl overflow-hidden bg-black aspect-video mb-6">
-                          <iframe
-                            src={getVideoInfo(selectedVideo.url).embedUrl}
-                            className="w-full h-full"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                          />
-                        </div>
-                      )}
-
-                      {/* Liste des vidéos */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {videoLinks.map((video, index) => {
-                          const info = getVideoInfo(video.url)
-                          const isSelected = selectedVideo?.url === video.url
-                          return (
-                            <div
-                              key={index}
-                              onClick={() => setSelectedVideo(isSelected ? null : video)}
-                              className={`cursor-pointer rounded-xl overflow-hidden border transition-all ${
-                                isSelected ? 'border-primary ring-2 ring-primary/20' : 'border-border hover:border-primary/50'
-                              }`}
-                            >
-                              {/* Miniature */}
-                              <div className="relative aspect-video bg-secondary">
-                                {video.thumbnail || info.thumbnail ? (
-                                  <Image
-                                    src={video.thumbnail || info.thumbnail}
-                                    alt={video.title}
-                                    fill
-                                    className="object-cover"
-                                    unoptimized
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <Video className="h-12 w-12 text-muted-foreground" />
-                                  </div>
-                                )}
-                                {/* Bouton play */}
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/20 transition-colors">
-                                  <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
-                                    <div className="w-0 h-0 border-l-[16px] border-l-black border-t-[10px] border-t-transparent border-b-[10px] border-b-transparent ml-1" />
-                                  </div>
-                                </div>
-                                <Badge className="absolute top-2 right-2 bg-black/70 text-white text-xs">
-                                  {info.platform}
-                                </Badge>
-                              </div>
-                              {/* Titre + lien */}
-                              <div className="p-3 bg-card flex items-center justify-between gap-2">
-                                <p className="font-medium text-sm truncate">{video.title}</p>
-                                <a
-                                  href={video.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="flex-shrink-0 text-muted-foreground hover:text-primary"
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </a>
-                              </div>
-                            </div>
-                          )
-                        })}
+              {/* ✅ Lecteur vidéo intégré (quand une vidéo est sélectionnée) */}
+              {playingFilm?.video_url && (() => {
+                const info = getVideoInfo(playingFilm.video_url!)
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold flex items-center gap-2">
+                        <Video className="h-4 w-4 text-primary" />
+                        {playingFilm.video_title || playingFilm.title}
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <PlatformBadge platform={info.platform} />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => setPlayingFilm(null)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
+                    <div className="rounded-xl overflow-hidden bg-black aspect-video shadow-2xl shadow-black/50">
+                      <iframe
+                        src={`${info.embedUrl}?autoplay=1`}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* ✅ FILMOGRAPHIE — avec miniatures vidéo intégrées */}
+              <section>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                      <Film className="h-5 w-5" />
+                      Filmographie
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {filmography.length} projet{filmography.length > 1 ? 's' : ''} cinématographique{filmography.length > 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  {videoCount > 0 && (
+                    <Badge variant="outline" className="text-xs gap-1">
+                      <Video className="size-3" />
+                      {videoCount} vidéo{videoCount > 1 ? 's' : ''}
+                    </Badge>
                   )}
-                </TabsContent>
-              </Tabs>
+                </div>
+
+                {filmography.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground bg-card border border-dashed border-border rounded-xl">
+                    <Film className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Aucune filmographie ajoutée</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filmography.map((film) => (
+                      <FilmographyCard
+                        key={film.id}
+                        film={film}
+                        onPlayVideo={setPlayingFilm}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
             </div>
           </div>
         </section>
