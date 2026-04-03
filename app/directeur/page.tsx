@@ -503,9 +503,9 @@ export default function DirectorDashboardPage() {
                   <DropdownMenuItem className="cursor-pointer" onClick={() => router.push('/membre/dashboard')}>
                     <User className="mr-2 h-4 w-4" /> Passer a l&apos;espace Membre
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer" onClick={() => router.push('/')}>
+                                  <DropdownMenuItem className="cursor-pointer" onClick={() => router.push('/')}>
                     <Film className="mr-2 h-4 w-4" /> Retour au site
-                  </DropdownMenuSeparator>
+                  </DropdownMenuItem>
                   <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive" onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" /> Deconnexion
                   </DropdownMenuItem>
