@@ -51,7 +51,6 @@ interface FilmographyItem {
   role_in_production?: string
   production_company?: string
   description?: string
-  // ✅ NOUVEAUX CHAMPS — Lien vidéo intégré à chaque film
   video_url?: string | null
   video_title?: string | null
 }
@@ -69,7 +68,6 @@ const filmFormats = [
 // ✅ Fonction utilitaire : Extraire la miniature et la plateforme d'une URL vidéo
 // ─────────────────────────────────────────────────────────────────────
 function getVideoInfo(url: string): { thumbnail: string; embedUrl: string; platform: string } {
-  // YouTube
   const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)
   if (ytMatch) {
     return {
@@ -78,7 +76,6 @@ function getVideoInfo(url: string): { thumbnail: string; embedUrl: string; platf
       platform: 'YouTube'
     }
   }
-  // Vimeo
   const vimeoMatch = url.match(/vimeo\.com\/(\d+)/)
   if (vimeoMatch) {
     return {
@@ -87,7 +84,6 @@ function getVideoInfo(url: string): { thumbnail: string; embedUrl: string; platf
       platform: 'Vimeo'
     }
   }
-  // Dailymotion
   const dmMatch = url.match(/dailymotion\.com\/video\/([^_]+)/)
   if (dmMatch) {
     return {
@@ -100,7 +96,7 @@ function getVideoInfo(url: string): { thumbnail: string; embedUrl: string; platf
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// ✅ BADGE PLATEFORME — Affiche le logo couleur selon la plateforme
+// ✅ BADGE PLATEFORME
 // ─────────────────────────────────────────────────────────────────────
 function PlatformBadge({ platform }: { platform: string }) {
   const config: Record<string, { className: string }> = {
@@ -117,7 +113,7 @@ function PlatformBadge({ platform }: { platform: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Payment Dialog (inchangé)
+// Payment Dialog
 // ─────────────────────────────────────────────────────────────────────
 function PaymentDialog({ memberName, memberId }: { memberName: string; memberId: string }) {
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null)
@@ -212,7 +208,6 @@ function FilmographyCard({
     <Card className="group overflow-hidden border-border/60 bg-card/80 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
       <CardContent className="p-0">
         <div className="flex flex-col sm:flex-row">
-          {/* ✅ Miniature vidéo */}
           {videoInfo?.thumbnail ? (
             <div className="relative w-full sm:w-48 md:w-56 flex-shrink-0">
               <div className="aspect-video sm:aspect-[4/3] relative overflow-hidden bg-muted">
@@ -222,20 +217,17 @@ function FilmographyCard({
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   loading="lazy"
                 />
-                {/* Bouton Play */}
                 <div className="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors group-hover:bg-black/20">
                   <div className="flex size-12 items-center justify-center rounded-full bg-primary/90 text-primary-foreground shadow-xl transition-transform duration-300 group-hover:scale-110">
                     <Play className="size-5 ml-0.5" fill="currentColor" />
                   </div>
                 </div>
-                {/* Badge plateforme */}
                 <div className="absolute top-2 right-2">
                   <PlatformBadge platform={videoInfo.platform} />
                 </div>
               </div>
             </div>
           ) : (
-            /* Placeholder quand pas de vidéo */
             <div className="relative w-full sm:w-48 md:w-56 flex-shrink-0">
               <div className="aspect-video sm:aspect-[4/3] relative overflow-hidden bg-muted flex items-center justify-center">
                 <Film className="size-10 text-muted-foreground/30" />
@@ -243,10 +235,8 @@ function FilmographyCard({
             </div>
           )}
 
-          {/* ✅ Informations du film */}
           <div className="flex flex-1 flex-col justify-between gap-2 p-4 md:p-5">
             <div className="space-y-2">
-              {/* Titre + Année */}
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <h3 className="text-base md:text-lg font-bold tracking-tight text-foreground leading-tight">
                   {film.title}
@@ -258,7 +248,6 @@ function FilmographyCard({
                 )}
               </div>
 
-              {/* Rôle */}
               {film.role_in_production && (
                 <div className="flex items-center gap-2">
                   <Award className="size-3.5 text-primary shrink-0" />
@@ -266,7 +255,6 @@ function FilmographyCard({
                 </div>
               )}
 
-              {/* Format */}
               {film.description && (
                 <div className="flex items-center gap-2">
                   <Film className="size-3.5 text-muted-foreground shrink-0" />
@@ -274,7 +262,6 @@ function FilmographyCard({
                 </div>
               )}
 
-              {/* Production */}
               {film.production_company && (
                 <div className="flex items-center gap-2">
                   <Clapperboard className="size-3.5 text-muted-foreground shrink-0" />
@@ -283,7 +270,6 @@ function FilmographyCard({
               )}
             </div>
 
-            {/* ✅ Lien vidéo + actions (Modifier + Supprimer) */}
             <div className="flex items-center justify-between pt-2 border-t border-border/50">
               {film.video_url ? (
                 <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -296,7 +282,6 @@ function FilmographyCard({
                 <span className="text-xs text-muted-foreground/60 italic">Aucun lien vidéo</span>
               )}
               
-              {/* ✅ Boutons d'action : Modifier + Supprimer */}
               {film.id && (
                 <div className="flex items-center gap-1 shrink-0">
                   <Button 
@@ -349,16 +334,13 @@ export default function MemberDashboard() {
   })
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
   
-  // ✅ Formulaire d'ajout film — avec les NOUVEAUX champs vidéo
   const [newFilm, setNewFilm] = useState({
     film_title: "", film_format: "", episode_count: undefined as number | undefined,
     production_company: "", release_year: new Date().getFullYear(), role: "",
-    // ✅ NOUVEAUX CHAMPS
     video_url: "", video_title: ""
   })
   const [showFilmForm, setShowFilmForm] = useState(false)
 
-  // ✅ État pour la modification d'un film existant
   const [editingFilm, setEditingFilm] = useState<FilmographyItem | null>(null)
   const [editSaving, setEditSaving] = useState(false)
 
@@ -390,7 +372,6 @@ export default function MemberDashboard() {
       })
       setProfilePhoto(memberData.profile_photo)
 
-      // ✅ Récupérer la filmographie avec les champs vidéo
       const { data: filmoData } = await supabase
         .from('filmography')
         .select('*')
@@ -402,6 +383,21 @@ export default function MemberDashboard() {
     }
     fetchMemberData()
   }, [router])
+
+  // ─────────────────────────────────────────────────────────────────
+  // ✅ Helper : reconstruire la date YYYY-MM-DD depuis les 3 champs
+  // ─────────────────────────────────────────────────────────────────
+  const buildBirthDate = (currentDate: string, part: 'day' | 'month' | 'year', value: string) => {
+    const parts = currentDate ? currentDate.split('-') : ['', '', '']
+    let [y, m, d] = [parts[0] || '', parts[1] || '', parts[2] || '']
+    if (part === 'day') d = value
+    if (part === 'month') m = value
+    if (part === 'year') y = value
+    if (y && m && d) {
+      return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+    }
+    return ''
+  }
 
   const handleProfilePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -444,7 +440,6 @@ export default function MemberDashboard() {
       if (uploaded) photoUrl = uploaded
     }
 
-    // ✅ Mise à jour du profil — PLUS de video_links ici
     const { error } = await supabase
       .from('members')
       .update({
@@ -458,7 +453,6 @@ export default function MemberDashboard() {
         biography: formData.biography,
         availability: formData.availability,
         profile_photo: photoUrl,
-        // ❌ SUPPRIMÉ : video_links: videoLinks
       })
       .eq('id', member.id)
 
@@ -473,7 +467,6 @@ export default function MemberDashboard() {
     setSaving(false)
   }
 
-  // ✅ Ajouter un film — AVEC les champs vidéo
   const handleAddFilm = async () => {
     if (!member || !newFilm.film_title || !newFilm.role) return
     const supabase = createClient()
@@ -487,7 +480,6 @@ export default function MemberDashboard() {
         role_in_production: newFilm.role,
         production_company: newFilm.production_company,
         description: newFilm.film_format,
-        // ✅ NOUVEAUX CHAMPS vidéo
         video_url: newFilm.video_url || null,
         video_title: newFilm.video_title || null,
       })
@@ -512,12 +504,10 @@ export default function MemberDashboard() {
     if (!error) setFilmography(filmography.filter(f => f.id !== filmId))
   }
 
-  // ✅ Ouvrir le dialogue de modification
   const handleOpenEdit = (film: FilmographyItem) => {
     setEditingFilm({ ...film })
   }
 
-  // ✅ Mettre à jour un film existant
   const handleUpdateFilm = async () => {
     if (!editingFilm || !editingFilm.id) return
     setEditSaving(true)
@@ -558,6 +548,12 @@ export default function MemberDashboard() {
 
   const memberCategory = member.category || ((member.years_experience || 0) >= 10 ? "A" : (member.years_experience || 0) >= 5 ? "B" : "C")
 
+  // ✅ Extraire jour/mois/année depuis birth_date (format YYYY-MM-DD)
+  const birthParts = formData.birth_date ? formData.birth_date.split('-') : ['', '', '']
+  const birthDay = birthParts[2] || ''
+  const birthMonth = birthParts[1] || ''
+  const birthYear = birthParts[0] || ''
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -594,7 +590,7 @@ export default function MemberDashboard() {
               </TabsList>
 
               {/* ═══════════════════════════════════════════════════════════
-                  PROFIL TAB — ✅ SECTION VIDÉO SUPPRIMÉE
+                  PROFIL TAB
                   ═══════════════════════════════════════════════════════════ */}
               <TabsContent value="profile" className="space-y-6 mt-6">
                 {photoError && (
@@ -642,16 +638,78 @@ export default function MemberDashboard() {
                       <div><Label>Nom</Label><Input value={formData.last_name} onChange={(e) => setFormData({...formData, last_name: e.target.value})} className="mt-1" /></div>
                       <div><Label>Prénoms</Label><Input value={formData.first_name} onChange={(e) => setFormData({...formData, first_name: e.target.value})} className="mt-1" /></div>
                     </div>
+
+                    {/* ✅✅✅ DATE DE NAISSANCE — 3 CHAMPS SÉPARÉS (mobile-friendly) ✅✅✅ */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label className="flex items-center gap-2"><Calendar className="h-4 w-4" />Date de naissance</Label>
-                        <Input type="date" value={formData.birth_date} onChange={(e) => setFormData({...formData, birth_date: e.target.value})} className="mt-1" />
+                        <div className="flex gap-2 mt-1">
+                          {/* Jour */}
+                          <div className="relative">
+                            <Input
+                              type="number"
+                              placeholder="JJ"
+                              min={1}
+                              max={31}
+                              value={birthDay}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 2)
+                                setFormData({...formData, birth_date: buildBirthDate(formData.birth_date, 'day', val)})
+                              }}
+                              className="w-[60px] text-center pr-1 pl-1"
+                              inputMode="numeric"
+                            />
+                          </div>
+                          {/* Mois — Select déroulant */}
+                          <Select
+                            value={birthMonth}
+                            onValueChange={(value) => {
+                              setFormData({...formData, birth_date: buildBirthDate(formData.birth_date, 'month', value)})
+                            }}
+                          >
+                            <SelectTrigger className="flex-1 min-w-0">
+                              <SelectValue placeholder="Mois" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="01">Janvier</SelectItem>
+                              <SelectItem value="02">Février</SelectItem>
+                              <SelectItem value="03">Mars</SelectItem>
+                              <SelectItem value="04">Avril</SelectItem>
+                              <SelectItem value="05">Mai</SelectItem>
+                              <SelectItem value="06">Juin</SelectItem>
+                              <SelectItem value="07">Juillet</SelectItem>
+                              <SelectItem value="08">Août</SelectItem>
+                              <SelectItem value="09">Septembre</SelectItem>
+                              <SelectItem value="10">Octobre</SelectItem>
+                              <SelectItem value="11">Novembre</SelectItem>
+                              <SelectItem value="12">Décembre</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {/* Année */}
+                          <div className="relative">
+                            <Input
+                              type="number"
+                              placeholder="AAAA"
+                              min={1940}
+                              max={2010}
+                              value={birthYear}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 4)
+                                setFormData({...formData, birth_date: buildBirthDate(formData.birth_date, 'year', val)})
+                              }}
+                              className="w-[76px] text-center pr-1 pl-1"
+                              inputMode="numeric"
+                            />
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-1.5">Entrez le jour, sélectionnez le mois, puis tapez l&apos;année</p>
                       </div>
                       <div>
                         <Label className="flex items-center gap-2"><MapPin className="h-4 w-4" />Lieu de naissance</Label>
                         <Input value={formData.birth_place} onChange={(e) => setFormData({...formData, birth_place: e.target.value})} placeholder="Ex: Abidjan" className="mt-1" />
                       </div>
                     </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div><Label>Téléphone</Label><Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="+225 XX XX XX XX XX" className="mt-1" /></div>
                       <div><Label>Email</Label><Input value={member.email} disabled className="mt-1 bg-secondary/50" /></div>
@@ -678,10 +736,6 @@ export default function MemberDashboard() {
                   </CardContent>
                 </Card>
 
-                {/* ❌ SECTION "LIENS DE PROJETS VIDÉO" SUPPRIMÉE — 
-                    Les vidéos sont maintenant gérées dans l'onglet CV, 
-                    directement dans chaque entrée de la filmographie. */}
-
                 <Button onClick={handleSaveProfile} className="w-full" disabled={saving}>
                   {saving ? (
                     <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sauvegarde en cours...</>
@@ -692,7 +746,7 @@ export default function MemberDashboard() {
               </TabsContent>
 
               {/* ═══════════════════════════════════════════════════════════
-                  CV TAB — ✅ FILMOGRAPHIE AVEC MINIATURES VIDÉO INTÉGRÉES
+                  CV TAB — FILMOGRAPHIE AVEC MINIATURES VIDÉO
                   ═══════════════════════════════════════════════════════════ */}
               <TabsContent value="cv" className="space-y-6 mt-6">
                 <Card>
@@ -711,7 +765,6 @@ export default function MemberDashboard() {
                     </Button>
                   </CardHeader>
                   <CardContent>
-                    {/* ✅ Formulaire d'ajout — AVEC les nouveaux champs vidéo */}
                     {showFilmForm && (
                       <div className="bg-secondary/30 rounded-xl p-4 mb-6 space-y-4">
                         <h4 className="font-semibold flex items-center gap-2">
@@ -770,7 +823,6 @@ export default function MemberDashboard() {
                           />
                         </div>
 
-                        {/* ✅✅✅ NOUVEAUX CHAMPS VIDÉO ✅✅✅ */}
                         <div className="border-t border-border/50 pt-4 mt-4">
                           <div className="flex items-center gap-2 mb-3">
                             <Video className="h-4 w-4 text-primary" />
@@ -806,7 +858,6 @@ export default function MemberDashboard() {
                             </div>
                           </div>
 
-                          {/* ✅ Aperçu miniature en temps réel */}
                           {newFilm.video_url && getVideoInfo(newFilm.video_url).thumbnail && (
                             <div className="mt-4 flex items-center gap-3 p-3 bg-background/50 rounded-lg border border-border/50">
                               <div className="relative w-28 aspect-video rounded overflow-hidden bg-muted flex-shrink-0">
@@ -839,7 +890,6 @@ export default function MemberDashboard() {
                       </div>
                     )}
 
-                    {/* ✅ Liste des films — AVEC miniatures vidéo intégrées */}
                     {filmography.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
                         <Film className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -863,7 +913,7 @@ export default function MemberDashboard() {
               </TabsContent>
 
               {/* ═══════════════════════════════════════════════════════════
-                  ✅ DIALOGUE DE MODIFICATION D'UN FILM
+                  DIALOGUE DE MODIFICATION D'UN FILM
                   ═══════════════════════════════════════════════════════════ */}
               <Dialog open={!!editingFilm} onOpenChange={(open) => !open && setEditingFilm(null)}>
                 <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -879,7 +929,6 @@ export default function MemberDashboard() {
 
                   {editingFilm && (
                     <div className="space-y-4 mt-4">
-                      {/* Aperçu miniature actuelle */}
                       {editingFilm.video_url && getVideoInfo(editingFilm.video_url).thumbnail && (
                         <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
                           <div className="relative w-28 aspect-video rounded overflow-hidden bg-muted flex-shrink-0">
@@ -957,7 +1006,6 @@ export default function MemberDashboard() {
                         />
                       </div>
 
-                      {/* ✅ Champs vidéo */}
                       <div className="border-t border-border/50 pt-4">
                         <div className="flex items-center gap-2 mb-3">
                           <Video className="h-4 w-4 text-primary" />
@@ -1013,7 +1061,7 @@ export default function MemberDashboard() {
               </Dialog>
 
               {/* ═══════════════════════════════════════════════════════════
-                  COTISATION TAB (inchangé)
+                  COTISATION TAB
                   ═══════════════════════════════════════════════════════════ */}
               <TabsContent value="payments" className="space-y-6 mt-6">
                 <Card>
@@ -1050,7 +1098,7 @@ export default function MemberDashboard() {
               </TabsContent>
 
               {/* ═══════════════════════════════════════════════════════════
-                  PARAMÈTRES TAB (inchangé)
+                  PARAMÈTRES TAB
                   ═══════════════════════════════════════════════════════════ */}
               <TabsContent value="settings" className="space-y-6 mt-6">
                 <Card>
@@ -1077,7 +1125,7 @@ export default function MemberDashboard() {
           </div>
 
           {/* ═══════════════════════════════════════════════════════════
-              SIDEBAR — Carte professionnelle (inchangée)
+              SIDEBAR — Carte professionnelle
               ═══════════════════════════════════════════════════════════ */}
           <div className="space-y-6">
             <Card className="sticky top-24">
