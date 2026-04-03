@@ -290,10 +290,10 @@ export default function MemberProfilePage() {
       if (!id) return
       const supabase = createClient()
       const { data, error } = await supabase
-        .from('members')
-        .select('*')
-        .or(`id.eq.${id},member_id.eq.${id}`)
-        .single()
+  .from('members')
+  .select('*')
+  .eq('id', id)
+  .single()
 
       if (error || !data) { setNotFound(true); setLoading(false); return }
       setMember(data)
