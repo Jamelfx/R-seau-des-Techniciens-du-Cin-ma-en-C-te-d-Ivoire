@@ -3,8 +3,6 @@
 import { useState, useRef, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { SpaceSwitchBar } from "@/components/space-switch-bar"
-import { useActiveSpace } from "@/hooks/use-active-space"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -30,8 +28,6 @@ import { useRouter } from "next/navigation"
 // ─────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────
-type UserRole = 'member' | 'director' | 'president' | 'treasurer' | 'admin'
-
 interface MemberData {
   id: string
   member_id: string
@@ -422,12 +418,6 @@ export default function MemberDashboard() {
   // ✅ État des mois payés
   const [paidMonths, setPaidMonths] = useState<number[]>([0, 1, 2, 3]) // Jan-Avr payés
 
-  // ✅ NOUVEAU — Rôle pour le hook de switch Admin/Membre
-  const [userRole, setUserRole] = useState<UserRole>('member')
-
-  // ✅ NOUVEAU — Hook de persistance cross-tab pour le switch d'espace
-  const { activeSpace, setActiveSpace, canSwitch } = useActiveSpace(userRole)
-
   useEffect(() => {
     const fetchMemberData = async () => {
       const supabase = createClient()
@@ -443,7 +433,6 @@ export default function MemberDashboard() {
       if (error || !memberData) { router.push('/connexion'); return }
 
       setMember(memberData)
-      setUserRole(memberData.role as UserRole) // ✅ Met à jour le rôle pour le hook
       setFormData({
         first_name: memberData.first_name || "",
         last_name: memberData.last_name || "",
@@ -702,25 +691,6 @@ export default function MemberDashboard() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          ✅ NOUVEAU — SpaceSwitchBar remplace le bandeau coloré
-          ──── Bandeau + Badge + Bouton switch Admin/Membre ────
-          ═══════════════════════════════════════════════════════════════════ */}
-      <SpaceSwitchBar
-        activeSpace={activeSpace}
-        onSwitch={setActiveSpace}
-        canSwitch={canSwitch}
-        member={{
-          id: member.id,
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          email: member.email,
-          role: member.role as UserRole,
-          profession: formData.profession,
-          profile_photo: profilePhoto,
-        }}
-      />
-
       <Header />
 
       <main className="flex-1 container mx-auto px-4 py-8">
@@ -773,7 +743,7 @@ export default function MemberDashboard() {
             <Button
               size="sm"
               className="shrink-0 bg-rose-600 hover:bg-rose-700 text-white gap-1.5"
-              onClick={() => setActiveSpace('admin')}
+              onClick={() => router.push('/admin')}
             >
               <Shield className="size-3.5" />
               <span className="hidden sm:inline">Aller à l&apos;Admin</span>
