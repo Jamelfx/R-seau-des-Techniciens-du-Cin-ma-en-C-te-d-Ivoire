@@ -134,8 +134,8 @@ export function FeaturedTalents({ content }: FeaturedTalentsProps) {
 
               return (
                 <Link 
-                  key={member.member_id || member.id} 
-                  href={`/membre/${member.member_id || member.id}`}
+                  key={member.id} 
+                  href={`/membre/${member.id}`}
                   className="group bg-card border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-all duration-300 block"
                 >
                   {/* ── Photo de profil paysage ── */}
