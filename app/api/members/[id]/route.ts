@@ -1,46 +1,40 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from 'next/server'
+import { updateMemberStatus, updateMemberRole } from '@/lib/supabase/server'
+import type { MemberStatus, MemberRole } from '@/lib/supabase/types'
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return NextResponse.json({ error: 'Variables Supabase non configurees.' }, { status: 500 })
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
   try {
+    const { id } = await params
     const body = await request.json()
-    const { status, role } = body
+    const { status, role } = body as { status?: MemberStatus; role?: MemberRole }
+
     if (!status && !role) {
-      return NextResponse.json({ error: 'Aucune donnee a mettre a jour.' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Parametres manquants: status ou role requis' },
+        { status: 400 }
+      )
     }
 
-    const uniqueRoles = ['director', 'president', 'treasurer']
-    if (role && uniqueRoles.includes(role)) {
-      const { data: currentHolder } = await supabase.from('members').select('id').eq('role', role).neq('id', id).single()
-      if (currentHolder) {
-        const { error: re } = await supabase.from('members').update({ role: 'member' }).eq('id', currentHolder.id)
-        if (re) return NextResponse.json({ error: re.message }, { status: 500 })
+    if (status) {
+      const result = await updateMemberStatus(id, status)
+      if (!result.success) {
+        return NextResponse.json({ error: result.error }, { status: 500 })
       }
     }
 
-    const updateData: Record<string, string> = {}
-    if (status) updateData.status = status
-    if (role) updateData.role = role
+    if (role) {
+      const result = await updateMemberRole(id, role)
+      if (!result.success) {
+        return NextResponse.json({ error: result.error }, { status: 500 })
+      }
+    }
 
-    const { error } = await supabase.from('members').update(updateData).eq('id', id)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-    return NextResponse.json({ success: true, id, updated: updateData })
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Erreur serveur.'
+    return NextResponse.json({ success: true })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Erreur lors de la mise a jour'
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
