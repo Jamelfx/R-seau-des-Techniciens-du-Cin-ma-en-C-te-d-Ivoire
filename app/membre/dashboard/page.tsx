@@ -16,7 +16,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { 
   User, CreditCard, FileText, Settings, Camera, Upload,
   Plus, Trash2, Save, CheckCircle, AlertCircle,
-  Wallet, Smartphone, Loader2, Calendar, MapPin, Video, Link2
+  Wallet, Smartphone, Loader2, Calendar, MapPin, Video, Link2,
+  Play, ExternalLink, Film, Clapperboard, Award
 } from "lucide-react"
 import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
@@ -38,16 +39,9 @@ interface MemberData {
   birth_date: string | null
   birth_place: string | null
   biography: string | null
-  video_links: VideoLink[]
   membership_level: string
   created_at: string
   category: string
-}
-
-interface VideoLink {
-  url: string
-  title: string
-  thumbnail?: string
 }
 
 interface FilmographyItem {
@@ -57,6 +51,9 @@ interface FilmographyItem {
   role_in_production?: string
   production_company?: string
   description?: string
+  // ✅ NOUVEAUX CHAMPS — Lien vidéo intégré à chaque film
+  video_url?: string | null
+  video_title?: string | null
 }
 
 const filmFormats = [
@@ -68,7 +65,9 @@ const filmFormats = [
   { value: "serie_doc", label: "Série Documentaire" },
 ]
 
-// Extraire l'ID et la miniature d'une URL vidéo
+// ─────────────────────────────────────────────────────────────────────
+// ✅ Fonction utilitaire : Extraire la miniature et la plateforme d'une URL vidéo
+// ─────────────────────────────────────────────────────────────────────
 function getVideoInfo(url: string): { thumbnail: string; embedUrl: string; platform: string } {
   // YouTube
   const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)
@@ -100,6 +99,26 @@ function getVideoInfo(url: string): { thumbnail: string; embedUrl: string; platf
   return { thumbnail: '', embedUrl: url, platform: 'Vidéo' }
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// ✅ BADGE PLATEFORME — Affiche le logo couleur selon la plateforme
+// ─────────────────────────────────────────────────────────────────────
+function PlatformBadge({ platform }: { platform: string }) {
+  const config: Record<string, { className: string }> = {
+    YouTube: { className: 'bg-red-600/20 text-red-400 border-red-600/30' },
+    Vimeo: { className: 'bg-sky-500/20 text-sky-400 border-sky-500/30' },
+    Dailymotion: { className: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  }
+  const style = config[platform] || { className: 'bg-muted text-muted-foreground' }
+  return (
+    <Badge variant="outline" className={`text-[10px] font-medium ${style.className}`}>
+      {platform}
+    </Badge>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Payment Dialog (inchangé)
+// ─────────────────────────────────────────────────────────────────────
 function PaymentDialog({ memberName, memberId }: { memberName: string; memberId: string }) {
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null)
   const [step, setStep] = useState<"select" | "confirm" | "success">("select")
@@ -118,8 +137,8 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
         <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle className="h-10 w-10 text-green-500" />
         </div>
-        <h3 className="text-xl font-bold mb-2">Paiement reussi !</h3>
-        <Badge className="bg-green-500/20 text-green-400">Cotisation a jour</Badge>
+        <h3 className="text-xl font-bold mb-2">Paiement réussi !</h3>
+        <Badge className="bg-green-500/20 text-green-400">Cotisation à jour</Badge>
       </div>
     )
   }
@@ -133,11 +152,11 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
             <span className="font-bold">5 000 FCFA</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Methode:</span>
+            <span className="text-muted-foreground">Méthode:</span>
             <span>{paymentMethods.find(m => m.id === selectedMethod)?.name}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Numero:</span>
+            <span className="text-muted-foreground">Numéro:</span>
             <span>{phone}</span>
           </div>
         </div>
@@ -163,7 +182,7 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
       {selectedMethod && (
         <div className="space-y-4">
           <div>
-            <Label>Numero de telephone</Label>
+            <Label>Numéro de téléphone</Label>
             <Input placeholder="+225 XX XX XX XX XX" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1" />
           </div>
           <Button onClick={() => phone && setStep("confirm")} className="w-full" disabled={!phone}>
@@ -175,6 +194,127 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
   )
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// ✅ CARTE FILMOGRAPHIE AVEC MINIATURE VIDÉO INTÉGRÉE
+// ─────────────────────────────────────────────────────────────────────
+function FilmographyCard({ 
+  film, 
+  onDelete 
+}: { 
+  film: FilmographyItem; 
+  onDelete: (id: string) => void 
+}) {
+  const videoInfo = film.video_url ? getVideoInfo(film.video_url) : null
+
+  return (
+    <Card className="group overflow-hidden border-border/60 bg-card/80 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
+      <CardContent className="p-0">
+        <div className="flex flex-col sm:flex-row">
+          {/* ✅ Miniature vidéo */}
+          {videoInfo?.thumbnail ? (
+            <div className="relative w-full sm:w-48 md:w-56 flex-shrink-0">
+              <div className="aspect-video sm:aspect-[4/3] relative overflow-hidden bg-muted">
+                <img
+                  src={videoInfo.thumbnail}
+                  alt={film.video_title || film.title || "Vidéo"}
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                />
+                {/* Bouton Play */}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors group-hover:bg-black/20">
+                  <div className="flex size-12 items-center justify-center rounded-full bg-primary/90 text-primary-foreground shadow-xl transition-transform duration-300 group-hover:scale-110">
+                    <Play className="size-5 ml-0.5" fill="currentColor" />
+                  </div>
+                </div>
+                {/* Badge plateforme */}
+                <div className="absolute top-2 right-2">
+                  <PlatformBadge platform={videoInfo.platform} />
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Placeholder quand pas de vidéo */
+            <div className="relative w-full sm:w-48 md:w-56 flex-shrink-0">
+              <div className="aspect-video sm:aspect-[4/3] relative overflow-hidden bg-muted flex items-center justify-center">
+                <Film className="size-10 text-muted-foreground/30" />
+              </div>
+            </div>
+          )}
+
+          {/* ✅ Informations du film */}
+          <div className="flex flex-1 flex-col justify-between gap-2 p-4 md:p-5">
+            <div className="space-y-2">
+              {/* Titre + Année */}
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <h3 className="text-base md:text-lg font-bold tracking-tight text-foreground leading-tight">
+                  {film.title}
+                </h3>
+                {film.year && (
+                  <Badge variant="secondary" className="shrink-0 text-xs font-semibold tabular-nums">
+                    {film.year}
+                  </Badge>
+                )}
+              </div>
+
+              {/* Rôle */}
+              {film.role_in_production && (
+                <div className="flex items-center gap-2">
+                  <Award className="size-3.5 text-primary shrink-0" />
+                  <span className="text-sm font-semibold text-primary">{film.role_in_production}</span>
+                </div>
+              )}
+
+              {/* Format */}
+              {film.description && (
+                <div className="flex items-center gap-2">
+                  <Film className="size-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-sm text-muted-foreground">{film.description}</span>
+                </div>
+              )}
+
+              {/* Production */}
+              {film.production_company && (
+                <div className="flex items-center gap-2">
+                  <Clapperboard className="size-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-sm text-muted-foreground">{film.production_company}</span>
+                </div>
+              )}
+            </div>
+
+            {/* ✅ Lien vidéo + actions */}
+            <div className="flex items-center justify-between pt-2 border-t border-border/50">
+              {film.video_url ? (
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <ExternalLink className="size-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-xs text-muted-foreground truncate">
+                    {film.video_title || "Voir la vidéo"}
+                  </span>
+                </div>
+              ) : (
+                <span className="text-xs text-muted-foreground/60 italic">Aucun lien vidéo</span>
+              )}
+              
+              {film.id && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => onDelete(film.id!)}
+                  className="h-8 w-8 shrink-0 hover:bg-red-500/10"
+                >
+                  <Trash2 className="h-4 w-4 text-red-500" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// COMPOSANT PRINCIPAL — MEMBER DASHBOARD
+// ─────────────────────────────────────────────────────────────────────
 export default function MemberDashboard() {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -186,10 +326,6 @@ export default function MemberDashboard() {
   const [activeTab, setActiveTab] = useState("profile")
   const [photoError, setPhotoError] = useState("")
   const [saveSuccess, setSaveSuccess] = useState(false)
-  const [videoLinks, setVideoLinks] = useState<VideoLink[]>([])
-  const [newVideoUrl, setNewVideoUrl] = useState("")
-  const [newVideoTitle, setNewVideoTitle] = useState("")
-  const [videoError, setVideoError] = useState("")
   
   const [formData, setFormData] = useState({
     first_name: "", last_name: "", phone: "", profession: "",
@@ -197,9 +333,13 @@ export default function MemberDashboard() {
     biography: "", availability: "available"
   })
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
+  
+  // ✅ Formulaire d'ajout film — avec les NOUVEAUX champs vidéo
   const [newFilm, setNewFilm] = useState({
     film_title: "", film_format: "", episode_count: undefined as number | undefined,
-    production_company: "", release_year: new Date().getFullYear(), role: ""
+    production_company: "", release_year: new Date().getFullYear(), role: "",
+    // ✅ NOUVEAUX CHAMPS
+    video_url: "", video_title: ""
   })
   const [showFilmForm, setShowFilmForm] = useState(false)
 
@@ -230,8 +370,8 @@ export default function MemberDashboard() {
         availability: memberData.availability || "available"
       })
       setProfilePhoto(memberData.profile_photo)
-      setVideoLinks(memberData.video_links || [])
 
+      // ✅ Récupérer la filmographie avec les champs vidéo
       const { data: filmoData } = await supabase
         .from('filmography')
         .select('*')
@@ -249,7 +389,7 @@ export default function MemberDashboard() {
     if (!file) return
     setPhotoError("")
     if (!file.type.includes('jpeg') && !file.type.includes('jpg')) {
-      setPhotoError("Seuls les fichiers JPEG sont acceptes"); return
+      setPhotoError("Seuls les fichiers JPEG sont acceptés"); return
     }
     if (file.size > 1 * 1024 * 1024) {
       setPhotoError("La photo doit faire moins de 1 Mo"); return
@@ -273,31 +413,6 @@ export default function MemberDashboard() {
     } catch (e) { return null }
   }
 
-  // Ajouter un lien vidéo
-  const handleAddVideo = () => {
-    setVideoError("")
-    if (!newVideoUrl) { setVideoError("Entrez un lien vidéo"); return }
-    
-    const info = getVideoInfo(newVideoUrl)
-    if (!info.thumbnail && !newVideoUrl.includes('youtube') && !newVideoUrl.includes('vimeo') && !newVideoUrl.includes('dailymotion')) {
-      setVideoError("Lien non supporté. Utilisez YouTube, Vimeo ou Dailymotion"); return
-    }
-    if (videoLinks.length >= 3) { setVideoError("Maximum 3 vidéos autorisées"); return }
-
-    const newVideo: VideoLink = {
-      url: newVideoUrl,
-      title: newVideoTitle || info.platform + " - " + (videoLinks.length + 1),
-      thumbnail: info.thumbnail
-    }
-    setVideoLinks([...videoLinks, newVideo])
-    setNewVideoUrl("")
-    setNewVideoTitle("")
-  }
-
-  const handleRemoveVideo = (index: number) => {
-    setVideoLinks(videoLinks.filter((_, i) => i !== index))
-  }
-
   const handleSaveProfile = async () => {
     if (!member) return
     setSaving(true)
@@ -310,6 +425,7 @@ export default function MemberDashboard() {
       if (uploaded) photoUrl = uploaded
     }
 
+    // ✅ Mise à jour du profil — PLUS de video_links ici
     const { error } = await supabase
       .from('members')
       .update({
@@ -323,7 +439,7 @@ export default function MemberDashboard() {
         biography: formData.biography,
         availability: formData.availability,
         profile_photo: photoUrl,
-        video_links: videoLinks,
+        // ❌ SUPPRIMÉ : video_links: videoLinks
       })
       .eq('id', member.id)
 
@@ -331,16 +447,18 @@ export default function MemberDashboard() {
       alert(`Erreur: ${error.message}`)
     } else {
       setProfilePhoto(photoUrl)
-      setMember({ ...member, ...formData, years_experience: formData.experience_years, profile_photo: photoUrl, video_links: videoLinks })
+      setMember({ ...member, ...formData, years_experience: formData.experience_years, profile_photo: photoUrl })
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
     }
     setSaving(false)
   }
 
+  // ✅ Ajouter un film — AVEC les champs vidéo
   const handleAddFilm = async () => {
     if (!member || !newFilm.film_title || !newFilm.role) return
     const supabase = createClient()
+    
     const { data, error } = await supabase
       .from('filmography')
       .insert({
@@ -350,12 +468,19 @@ export default function MemberDashboard() {
         role_in_production: newFilm.role,
         production_company: newFilm.production_company,
         description: newFilm.film_format,
+        // ✅ NOUVEAUX CHAMPS vidéo
+        video_url: newFilm.video_url || null,
+        video_title: newFilm.video_title || null,
       })
       .select().single()
 
     if (!error && data) {
       setFilmography([data, ...filmography])
-      setNewFilm({ film_title: "", film_format: "", episode_count: undefined, production_company: "", release_year: new Date().getFullYear(), role: "" })
+      setNewFilm({ 
+        film_title: "", film_format: "", episode_count: undefined, 
+        production_company: "", release_year: new Date().getFullYear(), role: "",
+        video_url: "", video_title: ""
+      })
       setShowFilmForm(false)
     } else {
       alert("Erreur : " + error?.message)
@@ -415,7 +540,9 @@ export default function MemberDashboard() {
                 </TabsTrigger>
               </TabsList>
 
-              {/* Profile Tab */}
+              {/* ═══════════════════════════════════════════════════════════
+                  PROFIL TAB — ✅ SECTION VIDÉO SUPPRIMÉE
+                  ═══════════════════════════════════════════════════════════ */}
               <TabsContent value="profile" className="space-y-6 mt-6">
                 {photoError && (
                   <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-3 rounded-lg flex items-center gap-2">
@@ -498,85 +625,9 @@ export default function MemberDashboard() {
                   </CardContent>
                 </Card>
 
-                {/* ✅ Section Liens Vidéo — remplace Photos de travail */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Video className="h-5 w-5" />Liens de projets vidéo</CardTitle>
-                    <CardDescription>Ajoutez jusqu'à 3 liens YouTube, Vimeo ou Dailymotion de vos projets</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {videoError && (
-                      <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-3 rounded-lg flex items-center gap-2 text-sm">
-                        <AlertCircle className="h-4 w-4" />{videoError}
-                      </div>
-                    )}
-
-                    {/* Vidéos existantes */}
-                    <div className="space-y-3">
-                      {videoLinks.map((video, index) => {
-                        const info = getVideoInfo(video.url)
-                        return (
-                          <div key={index} className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg group">
-                            {/* Miniature */}
-                            <div className="relative w-24 h-14 rounded overflow-hidden bg-secondary flex-shrink-0">
-                              {video.thumbnail ? (
-                                <Image src={video.thumbnail} alt={video.title} fill className="object-cover" unoptimized />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <Video className="h-6 w-6 text-muted-foreground" />
-                                </div>
-                              )}
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                <div className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center">
-                                  <div className="w-0 h-0 border-l-[8px] border-l-black border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent ml-0.5" />
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">{video.title}</p>
-                              <p className="text-xs text-muted-foreground truncate">{video.url}</p>
-                              <Badge variant="outline" className="text-[10px] mt-1">{info.platform}</Badge>
-                            </div>
-                            <button onClick={() => handleRemoveVideo(index)} className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-red-500/10 hover:bg-red-500/20 rounded-lg">
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </button>
-                          </div>
-                        )
-                      })}
-                    </div>
-
-                    {/* Formulaire ajout vidéo */}
-                    {videoLinks.length < 3 && (
-                      <div className="border border-dashed border-border rounded-lg p-4 space-y-3">
-                        <div>
-                          <Label className="flex items-center gap-2"><Link2 className="h-4 w-4" />Lien de la vidéo *</Label>
-                          <Input
-                            value={newVideoUrl}
-                            onChange={(e) => setNewVideoUrl(e.target.value)}
-                            placeholder="https://www.youtube.com/watch?v=..."
-                            className="mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label>Titre du projet</Label>
-                          <Input
-                            value={newVideoTitle}
-                            onChange={(e) => setNewVideoTitle(e.target.value)}
-                            placeholder="Ex: Bande annonce - LE PROPHÈTE EZÉCHIEL"
-                            className="mt-1"
-                          />
-                        </div>
-                        <Button onClick={handleAddVideo} variant="outline" className="w-full">
-                          <Plus className="h-4 w-4 mr-2" />Ajouter cette vidéo
-                        </Button>
-                      </div>
-                    )}
-
-                    {videoLinks.length >= 3 && (
-                      <p className="text-xs text-muted-foreground text-center">Maximum 3 vidéos atteint</p>
-                    )}
-                  </CardContent>
-                </Card>
+                {/* ❌ SECTION "LIENS DE PROJETS VIDÉO" SUPPRIMÉE — 
+                    Les vidéos sont maintenant gérées dans l'onglet CV, 
+                    directement dans chaque entrée de la filmographie. */}
 
                 <Button onClick={handleSaveProfile} className="w-full" disabled={saving}>
                   {saving ? (
@@ -587,26 +638,42 @@ export default function MemberDashboard() {
                 </Button>
               </TabsContent>
 
-              {/* CV Tab */}
+              {/* ═══════════════════════════════════════════════════════════
+                  CV TAB — ✅ FILMOGRAPHIE AVEC MINIATURES VIDÉO INTÉGRÉES
+                  ═══════════════════════════════════════════════════════════ */}
               <TabsContent value="cv" className="space-y-6 mt-6">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <div>
-                      <CardTitle>Filmographie</CardTitle>
-                      <CardDescription>Ajoutez vos expériences cinématographiques</CardDescription>
+                      <CardTitle className="flex items-center gap-2">
+                        <Film className="h-5 w-5" />
+                        Filmographie
+                      </CardTitle>
+                      <CardDescription>
+                        Ajoutez vos expériences cinématographiques avec liens vidéo
+                      </CardDescription>
                     </div>
                     <Button onClick={() => setShowFilmForm(true)}>
                       <Plus className="h-4 w-4 mr-2" />Ajouter un film
                     </Button>
                   </CardHeader>
                   <CardContent>
+                    {/* ✅ Formulaire d'ajout — AVEC les nouveaux champs vidéo */}
                     {showFilmForm && (
                       <div className="bg-secondary/30 rounded-xl p-4 mb-6 space-y-4">
-                        <h4 className="font-semibold">Nouveau film / Série</h4>
+                        <h4 className="font-semibold flex items-center gap-2">
+                          <Film className="h-4 w-4" />
+                          Nouveau film / Série
+                        </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <Label>Nom du film / Série *</Label>
-                            <Input value={newFilm.film_title} onChange={(e) => setNewFilm({...newFilm, film_title: e.target.value})} placeholder="Ex: La Vie en Rose" className="mt-1" />
+                            <Input 
+                              value={newFilm.film_title} 
+                              onChange={(e) => setNewFilm({...newFilm, film_title: e.target.value})} 
+                              placeholder="Ex: La Vie en Rose" 
+                              className="mt-1" 
+                            />
                           </div>
                           <div>
                             <Label>Format *</Label>
@@ -623,18 +690,94 @@ export default function MemberDashboard() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <Label>Production</Label>
-                            <Input value={newFilm.production_company} onChange={(e) => setNewFilm({...newFilm, production_company: e.target.value})} placeholder="Société de production" className="mt-1" />
+                            <Input 
+                              value={newFilm.production_company} 
+                              onChange={(e) => setNewFilm({...newFilm, production_company: e.target.value})} 
+                              placeholder="Société de production" 
+                              className="mt-1" 
+                            />
                           </div>
                           <div>
                             <Label>Année</Label>
-                            <Input type="number" value={newFilm.release_year} onChange={(e) => setNewFilm({...newFilm, release_year: parseInt(e.target.value) || new Date().getFullYear()})} className="mt-1" />
+                            <Input 
+                              type="number" 
+                              value={newFilm.release_year} 
+                              onChange={(e) => setNewFilm({...newFilm, release_year: parseInt(e.target.value) || new Date().getFullYear()})} 
+                              className="mt-1" 
+                            />
                           </div>
                         </div>
                         <div>
                           <Label>Votre poste / Rôle *</Label>
-                          <Input value={newFilm.role} onChange={(e) => setNewFilm({...newFilm, role: e.target.value})} placeholder="Ex: Chef Opérateur" className="mt-1" />
+                          <Input 
+                            value={newFilm.role} 
+                            onChange={(e) => setNewFilm({...newFilm, role: e.target.value})} 
+                            placeholder="Ex: Chef Opérateur" 
+                            className="mt-1" 
+                          />
                         </div>
-                        <div className="flex gap-2">
+
+                        {/* ✅✅✅ NOUVEAUX CHAMPS VIDÉO ✅✅✅ */}
+                        <div className="border-t border-border/50 pt-4 mt-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Video className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-semibold">Lien vidéo du projet</span>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/30">
+                              NOUVEAU
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label className="flex items-center gap-1.5">
+                                <Link2 className="h-3.5 w-3.5" />
+                                URL de la vidéo
+                              </Label>
+                              <Input 
+                                value={newFilm.video_url} 
+                                onChange={(e) => setNewFilm({...newFilm, video_url: e.target.value})} 
+                                placeholder="https://www.youtube.com/watch?v=..." 
+                                className="mt-1" 
+                              />
+                              <p className="text-xs text-muted-foreground mt-1">
+                                YouTube, Vimeo ou Dailymotion — La miniature sera automatiquement récupérée
+                              </p>
+                            </div>
+                            <div>
+                              <Label>Titre du lien vidéo</Label>
+                              <Input 
+                                value={newFilm.video_title} 
+                                onChange={(e) => setNewFilm({...newFilm, video_title: e.target.value})} 
+                                placeholder="Ex: Bande-annonce officielle" 
+                                className="mt-1" 
+                              />
+                            </div>
+                          </div>
+
+                          {/* ✅ Aperçu miniature en temps réel */}
+                          {newFilm.video_url && getVideoInfo(newFilm.video_url).thumbnail && (
+                            <div className="mt-4 flex items-center gap-3 p-3 bg-background/50 rounded-lg border border-border/50">
+                              <div className="relative w-28 aspect-video rounded overflow-hidden bg-muted flex-shrink-0">
+                                <img
+                                  src={getVideoInfo(newFilm.video_url).thumbnail}
+                                  alt="Aperçu"
+                                  className="h-full w-full object-cover"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                  <div className="flex size-8 items-center justify-center rounded-full bg-primary/90">
+                                    <Play className="size-3 ml-0.5" fill="currentColor" />
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-foreground">Aperçu miniature</p>
+                                <p className="text-xs text-muted-foreground truncate">{newFilm.video_url}</p>
+                                <PlatformBadge platform={getVideoInfo(newFilm.video_url).platform} />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2 pt-2">
                           <Button onClick={handleAddFilm} disabled={!newFilm.film_title || !newFilm.role}>
                             <Plus className="h-4 w-4 mr-2" />Ajouter
                           </Button>
@@ -643,30 +786,21 @@ export default function MemberDashboard() {
                       </div>
                     )}
 
+                    {/* ✅ Liste des films — AVEC miniatures vidéo intégrées */}
                     {filmography.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
-                        <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <Film className="h-12 w-12 mx-auto mb-4 opacity-50" />
                         <p>Aucune filmographie ajoutée</p>
                         <p className="text-sm">Cliquez sur &quot;Ajouter un film&quot; pour commencer</p>
                       </div>
                     ) : (
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         {filmography.map((film) => (
-                          <div key={film.id} className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg">
-                            <div>
-                              <h4 className="font-semibold">{film.title}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                {film.description ? film.description + ' · ' : ''}{film.year}
-                              </p>
-                              <p className="text-sm text-primary">{film.role_in_production}</p>
-                              {film.production_company ? (
-                                <p className="text-xs text-muted-foreground">Production: {film.production_company}</p>
-                              ) : null}
-                            </div>
-                            <Button variant="ghost" size="icon" onClick={() => film.id && handleDeleteFilm(film.id)}>
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </div>
+                          <FilmographyCard 
+                            key={film.id} 
+                            film={film} 
+                            onDelete={handleDeleteFilm} 
+                          />
                         ))}
                       </div>
                     )}
@@ -674,7 +808,9 @@ export default function MemberDashboard() {
                 </Card>
               </TabsContent>
 
-              {/* Payments Tab */}
+              {/* ═══════════════════════════════════════════════════════════
+                  COTISATION TAB (inchangé)
+                  ═══════════════════════════════════════════════════════════ */}
               <TabsContent value="payments" className="space-y-6 mt-6">
                 <Card>
                   <CardHeader>
@@ -709,7 +845,9 @@ export default function MemberDashboard() {
                 </Card>
               </TabsContent>
 
-              {/* Settings Tab */}
+              {/* ═══════════════════════════════════════════════════════════
+                  PARAMÈTRES TAB (inchangé)
+                  ═══════════════════════════════════════════════════════════ */}
               <TabsContent value="settings" className="space-y-6 mt-6">
                 <Card>
                   <CardHeader><CardTitle>Notifications</CardTitle></CardHeader>
@@ -734,7 +872,9 @@ export default function MemberDashboard() {
             </Tabs>
           </div>
 
-          {/* Sidebar */}
+          {/* ═══════════════════════════════════════════════════════════
+              SIDEBAR — Carte professionnelle (inchangée)
+              ═══════════════════════════════════════════════════════════ */}
           <div className="space-y-6">
             <Card className="sticky top-24">
               <CardHeader><CardTitle className="text-lg">Ma carte professionnelle</CardTitle></CardHeader>
@@ -742,7 +882,7 @@ export default function MemberDashboard() {
                 <ProfessionalCard
                   name={`${formData.first_name} ${formData.last_name}`}
                   role={formData.profession || "Technicien"}
-                  title={member.role === 'director' ? 'Directeur Executif' : undefined}
+                  title={member.role === 'director' ? 'Directeur Exécutif' : undefined}
                   category={memberCategory}
                   memberId={member.member_id || 'N/A'}
                   image={profilePhoto || undefined}
