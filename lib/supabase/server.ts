@@ -8,10 +8,6 @@ const supabase = (supabaseUrl && supabaseAnonKey)
   ? createSupabaseClient(supabaseUrl, supabaseAnonKey)
   : null
 
-export function createClient() {
-  return createSupabaseClient(supabaseUrl, supabaseAnonKey)
-}
-
 function isConfigured(): boolean {
   return !!supabase
 }
@@ -30,7 +26,7 @@ export async function updateMemberStatus(
   memberId: string,
   newStatus: MemberStatus
 ): Promise<{ success: boolean; error?: string }> {
-  if (!isConfigured()) return { success: false, error: 'Supabase non configuré' }
+  if (!isConfigured()) return { success: false, error: 'Supabase non configure' }
   const { error } = await supabase!.from('members').update({ status: newStatus }).eq('id', memberId)
   if (error) return { success: false, error: error.message }
   return { success: true }
@@ -40,7 +36,7 @@ export async function updateMemberRole(
   memberId: string,
   newRole: MemberRole
 ): Promise<{ success: boolean; error?: string }> {
-  if (!isConfigured()) return { success: false, error: 'Supabase non configuré' }
+  if (!isConfigured()) return { success: false, error: 'Supabase non configure' }
 
   const uniqueRoles: MemberRole[] = ['director', 'president', 'treasurer']
   if (uniqueRoles.includes(newRole)) {
