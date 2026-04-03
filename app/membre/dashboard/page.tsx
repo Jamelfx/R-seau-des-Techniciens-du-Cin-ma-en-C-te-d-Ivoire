@@ -17,12 +17,18 @@ import {
   User, CreditCard, FileText, Settings, Camera, Upload,
   Plus, Trash2, Save, CheckCircle, AlertCircle,
   Wallet, Smartphone, Loader2, Calendar, MapPin, Video, Link2,
-  Play, ExternalLink, Film, Clapperboard, Award, Pencil, X
+  Play, ExternalLink, Film, Clapperboard, Award, Pencil, X,
+  /* ── NOUVEAUX IMPORTS pour les 2 fonctionnalités ── */
+  Shield, ChevronRight, ArrowRightLeft,
+  Lock, XCircle, Minus, CircleDollarSign, Clock, Ban
 } from "lucide-react"
 import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 
+// ─────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────
 interface MemberData {
   id: string
   member_id: string
@@ -36,6 +42,7 @@ interface MemberData {
   availability: string
   status: string
   role: string
+  gender: string | null
   birth_date: string | null
   birth_place: string | null
   biography: string | null
@@ -62,6 +69,24 @@ const filmFormats = [
   { value: "doc_court", label: "Documentaire Court métrage" },
   { value: "serie_fiction", label: "Série Fiction" },
   { value: "serie_doc", label: "Série Documentaire" },
+]
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ✅ NOUVEAU — Définition des onglets pour la navigation avec surbrillance
+   ══════════════════════════════════════════════════════════════════════════════ */
+const MONTHLY_FEE = 2000
+const MONTHS_SUSPEND_AFTER = 12
+
+const moisNoms = [
+  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
+]
+
+const tabItems = [
+  { value: "profile", label: "Profil", icon: User },
+  { value: "cv", label: "CV", icon: FileText },
+  { value: "payments", label: "Cotisation", icon: CreditCard },
+  { value: "settings", label: "Paramètres", icon: Settings },
 ]
 
 // ─────────────────────────────────────────────────────────────────────
@@ -113,13 +138,15 @@ function PlatformBadge({ platform }: { platform: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Payment Dialog
+// ✅ PaymentDialog — Choix du nombre de mois + montant dynamique
 // ─────────────────────────────────────────────────────────────────────
-function PaymentDialog({ memberName, memberId }: { memberName: string; memberId: string }) {
+function PaymentDialog({ memberName, memberId, onSuccess }: { memberName: string; memberId: string; onSuccess: () => void }) {
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null)
   const [step, setStep] = useState<"select" | "confirm" | "success">("select")
   const [phone, setPhone] = useState("")
-  
+  const [monthsCount, setMonthsCount] = useState(1)
+  const totalAmount = monthsCount * MONTHLY_FEE
+
   const paymentMethods = [
     { id: "wave", name: "Wave", icon: Wallet, color: "bg-cyan-500" },
     { id: "orange", name: "Orange Money", icon: Smartphone, color: "bg-orange-500" },
@@ -134,6 +161,9 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
           <CheckCircle className="h-10 w-10 text-green-500" />
         </div>
         <h3 className="text-xl font-bold mb-2">Paiement réussi !</h3>
+        <p className="text-sm text-muted-foreground mb-3">
+          {monthsCount} mois{monthsCount > 1 ? 's' : ''} de cotisation payé{monthsCount > 1 ? 's' : ''}
+        </p>
         <Badge className="bg-green-500/20 text-green-400">Cotisation à jour</Badge>
       </div>
     )
@@ -144,8 +174,12 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
       <div className="space-y-6">
         <div className="bg-secondary/50 rounded-xl p-4 space-y-2">
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Montant:</span>
-            <span className="font-bold">5 000 FCFA</span>
+            <span className="text-muted-foreground">Durée:</span>
+            <span className="font-medium">{monthsCount} mois{monthsCount > 1 ? 's' : ''}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Montant ({MONTHLY_FEE.toLocaleString('fr-FR')} × {monthsCount}):</span>
+            <span className="font-bold text-primary">{totalAmount.toLocaleString('fr-FR')} FCFA</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Méthode:</span>
@@ -156,7 +190,7 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
             <span>{phone}</span>
           </div>
         </div>
-        <Button onClick={() => setStep("success")} className="w-full">Confirmer le paiement</Button>
+        <Button onClick={() => { setStep("success"); onSuccess() }} className="w-full">Confirmer le paiement</Button>
         <Button variant="outline" onClick={() => setStep("select")} className="w-full">Modifier</Button>
       </div>
     )
@@ -164,25 +198,63 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3">
-        {paymentMethods.map((method) => (
-          <button key={method.id} onClick={() => setSelectedMethod(method.id)}
-            className={`p-4 rounded-xl border-2 transition-all ${selectedMethod === method.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
-            <div className={`w-10 h-10 ${method.color} rounded-lg flex items-center justify-center mb-2 mx-auto`}>
-              <method.icon className="h-5 w-5 text-white" />
-            </div>
-            <p className="font-medium text-sm">{method.name}</p>
+      {/* ✅ Sélection du nombre de mois */}
+      <div>
+        <Label className="flex items-center gap-2 mb-3">
+          <Calendar className="size-4 text-primary" />
+          Nombre de mois à payer
+        </Label>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setMonthsCount(Math.max(1, monthsCount - 1))}
+            className="flex size-9 items-center justify-center rounded-lg border border-border hover:bg-muted transition-colors"
+            disabled={monthsCount <= 1}
+          >
+            <Minus className="size-4" />
           </button>
-        ))}
+          <div className="flex-1 text-center">
+            <span className="text-2xl font-bold text-primary">{monthsCount}</span>
+            <span className="text-sm text-muted-foreground ml-1">
+              mois{monthsCount > 1 ? 's' : ''}
+            </span>
+          </div>
+          <button
+            onClick={() => setMonthsCount(Math.min(12, monthsCount + 1))}
+            className="flex size-9 items-center justify-center rounded-lg border border-border hover:bg-muted transition-colors"
+            disabled={monthsCount >= 12}
+          >
+            <Plus className="size-4" />
+          </button>
+        </div>
+        <div className="mt-2 flex items-center justify-center gap-2">
+          <CircleDollarSign className="size-4 text-primary" />
+          <span className="text-lg font-bold">{totalAmount.toLocaleString('fr-FR')} FCFA</span>
+          <span className="text-xs text-muted-foreground">({MONTHLY_FEE.toLocaleString('fr-FR')}/mois)</span>
+        </div>
+      </div>
+
+      <div className="border-t border-border/50 pt-4">
+        <Label className="mb-3 block">Méthode de paiement</Label>
+        <div className="grid grid-cols-2 gap-3">
+          {paymentMethods.map((method) => (
+            <button key={method.id} onClick={() => setSelectedMethod(method.id)}
+              className={`p-3 rounded-xl border-2 transition-all ${selectedMethod === method.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
+              <div className={`w-8 h-8 ${method.color} rounded-lg flex items-center justify-center mb-1.5 mx-auto`}>
+                <method.icon className="h-4 w-4 text-white" />
+              </div>
+              <p className="font-medium text-xs">{method.name}</p>
+            </button>
+          ))}
+        </div>
       </div>
       {selectedMethod && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div>
             <Label>Numéro de téléphone</Label>
             <Input placeholder="+225 XX XX XX XX XX" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1" />
           </div>
           <Button onClick={() => phone && setStep("confirm")} className="w-full" disabled={!phone}>
-            Payer 5 000 FCFA
+            Payer {totalAmount.toLocaleString('fr-FR')} FCFA
           </Button>
         </div>
       )}
@@ -329,7 +401,7 @@ export default function MemberDashboard() {
   
   const [formData, setFormData] = useState({
     first_name: "", last_name: "", phone: "", profession: "",
-    experience_years: 0, birth_date: "", birth_place: "",
+    experience_years: 0, gender: "", birth_date: "", birth_place: "",
     biography: "", availability: "available"
   })
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
@@ -343,6 +415,9 @@ export default function MemberDashboard() {
 
   const [editingFilm, setEditingFilm] = useState<FilmographyItem | null>(null)
   const [editSaving, setEditSaving] = useState(false)
+
+  // ✅ État des mois payés (avant tout return conditionnel pour respecter les règles React hooks)
+  const [paidMonths, setPaidMonths] = useState<number[]>([0, 1, 2, 3]) // Jan-Avr payés
 
   useEffect(() => {
     const fetchMemberData = async () => {
@@ -365,6 +440,7 @@ export default function MemberDashboard() {
         phone: memberData.phone || "",
         profession: memberData.profession || "",
         experience_years: memberData.years_experience || 0,
+        gender: memberData.gender || "",
         birth_date: memberData.birth_date || "",
         birth_place: memberData.birth_place || "",
         biography: memberData.biography || "",
@@ -384,9 +460,6 @@ export default function MemberDashboard() {
     fetchMemberData()
   }, [router])
 
-  // ─────────────────────────────────────────────────────────────────
-  // ✅ Helper : reconstruire la date YYYY-MM-DD depuis les 3 champs
-  // ─────────────────────────────────────────────────────────────────
   const buildBirthDate = (currentDate: string, part: 'day' | 'month' | 'year', value: string) => {
     const parts = currentDate ? currentDate.split('-') : ['', '', '']
     let [y, m, d] = [parts[0] || '', parts[1] || '', parts[2] || '']
@@ -448,6 +521,7 @@ export default function MemberDashboard() {
         phone: formData.phone,
         profession: formData.profession,
         years_experience: formData.experience_years,
+        gender: formData.gender || null,
         birth_date: formData.birth_date || null,
         birth_place: formData.birth_place || null,
         biography: formData.biography,
@@ -546,6 +620,46 @@ export default function MemberDashboard() {
 
   if (!member) return null
 
+  const isAdmin = member?.role === 'admin'
+  const hasBothRoles = isAdmin
+  const isSuspended = member?.status === 'suspended'
+
+  // ✅ Si suspendu → afficher l'écran de blocage
+  if (isSuspended) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center px-4">
+        <Card className="max-w-md w-full border-red-500/30">
+          <CardContent className="p-8 text-center space-y-4">
+            <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto">
+              <Lock className="size-10 text-red-500" />
+            </div>
+            <h2 className="text-xl font-bold text-red-500">Compte suspendu</h2>
+            <p className="text-sm text-muted-foreground">
+              Votre compte a été suspendu car vous n&apos;avez pas payé vos cotisations pendant {MONTHS_SUSPEND_AFTER} mois consécutifs.
+            </p>
+            <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
+              <p className="text-xs text-muted-foreground">
+                Pour réactiver votre compte, veuillez contacter le Directeur Exécutif de RETECHCI.
+              </p>
+            </div>
+            <div className="pt-2">
+              <Button variant="outline" className="text-red-500 border-red-500/30" onClick={() => router.push('/connexion')}>
+                Se déconnecter
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+      <Footer />
+    </div>
+    )
+  }
+
+  const currentYear = new Date().getFullYear()
+  const unpaidCount = 12 - paidMonths.length
+
   const memberCategory = member.category || ((member.years_experience || 0) >= 10 ? "A" : (member.years_experience || 0) >= 5 ? "B" : "C")
 
   // ✅ Extraire jour/mois/année depuis birth_date (format YYYY-MM-DD)
@@ -555,39 +669,121 @@ export default function MemberDashboard() {
   const birthYear = birthParts[0] || ''
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          ✅ FONCTIONNALITÉ 1 — BANDEAU COLORÉ pour distinguer Admin/Membre
+          ──── Rose/rouge = Admin, Vert/emerald = Membre ────
+          ═══════════════════════════════════════════════════════════════════ */}
+      <div className={`h-1.5 w-full transition-colors duration-500 ${
+        isAdmin
+          ? 'bg-gradient-to-r from-rose-500 via-pink-500 to-orange-500'
+          : 'bg-gradient-to-r from-emerald-500 via-primary to-primary/70'
+      }`} />
+
       <Header />
-      <main className="container mx-auto px-4 py-8">
+
+      <main className="flex-1 container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Espace Membre</h1>
             <p className="text-muted-foreground">Bienvenue, {formData.first_name} {formData.last_name}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="text-primary border-primary">ID: {member.member_id || 'N/A'}</Badge>
+
+          {/* ═══════════════════════════════════════════════════════════════════
+              ✅ FONCTIONNALITÉ 1 — BADGES DE RÔLE dans le header
+              ──── Montre "Admin + Membre" si double rôle ────
+              ═══════════════════════════════════════════════════════════════════ */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="outline" className="text-primary border-primary">
+              ID: {member.member_id || 'N/A'}
+            </Badge>
             <Badge className={member.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}>
               {member.status === 'active' ? 'Actif' : 'En attente'}
             </Badge>
+
+            {/* ✅ Badge double rôle — visible SEULEMENT si l'utilisateur est Admin */}
+            {hasBothRoles && (
+              <Badge className="bg-amber-500 text-white gap-1 px-2.5 py-0.5 shadow-sm shadow-amber-500/20">
+                <Shield className="size-3" />
+                Admin
+                <span className="mx-0.5">+</span>
+                <User className="size-3" />
+                Membre
+              </Badge>
+            )}
           </div>
         </div>
 
+        {/* ═══════════════════════════════════════════════════════════════════
+            ✅ FONCTIONNALITÉ 1 — BANNIÈRE D'INFO si double rôle
+            ──── Rappelle à l'utilisateur qu'il peut accéder à l'espace Admin ────
+            ═══════════════════════════════════════════════════════════════════ */}
+        {hasBothRoles && (
+          <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-amber-500/15 shrink-0">
+              <ArrowRightLeft className="size-4.5 text-amber-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">
+                Double rôle détecté — Vous avez accès à l&apos;espace Admin et Membre
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Vous êtes actuellement dans l&apos;espace Membre. Cliquez ci-dessous pour accéder au panneau d&apos;administration.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              className="shrink-0 bg-rose-600 hover:bg-rose-700 text-white gap-1.5"
+              onClick={() => router.push('/admin')}
+            >
+              <Shield className="size-3.5" />
+              <span className="hidden sm:inline">Aller à l&apos;Admin</span>
+            </Button>
+          </div>
+        )}
+
         <div className="grid lg:grid-cols-[1fr_320px] gap-8">
           <div className="space-y-6">
+
+            {/* ═══════════════════════════════════════════════════════════════════
+                ✅ FONCTIONNALITÉ 2 — NAVIGATION AVEC SURBRILLANCE DE L'ONGLET ACTIF
+                ═══════════════════════════════════════════════════════════════════ */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-4 w-full">
-                <TabsTrigger value="profile" className="text-xs md:text-sm">
-                  <User className="h-4 w-4 mr-1 md:mr-2" /><span className="hidden md:inline">Profil</span>
-                </TabsTrigger>
-                <TabsTrigger value="cv" className="text-xs md:text-sm">
-                  <FileText className="h-4 w-4 mr-1 md:mr-2" /><span className="hidden md:inline">CV</span>
-                </TabsTrigger>
-                <TabsTrigger value="payments" className="text-xs md:text-sm">
-                  <CreditCard className="h-4 w-4 mr-1 md:mr-2" /><span className="hidden md:inline">Cotisation</span>
-                </TabsTrigger>
-                <TabsTrigger value="settings" className="text-xs md:text-sm">
-                  <Settings className="h-4 w-4 mr-1 md:mr-2" /><span className="hidden md:inline">Paramètres</span>
-                </TabsTrigger>
-              </TabsList>
+              
+              {/* Navigation custom avec surbrillance */}
+              <div className="flex gap-1 p-1 bg-secondary/40 rounded-xl border border-border/50">
+                {tabItems.map((tab) => {
+                  const isActive = activeTab === tab.value
+                  const Icon = tab.icon
+
+                  return (
+                    <button
+                      key={tab.value}
+                      onClick={() => setActiveTab(tab.value)}
+                      className={`relative flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${
+                        isActive
+                          ? 'bg-primary/10 text-primary font-semibold shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      <Icon className={`size-4 transition-colors duration-200 ${
+                        isActive ? 'text-primary' : 'text-muted-foreground'
+                      }`} />
+
+                      <span>{tab.label}</span>
+
+                      {isActive && (
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-[3px] rounded-full bg-primary" />
+                      )}
+
+                      {isActive && (
+                        <ChevronRight className="size-3.5 text-primary hidden sm:block" />
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
 
               {/* ═══════════════════════════════════════════════════════════
                   PROFIL TAB
@@ -639,12 +835,26 @@ export default function MemberDashboard() {
                       <div><Label>Prénoms</Label><Input value={formData.first_name} onChange={(e) => setFormData({...formData, first_name: e.target.value})} className="mt-1" /></div>
                     </div>
 
-                    {/* ✅✅✅ DATE DE NAISSANCE — 3 CHAMPS SÉPARÉS (mobile-friendly) ✅✅✅ */}
+                    {/* ✅ SEXE — Masculin / Féminin */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Sexe</Label>
+                        <Select value={formData.gender} onValueChange={(value) => setFormData({...formData, gender: value})}>
+                          <SelectTrigger className="mt-1"><SelectValue placeholder="Sélectionnez..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="male">Masculin</SelectItem>
+                            <SelectItem value="female">Féminin</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div />
+                    </div>
+
+                    {/* ✅ DATE DE NAISSANCE — 3 CHAMPS SÉPARÉS (mobile-friendly) */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label className="flex items-center gap-2"><Calendar className="h-4 w-4" />Date de naissance</Label>
                         <div className="flex gap-2 mt-1">
-                          {/* Jour */}
                           <div className="relative">
                             <Input
                               type="number"
@@ -660,7 +870,6 @@ export default function MemberDashboard() {
                               inputMode="numeric"
                             />
                           </div>
-                          {/* Mois — Select déroulant */}
                           <Select
                             value={birthMonth}
                             onValueChange={(value) => {
@@ -685,7 +894,6 @@ export default function MemberDashboard() {
                               <SelectItem value="12">Décembre</SelectItem>
                             </SelectContent>
                           </Select>
-                          {/* Année */}
                           <div className="relative">
                             <Input
                               type="number"
@@ -1061,38 +1269,129 @@ export default function MemberDashboard() {
               </Dialog>
 
               {/* ═══════════════════════════════════════════════════════════
-                  COTISATION TAB
+                  ✅ COTISATION TAB — 2 000 FCFA/mois + Tableau annuel + Choix mois
                   ═══════════════════════════════════════════════════════════ */}
               <TabsContent value="payments" className="space-y-6 mt-6">
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Cotisation mensuelle</CardTitle>
-                    <CardDescription>5 000 FCFA / mois</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg">
-                      <div>
-                        <p className="font-medium">Statut actuel</p>
-                        <p className="text-sm text-muted-foreground">
-                          Membre depuis {new Date(member.created_at).toLocaleDateString('fr-FR')}
-                        </p>
-                      </div>
-                      <Badge className="bg-green-500/20 text-green-400">
-                        <CheckCircle className="h-4 w-4 mr-1" />À jour
-                      </Badge>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <CircleDollarSign className="h-5 w-5 text-primary" />
+                        Cotisation mensuelle
+                      </CardTitle>
+                      <CardDescription>{MONTHLY_FEE.toLocaleString('fr-FR')} FCFA / mois — {MONTHS_SUSPEND_AFTER} mois impayés = suspension</CardDescription>
                     </div>
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button className="w-full"><CreditCard className="h-4 w-4 mr-2" />Payer ma cotisation</Button>
+                        <Button className="gap-2">
+                          <CreditCard className="h-4 w-4" />Payer ma cotisation
+                        </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className="max-w-md">
                         <DialogHeader>
                           <DialogTitle>Paiement cotisation</DialogTitle>
-                          <DialogDescription>Cotisation mensuelle RETECHCI - 5 000 FCFA</DialogDescription>
+                          <DialogDescription>Cotisation RETECHCI — Choisissez le nombre de mois</DialogDescription>
                         </DialogHeader>
-                        <PaymentDialog memberName={`${formData.first_name} ${formData.last_name}`} memberId={member.member_id || member.id} />
+                        <PaymentDialog
+                          memberName={`${formData.first_name} ${formData.last_name}`}
+                          memberId={member.member_id || member.id}
+                          onSuccess={() => {
+                            // Simuler l'ajout de mois payés après un paiement réussi
+                            const currentMonth = new Date().getMonth()
+                            setPaidMonths(prev => [...prev, currentMonth])
+                          }}
+                        />
                       </DialogContent>
                     </Dialog>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* ── Résumé ── */}
+                    <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg">
+                      <div>
+                        <p className="font-medium">Membre depuis</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(member.created_at).toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <Badge className={`gap-1 ${unpaidCount === 0 ? 'bg-green-500/20 text-green-400' : unpaidCount >= MONTHS_SUSPEND_AFTER ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                          {unpaidCount === 0 ? (
+                            <><CheckCircle className="h-3.5" />À jour</>
+                          ) : (
+                            <><Clock className="h-3.5" />{unpaidCount} mois impayé{unpaidCount > 1 ? 's' : ''}</>
+                          )}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* ✅ Alerte si proche de la suspension */}
+                    {unpaidCount >= MONTHS_SUSPEND_AFTER - 3 && unpaidCount < MONTHS_SUSPEND_AFTER && (
+                      <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                        <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          Attention ! Il vous reste {MONTHS_SUSPEND_AFTER - unpaidCount} mois avant la suspension de votre compte.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* ✅ Alerte si suspendu dans moins de 1 mois */}
+                    {unpaidCount >= MONTHS_SUSPEND_AFTER - 1 && unpaidCount < MONTHS_SUSPEND_AFTER && (
+                      <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                        <Ban className="h-4 w-4 text-red-500 shrink-0" />
+                        <p className="text-xs text-red-600 dark:text-red-400 font-semibold">
+                          URGENT : Payez immédiatement pour éviter la suspension de votre compte !
+                        </p>
+                      </div>
+                    )}
+
+                    {/* ═══ TABLEAU ANNUEL DES COTISATIONS ═══ */}
+                    <div>
+                      <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                        <Calendar className="size-4 text-primary" />
+                        État des cotisations — {currentYear}
+                      </h4>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                        {moisNoms.map((mois, index) => {
+                          const isPaid = paidMonths.includes(index)
+                          const isCurrentMonth = index === new Date().getMonth()
+                          return (
+                            <div
+                              key={mois}
+                              className={`relative flex flex-col items-center gap-1 p-2.5 rounded-lg border transition-all ${
+                                isPaid
+                                  ? 'bg-green-500/10 border-green-500/30'
+                                  : 'bg-secondary/30 border-border/50'
+                              } ${isCurrentMonth ? 'ring-2 ring-primary/50' : ''}`}
+                            >
+                              {isPaid ? (
+                                <CheckCircle className="size-5 text-green-500" />
+                              ) : (
+                                <XCircle className="size-5 text-muted-foreground/40" />
+                              )}
+                              <span className={`text-[10px] sm:text-xs font-medium leading-tight text-center ${
+                                isPaid ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+                              }`}>
+                                {mois.slice(0, 3)}.<br className="sm:hidden" />{mois.slice(3, 6)}
+                              </span>
+                              {isCurrentMonth && (
+                                <span className="text-[8px] font-bold text-primary bg-primary/10 px-1 rounded">
+                                  MAINTENANT
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-4">
+                          <span className="flex items-center gap-1"><CheckCircle className="size-3 text-green-500" />Payé ({paidMonths.length})</span>
+                          <span className="flex items-center gap-1"><XCircle className="size-3 text-muted-foreground/40" />Non payé ({unpaidCount})</span>
+                        </div>
+                        <span className="font-medium">
+                          Total annuel : {(MONTHLY_FEE * 12).toLocaleString('fr-FR')} FCFA
+                        </span>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
