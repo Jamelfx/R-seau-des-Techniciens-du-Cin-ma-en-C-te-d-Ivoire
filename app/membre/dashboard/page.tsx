@@ -15,8 +15,8 @@ import { ProfessionalCard } from "@/components/professional-card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { 
   User, CreditCard, FileText, Settings, Camera, Upload,
-  Plus, Trash2, Save, CheckCircle, AlertCircle, ImageIcon,
-  Wallet, Smartphone, Loader2, Calendar, MapPin
+  Plus, Trash2, Save, CheckCircle, AlertCircle,
+  Wallet, Smartphone, Loader2, Calendar, MapPin, Video, Link2
 } from "lucide-react"
 import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
@@ -38,10 +38,16 @@ interface MemberData {
   birth_date: string | null
   birth_place: string | null
   biography: string | null
-  work_photos: string[]
+  video_links: VideoLink[]
   membership_level: string
   created_at: string
   category: string
+}
+
+interface VideoLink {
+  url: string
+  title: string
+  thumbnail?: string
 }
 
 interface FilmographyItem {
@@ -51,12 +57,6 @@ interface FilmographyItem {
   role_in_production?: string
   production_company?: string
   description?: string
-  // Champs du formulaire
-  film_title?: string
-  film_format?: string
-  episode_count?: number
-  release_year?: number
-  role?: string
 }
 
 const filmFormats = [
@@ -67,6 +67,38 @@ const filmFormats = [
   { value: "serie_fiction", label: "Série Fiction" },
   { value: "serie_doc", label: "Série Documentaire" },
 ]
+
+// Extraire l'ID et la miniature d'une URL vidéo
+function getVideoInfo(url: string): { thumbnail: string; embedUrl: string; platform: string } {
+  // YouTube
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)
+  if (ytMatch) {
+    return {
+      thumbnail: `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`,
+      embedUrl: `https://www.youtube.com/embed/${ytMatch[1]}`,
+      platform: 'YouTube'
+    }
+  }
+  // Vimeo
+  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/)
+  if (vimeoMatch) {
+    return {
+      thumbnail: `https://vumbnail.com/${vimeoMatch[1]}.jpg`,
+      embedUrl: `https://player.vimeo.com/video/${vimeoMatch[1]}`,
+      platform: 'Vimeo'
+    }
+  }
+  // Dailymotion
+  const dmMatch = url.match(/dailymotion\.com\/video\/([^_]+)/)
+  if (dmMatch) {
+    return {
+      thumbnail: `https://www.dailymotion.com/thumbnail/video/${dmMatch[1]}`,
+      embedUrl: `https://www.dailymotion.com/embed/video/${dmMatch[1]}`,
+      platform: 'Dailymotion'
+    }
+  }
+  return { thumbnail: '', embedUrl: url, platform: 'Vidéo' }
+}
 
 function PaymentDialog({ memberName, memberId }: { memberName: string; memberId: string }) {
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null)
@@ -119,15 +151,8 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3">
         {paymentMethods.map((method) => (
-          <button
-            key={method.id}
-            onClick={() => setSelectedMethod(method.id)}
-            className={`p-4 rounded-xl border-2 transition-all ${
-              selectedMethod === method.id 
-                ? 'border-primary bg-primary/10' 
-                : 'border-border hover:border-primary/50'
-            }`}
-          >
+          <button key={method.id} onClick={() => setSelectedMethod(method.id)}
+            className={`p-4 rounded-xl border-2 transition-all ${selectedMethod === method.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
             <div className={`w-10 h-10 ${method.color} rounded-lg flex items-center justify-center mb-2 mx-auto`}>
               <method.icon className="h-5 w-5 text-white" />
             </div>
@@ -139,12 +164,7 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
         <div className="space-y-4">
           <div>
             <Label>Numero de telephone</Label>
-            <Input 
-              placeholder="+225 XX XX XX XX XX" 
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="mt-1"
-            />
+            <Input placeholder="+225 XX XX XX XX XX" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1" />
           </div>
           <Button onClick={() => phone && setStep("confirm")} className="w-full" disabled={!phone}>
             Payer 5 000 FCFA
@@ -158,7 +178,6 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
 export default function MemberDashboard() {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const workPhotoInputRef = useRef<HTMLInputElement>(null)
   
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -167,27 +186,20 @@ export default function MemberDashboard() {
   const [activeTab, setActiveTab] = useState("profile")
   const [photoError, setPhotoError] = useState("")
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [videoLinks, setVideoLinks] = useState<VideoLink[]>([])
+  const [newVideoUrl, setNewVideoUrl] = useState("")
+  const [newVideoTitle, setNewVideoTitle] = useState("")
+  const [videoError, setVideoError] = useState("")
   
   const [formData, setFormData] = useState({
-    first_name: "",
-    last_name: "",
-    phone: "",
-    profession: "",
-    experience_years: 0,
-    birth_date: "",
-    birth_place: "",
-    biography: "",
-    availability: "available"
+    first_name: "", last_name: "", phone: "", profession: "",
+    experience_years: 0, birth_date: "", birth_place: "",
+    biography: "", availability: "available"
   })
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
-  const [workPhotos, setWorkPhotos] = useState<string[]>([])
   const [newFilm, setNewFilm] = useState({
-    film_title: "",
-    film_format: "",
-    episode_count: undefined as number | undefined,
-    production_company: "",
-    release_year: new Date().getFullYear(),
-    role: ""
+    film_title: "", film_format: "", episode_count: undefined as number | undefined,
+    production_company: "", release_year: new Date().getFullYear(), role: ""
   })
   const [showFilmForm, setShowFilmForm] = useState(false)
 
@@ -195,7 +207,6 @@ export default function MemberDashboard() {
     const fetchMemberData = async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      
       if (!user) { router.push('/connexion'); return }
 
       const { data: memberData, error } = await supabase
@@ -204,11 +215,7 @@ export default function MemberDashboard() {
         .or(`email.eq.${user.email},auth_user_id.eq.${user.id}`)
         .single()
 
-      if (error || !memberData) {
-        console.error("Erreur membre:", error)
-        router.push('/connexion')
-        return
-      }
+      if (error || !memberData) { router.push('/connexion'); return }
 
       setMember(memberData)
       setFormData({
@@ -223,7 +230,7 @@ export default function MemberDashboard() {
         availability: memberData.availability || "available"
       })
       setProfilePhoto(memberData.profile_photo)
-      setWorkPhotos(memberData.work_photos || [])
+      setVideoLinks(memberData.video_links || [])
 
       const { data: filmoData } = await supabase
         .from('filmography')
@@ -234,7 +241,6 @@ export default function MemberDashboard() {
       if (filmoData) setFilmography(filmoData)
       setLoading(false)
     }
-
     fetchMemberData()
   }, [router])
 
@@ -243,68 +249,53 @@ export default function MemberDashboard() {
     if (!file) return
     setPhotoError("")
     if (!file.type.includes('jpeg') && !file.type.includes('jpg')) {
-      setPhotoError("Seuls les fichiers JPEG sont acceptes")
-      return
+      setPhotoError("Seuls les fichiers JPEG sont acceptes"); return
     }
     if (file.size > 1 * 1024 * 1024) {
-      setPhotoError("La photo doit faire moins de 1 Mo")
-      return
+      setPhotoError("La photo doit faire moins de 1 Mo"); return
     }
     const reader = new FileReader()
     reader.onloadend = () => setProfilePhoto(reader.result as string)
     reader.readAsDataURL(file)
   }
 
-  const handleWorkPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setPhotoError("")
-    if (workPhotos.length >= 2) {
-      setPhotoError("Maximum 2 photos de travail autorisees")
-      return
-    }
-    if (!file.type.includes('jpeg') && !file.type.includes('jpg')) {
-      setPhotoError("Seuls les fichiers JPEG sont acceptes")
-      return
-    }
-    if (file.size > 1 * 1024 * 1024) {
-      setPhotoError("La photo doit faire moins de 1 Mo")
-      return
-    }
-    const reader = new FileReader()
-    reader.onloadend = () => setWorkPhotos([...workPhotos, reader.result as string])
-    reader.readAsDataURL(file)
-  }
-
-  const removeWorkPhoto = (index: number) => {
-    setWorkPhotos(workPhotos.filter((_, i) => i !== index))
-  }
-
-  const uploadPhotoToStorage = async (
-    supabase: ReturnType<typeof createClient>,
-    base64: string,
-    path: string
-  ): Promise<string | null> => {
+  const uploadPhotoToStorage = async (supabase: ReturnType<typeof createClient>, base64: string, path: string): Promise<string | null> => {
     try {
       const base64Data = base64.split(',')[1]
       const byteCharacters = atob(base64Data)
       const byteArray = new Uint8Array(byteCharacters.length)
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteArray[i] = byteCharacters.charCodeAt(i)
-      }
+      for (let i = 0; i < byteCharacters.length; i++) byteArray[i] = byteCharacters.charCodeAt(i)
       const blob = new Blob([byteArray], { type: 'image/jpeg' })
-      const { data, error } = await supabase.storage
-        .from('member-photos')
-        .upload(path, blob, { upsert: true })
+      const { data, error } = await supabase.storage.from('member-photos').upload(path, blob, { upsert: true })
       if (error || !data) return null
-      const { data: urlData } = supabase.storage
-        .from('member-photos')
-        .getPublicUrl(path)
+      const { data: urlData } = supabase.storage.from('member-photos').getPublicUrl(path)
       return urlData.publicUrl
-    } catch (e) {
-      console.error("Erreur upload:", e)
-      return null
+    } catch (e) { return null }
+  }
+
+  // Ajouter un lien vidéo
+  const handleAddVideo = () => {
+    setVideoError("")
+    if (!newVideoUrl) { setVideoError("Entrez un lien vidéo"); return }
+    
+    const info = getVideoInfo(newVideoUrl)
+    if (!info.thumbnail && !newVideoUrl.includes('youtube') && !newVideoUrl.includes('vimeo') && !newVideoUrl.includes('dailymotion')) {
+      setVideoError("Lien non supporté. Utilisez YouTube, Vimeo ou Dailymotion"); return
     }
+    if (videoLinks.length >= 3) { setVideoError("Maximum 3 vidéos autorisées"); return }
+
+    const newVideo: VideoLink = {
+      url: newVideoUrl,
+      title: newVideoTitle || info.platform + " - " + (videoLinks.length + 1),
+      thumbnail: info.thumbnail
+    }
+    setVideoLinks([...videoLinks, newVideo])
+    setNewVideoUrl("")
+    setNewVideoTitle("")
+  }
+
+  const handleRemoveVideo = (index: number) => {
+    setVideoLinks(videoLinks.filter((_, i) => i !== index))
   }
 
   const handleSaveProfile = async () => {
@@ -315,23 +306,8 @@ export default function MemberDashboard() {
 
     let photoUrl = profilePhoto
     if (profilePhoto && profilePhoto.startsWith('data:')) {
-      const uploaded = await uploadPhotoToStorage(
-        supabase, profilePhoto, `${member.id}/profile-${Date.now()}.jpg`
-      )
+      const uploaded = await uploadPhotoToStorage(supabase, profilePhoto, `${member.id}/profile-${Date.now()}.jpg`)
       if (uploaded) photoUrl = uploaded
-    }
-
-    const uploadedWorkPhotos: string[] = []
-    for (let i = 0; i < workPhotos.length; i++) {
-      const photo = workPhotos[i]
-      if (photo.startsWith('data:')) {
-        const uploaded = await uploadPhotoToStorage(
-          supabase, photo, `${member.id}/work-${Date.now()}-${i}.jpg`
-        )
-        if (uploaded) uploadedWorkPhotos.push(uploaded)
-      } else {
-        uploadedWorkPhotos.push(photo)
-      }
     }
 
     const { error } = await supabase
@@ -347,17 +323,15 @@ export default function MemberDashboard() {
         biography: formData.biography,
         availability: formData.availability,
         profile_photo: photoUrl,
-        work_photos: uploadedWorkPhotos,
+        video_links: videoLinks,
       })
       .eq('id', member.id)
 
     if (error) {
-      console.error("Erreur sauvegarde:", error)
       alert(`Erreur: ${error.message}`)
     } else {
       setProfilePhoto(photoUrl)
-      setWorkPhotos(uploadedWorkPhotos)
-      setMember({ ...member, ...formData, years_experience: formData.experience_years, profile_photo: photoUrl })
+      setMember({ ...member, ...formData, years_experience: formData.experience_years, profile_photo: photoUrl, video_links: videoLinks })
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
     }
@@ -367,7 +341,6 @@ export default function MemberDashboard() {
   const handleAddFilm = async () => {
     if (!member || !newFilm.film_title || !newFilm.role) return
     const supabase = createClient()
-
     const { data, error } = await supabase
       .from('filmography')
       .insert({
@@ -378,15 +351,11 @@ export default function MemberDashboard() {
         production_company: newFilm.production_company,
         description: newFilm.film_format,
       })
-      .select()
-      .single()
+      .select().single()
 
     if (!error && data) {
       setFilmography([data, ...filmography])
-      setNewFilm({
-        film_title: "", film_format: "", episode_count: undefined,
-        production_company: "", release_year: new Date().getFullYear(), role: ""
-      })
+      setNewFilm({ film_title: "", film_format: "", episode_count: undefined, production_company: "", release_year: new Date().getFullYear(), role: "" })
       setShowFilmForm(false)
     } else {
       alert("Erreur : " + error?.message)
@@ -409,10 +378,7 @@ export default function MemberDashboard() {
 
   if (!member) return null
 
-  const memberCategory = member.category || (
-    (member.years_experience || 0) >= 10 ? "A" : 
-    (member.years_experience || 0) >= 5 ? "B" : "C"
-  )
+  const memberCategory = member.category || ((member.years_experience || 0) >= 10 ? "A" : (member.years_experience || 0) >= 5 ? "B" : "C")
 
   return (
     <div className="min-h-screen bg-background">
@@ -424,9 +390,7 @@ export default function MemberDashboard() {
             <p className="text-muted-foreground">Bienvenue, {formData.first_name} {formData.last_name}</p>
           </div>
           <div className="flex items-center gap-3">
-            <Badge variant="outline" className="text-primary border-primary">
-              ID: {member.member_id || 'N/A'}
-            </Badge>
+            <Badge variant="outline" className="text-primary border-primary">ID: {member.member_id || 'N/A'}</Badge>
             <Badge className={member.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}>
               {member.status === 'active' ? 'Actif' : 'En attente'}
             </Badge>
@@ -438,20 +402,16 @@ export default function MemberDashboard() {
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid grid-cols-4 w-full">
                 <TabsTrigger value="profile" className="text-xs md:text-sm">
-                  <User className="h-4 w-4 mr-1 md:mr-2" />
-                  <span className="hidden md:inline">Profil</span>
+                  <User className="h-4 w-4 mr-1 md:mr-2" /><span className="hidden md:inline">Profil</span>
                 </TabsTrigger>
                 <TabsTrigger value="cv" className="text-xs md:text-sm">
-                  <FileText className="h-4 w-4 mr-1 md:mr-2" />
-                  <span className="hidden md:inline">CV</span>
+                  <FileText className="h-4 w-4 mr-1 md:mr-2" /><span className="hidden md:inline">CV</span>
                 </TabsTrigger>
                 <TabsTrigger value="payments" className="text-xs md:text-sm">
-                  <CreditCard className="h-4 w-4 mr-1 md:mr-2" />
-                  <span className="hidden md:inline">Cotisation</span>
+                  <CreditCard className="h-4 w-4 mr-1 md:mr-2" /><span className="hidden md:inline">Cotisation</span>
                 </TabsTrigger>
                 <TabsTrigger value="settings" className="text-xs md:text-sm">
-                  <Settings className="h-4 w-4 mr-1 md:mr-2" />
-                  <span className="hidden md:inline">Paramètres</span>
+                  <Settings className="h-4 w-4 mr-1 md:mr-2" /><span className="hidden md:inline">Paramètres</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -459,29 +419,25 @@ export default function MemberDashboard() {
               <TabsContent value="profile" className="space-y-6 mt-6">
                 {photoError && (
                   <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-3 rounded-lg flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
-                    {photoError}
+                    <AlertCircle className="h-4 w-4" />{photoError}
                   </div>
                 )}
                 {saveSuccess && (
                   <div className="bg-green-500/10 border border-green-500/20 text-green-500 p-3 rounded-lg flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4" />
-                    Profil sauvegardé avec succès !
+                    <CheckCircle className="h-4 w-4" />Profil sauvegardé avec succès !
                   </div>
                 )}
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Camera className="h-5 w-5" />Photo de profil
-                    </CardTitle>
+                    <CardTitle className="flex items-center gap-2"><Camera className="h-5 w-5" />Photo de profil</CardTitle>
                     <CardDescription>Format JPEG uniquement, maximum 1 Mo</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center gap-6">
                       <div className="relative w-24 h-24 rounded-full overflow-hidden bg-secondary">
                         {profilePhoto ? (
-                          <Image src={profilePhoto} alt="Photo de profil" fill className="object-cover" />
+                          <Image src={profilePhoto} alt="Photo de profil" fill className="object-cover" unoptimized />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <User className="h-12 w-12 text-muted-foreground" />
@@ -503,14 +459,8 @@ export default function MemberDashboard() {
                   <CardHeader><CardTitle>Informations personnelles</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Nom</Label>
-                        <Input value={formData.last_name} onChange={(e) => setFormData({...formData, last_name: e.target.value})} className="mt-1" />
-                      </div>
-                      <div>
-                        <Label>Prénoms</Label>
-                        <Input value={formData.first_name} onChange={(e) => setFormData({...formData, first_name: e.target.value})} className="mt-1" />
-                      </div>
+                      <div><Label>Nom</Label><Input value={formData.last_name} onChange={(e) => setFormData({...formData, last_name: e.target.value})} className="mt-1" /></div>
+                      <div><Label>Prénoms</Label><Input value={formData.first_name} onChange={(e) => setFormData({...formData, first_name: e.target.value})} className="mt-1" /></div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -523,24 +473,12 @@ export default function MemberDashboard() {
                       </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Téléphone</Label>
-                        <Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="+225 XX XX XX XX XX" className="mt-1" />
-                      </div>
-                      <div>
-                        <Label>Email</Label>
-                        <Input value={member.email} disabled className="mt-1 bg-secondary/50" />
-                      </div>
+                      <div><Label>Téléphone</Label><Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="+225 XX XX XX XX XX" className="mt-1" /></div>
+                      <div><Label>Email</Label><Input value={member.email} disabled className="mt-1 bg-secondary/50" /></div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Profession / Métier</Label>
-                        <Input value={formData.profession} onChange={(e) => setFormData({...formData, profession: e.target.value})} placeholder="Ex: Chef Opérateur" className="mt-1" />
-                      </div>
-                      <div>
-                        <Label>Années d&apos;expérience</Label>
-                        <Input type="number" value={formData.experience_years} onChange={(e) => setFormData({...formData, experience_years: parseInt(e.target.value) || 0})} className="mt-1" />
-                      </div>
+                      <div><Label>Profession / Métier</Label><Input value={formData.profession} onChange={(e) => setFormData({...formData, profession: e.target.value})} placeholder="Ex: Chef Opérateur" className="mt-1" /></div>
+                      <div><Label>Années d&apos;expérience</Label><Input type="number" value={formData.experience_years} onChange={(e) => setFormData({...formData, experience_years: parseInt(e.target.value) || 0})} className="mt-1" /></div>
                     </div>
                     <div>
                       <Label>Disponibilité</Label>
@@ -560,29 +498,83 @@ export default function MemberDashboard() {
                   </CardContent>
                 </Card>
 
+                {/* ✅ Section Liens Vidéo — remplace Photos de travail */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><ImageIcon className="h-5 w-5" />Photos de travail</CardTitle>
-                    <CardDescription>Maximum 2 photos, format JPEG, max 1 Mo chacune</CardDescription>
+                    <CardTitle className="flex items-center gap-2"><Video className="h-5 w-5" />Liens de projets vidéo</CardTitle>
+                    <CardDescription>Ajoutez jusqu'à 3 liens YouTube, Vimeo ou Dailymotion de vos projets</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {workPhotos.map((photo, index) => (
-                        <div key={index} className="relative aspect-video rounded-lg overflow-hidden bg-secondary group">
-                          <Image src={photo} alt={`Photo ${index + 1}`} fill className="object-cover" />
-                          <button onClick={() => removeWorkPhoto(index)} className="absolute top-2 right-2 p-1 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Trash2 className="h-4 w-4 text-white" />
-                          </button>
-                        </div>
-                      ))}
-                      {workPhotos.length < 2 && (
-                        <button onClick={() => workPhotoInputRef.current?.click()} className="aspect-video rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-2 transition-colors">
-                          <Plus className="h-8 w-8 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">Ajouter</span>
-                        </button>
-                      )}
+                  <CardContent className="space-y-4">
+                    {videoError && (
+                      <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-3 rounded-lg flex items-center gap-2 text-sm">
+                        <AlertCircle className="h-4 w-4" />{videoError}
+                      </div>
+                    )}
+
+                    {/* Vidéos existantes */}
+                    <div className="space-y-3">
+                      {videoLinks.map((video, index) => {
+                        const info = getVideoInfo(video.url)
+                        return (
+                          <div key={index} className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg group">
+                            {/* Miniature */}
+                            <div className="relative w-24 h-14 rounded overflow-hidden bg-secondary flex-shrink-0">
+                              {video.thumbnail ? (
+                                <Image src={video.thumbnail} alt={video.title} fill className="object-cover" unoptimized />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Video className="h-6 w-6 text-muted-foreground" />
+                                </div>
+                              )}
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                <div className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center">
+                                  <div className="w-0 h-0 border-l-[8px] border-l-black border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent ml-0.5" />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{video.title}</p>
+                              <p className="text-xs text-muted-foreground truncate">{video.url}</p>
+                              <Badge variant="outline" className="text-[10px] mt-1">{info.platform}</Badge>
+                            </div>
+                            <button onClick={() => handleRemoveVideo(index)} className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-red-500/10 hover:bg-red-500/20 rounded-lg">
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </button>
+                          </div>
+                        )
+                      })}
                     </div>
-                    <input type="file" ref={workPhotoInputRef} onChange={handleWorkPhotoChange} accept="image/jpeg,image/jpg" className="hidden" />
+
+                    {/* Formulaire ajout vidéo */}
+                    {videoLinks.length < 3 && (
+                      <div className="border border-dashed border-border rounded-lg p-4 space-y-3">
+                        <div>
+                          <Label className="flex items-center gap-2"><Link2 className="h-4 w-4" />Lien de la vidéo *</Label>
+                          <Input
+                            value={newVideoUrl}
+                            onChange={(e) => setNewVideoUrl(e.target.value)}
+                            placeholder="https://www.youtube.com/watch?v=..."
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label>Titre du projet</Label>
+                          <Input
+                            value={newVideoTitle}
+                            onChange={(e) => setNewVideoTitle(e.target.value)}
+                            placeholder="Ex: Bande annonce - LE PROPHÈTE EZÉCHIEL"
+                            className="mt-1"
+                          />
+                        </div>
+                        <Button onClick={handleAddVideo} variant="outline" className="w-full">
+                          <Plus className="h-4 w-4 mr-2" />Ajouter cette vidéo
+                        </Button>
+                      </div>
+                    )}
+
+                    {videoLinks.length >= 3 && (
+                      <p className="text-xs text-muted-foreground text-center">Maximum 3 vidéos atteint</p>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -703,9 +695,7 @@ export default function MemberDashboard() {
                     </div>
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button className="w-full">
-                          <CreditCard className="h-4 w-4 mr-2" />Payer ma cotisation
-                        </Button>
+                        <Button className="w-full"><CreditCard className="h-4 w-4 mr-2" />Payer ma cotisation</Button>
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
@@ -747,9 +737,7 @@ export default function MemberDashboard() {
           {/* Sidebar */}
           <div className="space-y-6">
             <Card className="sticky top-24">
-              <CardHeader>
-                <CardTitle className="text-lg">Ma carte professionnelle</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="text-lg">Ma carte professionnelle</CardTitle></CardHeader>
               <CardContent>
                 <ProfessionalCard
                   name={`${formData.first_name} ${formData.last_name}`}
