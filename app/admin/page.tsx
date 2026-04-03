@@ -87,7 +87,7 @@ export default function AdminLoginPage() {
       // Redirection en fonction du rôle
       setTimeout(() => {
         if (finalRole === 'director' || userEmail.includes('directeur')) {
-          router.push('/directeur')
+          router.push('/direct')
         } else if (finalRole === 'president') {
           router.push('/admin/president')
         } else if (finalRole === 'treasurer') {
