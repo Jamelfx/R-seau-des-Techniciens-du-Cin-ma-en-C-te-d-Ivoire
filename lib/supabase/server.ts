@@ -8,6 +8,10 @@ const supabase = (supabaseUrl && supabaseAnonKey)
   ? createSupabaseClient(supabaseUrl, supabaseAnonKey)
   : null
 
+export function createClient() {
+  return createSupabaseClient(supabaseUrl, supabaseAnonKey)
+}
+
 function isConfigured(): boolean {
   return !!supabase
 }
@@ -46,16 +50,12 @@ export async function updateMemberRole(
       .eq('role', newRole)
       .neq('id', memberId)
       .single()
-
     if (currentHolder) {
       const { error: retrogradeError } = await supabase!
         .from('members')
         .update({ role: 'member' })
         .eq('id', currentHolder.id)
-
-      if (retrogradeError) {
-        return { success: false, error: `Erreur rétrogradation: ${retrogradeError.message}` }
-      }
+      if (retrogradeError) return { success: false, error: `Erreur: ${retrogradeError.message}` }
     }
   }
 
