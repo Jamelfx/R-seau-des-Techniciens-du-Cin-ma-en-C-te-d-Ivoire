@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
+import { SpaceSwitchBar } from "@/components/space-switch-bar"
+import { useActiveSpace } from "@/hooks/use-active-space"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,7 +20,6 @@ import {
   Plus, Trash2, Save, CheckCircle, AlertCircle,
   Wallet, Smartphone, Loader2, Calendar, MapPin, Video, Link2,
   Play, ExternalLink, Film, Clapperboard, Award, Pencil, X,
-  /* ── NOUVEAUX IMPORTS pour les 2 fonctionnalités ── */
   Shield, ChevronRight, ArrowRightLeft,
   Lock, XCircle, Minus, CircleDollarSign, Clock, Ban
 } from "lucide-react"
@@ -29,6 +30,8 @@ import { useRouter } from "next/navigation"
 // ─────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────
+type UserRole = 'member' | 'director' | 'president' | 'treasurer' | 'admin'
+
 interface MemberData {
   id: string
   member_id: string
@@ -72,7 +75,7 @@ const filmFormats = [
 ]
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   ✅ NOUVEAU — Définition des onglets pour la navigation avec surbrillance
+   ✅ CONSTANTES COTISATION
    ══════════════════════════════════════════════════════════════════════════════ */
 const MONTHLY_FEE = 2000
 const MONTHS_SUSPEND_AFTER = 12
@@ -416,8 +419,14 @@ export default function MemberDashboard() {
   const [editingFilm, setEditingFilm] = useState<FilmographyItem | null>(null)
   const [editSaving, setEditSaving] = useState(false)
 
-  // ✅ État des mois payés (avant tout return conditionnel pour respecter les règles React hooks)
+  // ✅ État des mois payés
   const [paidMonths, setPaidMonths] = useState<number[]>([0, 1, 2, 3]) // Jan-Avr payés
+
+  // ✅ NOUVEAU — Rôle pour le hook de switch Admin/Membre
+  const [userRole, setUserRole] = useState<UserRole>('member')
+
+  // ✅ NOUVEAU — Hook de persistance cross-tab pour le switch d'espace
+  const { activeSpace, setActiveSpace, canSwitch } = useActiveSpace(userRole)
 
   useEffect(() => {
     const fetchMemberData = async () => {
@@ -434,6 +443,7 @@ export default function MemberDashboard() {
       if (error || !memberData) { router.push('/connexion'); return }
 
       setMember(memberData)
+      setUserRole(memberData.role as UserRole) // ✅ Met à jour le rôle pour le hook
       setFormData({
         first_name: memberData.first_name || "",
         last_name: memberData.last_name || "",
@@ -513,30 +523,51 @@ export default function MemberDashboard() {
       if (uploaded) photoUrl = uploaded
     }
 
-    const { error } = await supabase
+    // ✅ Construire le payload — gender inclus si rempli
+    const updatePayload: Record<string, unknown> = {
+      first_name: formData.first_name,
+      last_name: formData.last_name,
+      phone: formData.phone,
+      profession: formData.profession,
+      years_experience: formData.experience_years,
+      birth_date: formData.birth_date || null,
+      birth_place: formData.birth_place || null,
+      biography: formData.biography,
+      availability: formData.availability,
+      profile_photo: photoUrl,
+    }
+    if (formData.gender) {
+      updatePayload.gender = formData.gender
+    }
+
+    let { error } = await supabase
       .from('members')
-      .update({
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        phone: formData.phone,
-        profession: formData.profession,
-        years_experience: formData.experience_years,
-        gender: formData.gender || null,
-        birth_date: formData.birth_date || null,
-        birth_place: formData.birth_place || null,
-        biography: formData.biography,
-        availability: formData.availability,
-        profile_photo: photoUrl,
-      })
+      .update(updatePayload)
       .eq('id', member.id)
 
-    if (error) {
-      alert(`Erreur: ${error.message}`)
-    } else {
+    // ✅ Si erreur liée à la colonne gender (n'existe pas encore), réessayer sans
+    if (error && error.message.includes('gender')) {
+      const { gender: _g, ...payloadWithoutGender } = updatePayload
+      const retry = await supabase
+        .from('members')
+        .update(payloadWithoutGender)
+        .eq('id', member.id)
+      error = retry.error
+      if (!retry.error) {
+        setProfilePhoto(photoUrl)
+        setMember({ ...member, ...formData, years_experience: formData.experience_years, profile_photo: photoUrl })
+        setSaveSuccess(true)
+        setTimeout(() => setSaveSuccess(false), 3000)
+      }
+    } else if (!error) {
       setProfilePhoto(photoUrl)
       setMember({ ...member, ...formData, years_experience: formData.experience_years, profile_photo: photoUrl })
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
+    }
+
+    if (error) {
+      alert(`Erreur: ${error.message}`)
     }
     setSaving(false)
   }
@@ -620,7 +651,7 @@ export default function MemberDashboard() {
 
   if (!member) return null
 
-  const isAdmin = member?.role === 'admin'
+  const isAdmin = member?.role === 'admin' || ['director', 'president', 'treasurer'].includes(member?.role)
   const hasBothRoles = isAdmin
   const isSuspended = member?.status === 'suspended'
 
@@ -672,14 +703,23 @@ export default function MemberDashboard() {
     <div className="min-h-screen bg-background flex flex-col">
 
       {/* ═══════════════════════════════════════════════════════════════════
-          ✅ FONCTIONNALITÉ 1 — BANDEAU COLORÉ pour distinguer Admin/Membre
-          ──── Rose/rouge = Admin, Vert/emerald = Membre ────
+          ✅ NOUVEAU — SpaceSwitchBar remplace le bandeau coloré
+          ──── Bandeau + Badge + Bouton switch Admin/Membre ────
           ═══════════════════════════════════════════════════════════════════ */}
-      <div className={`h-1.5 w-full transition-colors duration-500 ${
-        isAdmin
-          ? 'bg-gradient-to-r from-rose-500 via-pink-500 to-orange-500'
-          : 'bg-gradient-to-r from-emerald-500 via-primary to-primary/70'
-      }`} />
+      <SpaceSwitchBar
+        activeSpace={activeSpace}
+        onSwitch={setActiveSpace}
+        canSwitch={canSwitch}
+        member={{
+          id: member.id,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          email: member.email,
+          role: member.role as UserRole,
+          profession: formData.profession,
+          profile_photo: profilePhoto,
+        }}
+      />
 
       <Header />
 
@@ -691,8 +731,7 @@ export default function MemberDashboard() {
           </div>
 
           {/* ═══════════════════════════════════════════════════════════════════
-              ✅ FONCTIONNALITÉ 1 — BADGES DE RÔLE dans le header
-              ──── Montre "Admin + Membre" si double rôle ────
+              ✅ BADGES DE RÔLE dans le header
               ═══════════════════════════════════════════════════════════════════ */}
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className="text-primary border-primary">
@@ -716,8 +755,7 @@ export default function MemberDashboard() {
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════════
-            ✅ FONCTIONNALITÉ 1 — BANNIÈRE D'INFO si double rôle
-            ──── Rappelle à l'utilisateur qu'il peut accéder à l'espace Admin ────
+            ✅ BANNIÈRE D'INFO si double rôle
             ═══════════════════════════════════════════════════════════════════ */}
         {hasBothRoles && (
           <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
@@ -729,13 +767,13 @@ export default function MemberDashboard() {
                 Double rôle détecté — Vous avez accès à l&apos;espace Admin et Membre
               </p>
               <p className="text-xs text-muted-foreground">
-                Vous êtes actuellement dans l&apos;espace Membre. Cliquez ci-dessous pour accéder au panneau d&apos;administration.
+                Vous êtes actuellement dans l&apos;espace Membre. Utilisez le bouton en haut pour basculer vers l&apos;Admin.
               </p>
             </div>
             <Button
               size="sm"
               className="shrink-0 bg-rose-600 hover:bg-rose-700 text-white gap-1.5"
-              onClick={() => router.push('/admin')}
+              onClick={() => setActiveSpace('admin')}
             >
               <Shield className="size-3.5" />
               <span className="hidden sm:inline">Aller à l&apos;Admin</span>
@@ -747,7 +785,7 @@ export default function MemberDashboard() {
           <div className="space-y-6">
 
             {/* ═══════════════════════════════════════════════════════════════════
-                ✅ FONCTIONNALITÉ 2 — NAVIGATION AVEC SURBRILLANCE DE L'ONGLET ACTIF
+                ✅ NAVIGATION AVEC SURBRILLANCE DE L'ONGLET ACTIF
                 ═══════════════════════════════════════════════════════════════════ */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               
@@ -1334,7 +1372,7 @@ export default function MemberDashboard() {
                       </div>
                     )}
 
-                    {/* ✅ Alerte si suspendu dans moins de 1 mois */}
+                    {/* ✅ Alerte URGENGTE si 1 mois avant suspension */}
                     {unpaidCount >= MONTHS_SUSPEND_AFTER - 1 && unpaidCount < MONTHS_SUSPEND_AFTER && (
                       <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
                         <Ban className="h-4 w-4 text-red-500 shrink-0" />
