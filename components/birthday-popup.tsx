@@ -4,44 +4,14 @@ import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Gift, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { createClient } from "@/lib/supabase/client"
 
 interface BirthdayMember {
   id: string
   name: string
   profession: string
-  photo: string
+  photo: string | null
   birthDate: string
-}
-
-// Mock data - in production this would come from Supabase
-const getBirthdayMembers = (): BirthdayMember[] => {
-  const today = new Date()
-  const todayMonth = today.getMonth() + 1
-  const todayDay = today.getDate()
-  
-  // Sample members with birthdays - checking if today matches their birthday
-  const allMembers: BirthdayMember[] = [
-    {
-      id: "1",
-      name: "Jamel Basiru",
-      profession: "Monteur Image",
-      photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop",
-      birthDate: `1985-${String(todayMonth).padStart(2, '0')}-${String(todayDay).padStart(2, '0')}` // Today for demo
-    },
-    {
-      id: "2",
-      name: "Aminata Koné",
-      profession: "Directrice de Production",
-      photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=500&fit=crop",
-      birthDate: `1990-${String(todayMonth).padStart(2, '0')}-${String(todayDay).padStart(2, '0')}` // Today for demo
-    }
-  ]
-  
-  // Filter members whose birthday is today
-  return allMembers.filter(member => {
-    const [, month, day] = member.birthDate.split('-').map(Number)
-    return month === todayMonth && day === todayDay
-  })
 }
 
 export function BirthdayPopup() {
@@ -62,18 +32,50 @@ export function BirthdayPopup() {
       return
     }
     
-    const members = getBirthdayMembers()
-    setBirthdayMembers(members)
-    
-    if (members.length > 0) {
-      // Show first birthday after 2 seconds
-      const showTimeout = setTimeout(() => {
-        setCurrentMember(members[0])
-        setIsVisible(true)
-      }, 2000)
+    // Fetch real birthday members from Supabase
+    const fetchBirthdayMembers = async () => {
+      const supabase = createClient()
+      const todayDate = new Date()
+      const todayMonth = todayDate.getMonth() + 1
+      const todayDay = todayDate.getDate()
       
-      return () => clearTimeout(showTimeout)
+      // Get members with birthday today (comparing month and day only)
+      const { data, error } = await supabase
+        .from('members')
+        .select('id, first_name, last_name, profession, profile_photo, birth_date')
+        .eq('status', 'active')
+        .not('birth_date', 'is', null)
+      
+      if (error || !data) {
+        console.log('[v0] No birthday data or error:', error)
+        return
+      }
+      
+      // Filter members whose birthday is today
+      const todayBirthdays = data.filter(member => {
+        if (!member.birth_date) return false
+        const birthDate = new Date(member.birth_date)
+        return birthDate.getMonth() + 1 === todayMonth && birthDate.getDate() === todayDay
+      }).map(member => ({
+        id: member.id,
+        name: `${member.first_name} ${member.last_name}`,
+        profession: member.profession || 'Membre RETECHCI',
+        photo: member.profile_photo,
+        birthDate: member.birth_date
+      }))
+      
+      setBirthdayMembers(todayBirthdays)
+      
+      if (todayBirthdays.length > 0) {
+        // Show first birthday after 2 seconds
+        setTimeout(() => {
+          setCurrentMember(todayBirthdays[0])
+          setIsVisible(true)
+        }, 2000)
+      }
     }
+    
+    fetchBirthdayMembers()
   }, [])
 
   useEffect(() => {
@@ -168,12 +170,20 @@ export function BirthdayPopup() {
           <div className="relative mx-auto w-48 h-64 mb-6">
             <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-primary/30 to-primary/10 blur-xl" />
             <div className="relative w-full h-full rounded-2xl overflow-hidden border-4 border-primary/50 shadow-lg">
-              <Image
-                src={currentMember.photo}
-                alt={currentMember.name}
-                fill
-                className="object-cover"
-              />
+              {currentMember.photo ? (
+                <Image
+                  src={currentMember.photo}
+                  alt={currentMember.name}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-b from-primary/20 to-primary/5 flex items-center justify-center">
+                  <span className="text-6xl font-bold text-primary/60">
+                    {currentMember.name.split(' ').map(n => n[0]).join('')}
+                  </span>
+                </div>
+              )}
             </div>
             {/* Decorative ring */}
             <div className="absolute -inset-2 rounded-3xl border-2 border-primary/20 animate-pulse" />
