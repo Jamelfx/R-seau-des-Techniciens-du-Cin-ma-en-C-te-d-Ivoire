@@ -17,7 +17,7 @@ import {
   User, CreditCard, FileText, Settings, Camera, Upload,
   Plus, Trash2, Save, CheckCircle, AlertCircle,
   Wallet, Smartphone, Loader2, Calendar, MapPin, Video, Link2,
-  Play, ExternalLink, Film, Clapperboard, Award
+  Play, ExternalLink, Film, Clapperboard, Award, Pencil, X
 } from "lucide-react"
 import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
@@ -195,14 +195,16 @@ function PaymentDialog({ memberName, memberId }: { memberName: string; memberId:
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// ✅ CARTE FILMOGRAPHIE AVEC MINIATURE VIDÉO INTÉGRÉE
+// ✅ CARTE FILMOGRAPHIE AVEC MINIATURE VIDÉO INTÉGRÉE + BOUTON MODIFIER
 // ─────────────────────────────────────────────────────────────────────
 function FilmographyCard({ 
   film, 
-  onDelete 
+  onDelete,
+  onEdit
 }: { 
   film: FilmographyItem; 
-  onDelete: (id: string) => void 
+  onDelete: (id: string) => void
+  onEdit: (film: FilmographyItem) => void
 }) {
   const videoInfo = film.video_url ? getVideoInfo(film.video_url) : null
 
@@ -281,7 +283,7 @@ function FilmographyCard({
               )}
             </div>
 
-            {/* ✅ Lien vidéo + actions */}
+            {/* ✅ Lien vidéo + actions (Modifier + Supprimer) */}
             <div className="flex items-center justify-between pt-2 border-t border-border/50">
               {film.video_url ? (
                 <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -294,15 +296,28 @@ function FilmographyCard({
                 <span className="text-xs text-muted-foreground/60 italic">Aucun lien vidéo</span>
               )}
               
+              {/* ✅ Boutons d'action : Modifier + Supprimer */}
               {film.id && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => onDelete(film.id!)}
-                  className="h-8 w-8 shrink-0 hover:bg-red-500/10"
-                >
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => onEdit(film)}
+                    className="h-8 w-8 hover:bg-primary/10"
+                    title="Modifier ce film"
+                  >
+                    <Pencil className="h-4 w-4 text-primary" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => onDelete(film.id!)}
+                    className="h-8 w-8 hover:bg-red-500/10"
+                    title="Supprimer ce film"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -342,6 +357,10 @@ export default function MemberDashboard() {
     video_url: "", video_title: ""
   })
   const [showFilmForm, setShowFilmForm] = useState(false)
+
+  // ✅ État pour la modification d'un film existant
+  const [editingFilm, setEditingFilm] = useState<FilmographyItem | null>(null)
+  const [editSaving, setEditSaving] = useState(false)
 
   useEffect(() => {
     const fetchMemberData = async () => {
@@ -491,6 +510,40 @@ export default function MemberDashboard() {
     const supabase = createClient()
     const { error } = await supabase.from('filmography').delete().eq('id', filmId)
     if (!error) setFilmography(filmography.filter(f => f.id !== filmId))
+  }
+
+  // ✅ Ouvrir le dialogue de modification
+  const handleOpenEdit = (film: FilmographyItem) => {
+    setEditingFilm({ ...film })
+  }
+
+  // ✅ Mettre à jour un film existant
+  const handleUpdateFilm = async () => {
+    if (!editingFilm || !editingFilm.id) return
+    setEditSaving(true)
+    const supabase = createClient()
+
+    const { data, error } = await supabase
+      .from('filmography')
+      .update({
+        title: editingFilm.title,
+        year: editingFilm.year,
+        role_in_production: editingFilm.role_in_production,
+        production_company: editingFilm.production_company,
+        description: editingFilm.description,
+        video_url: editingFilm.video_url || null,
+        video_title: editingFilm.video_title || null,
+      })
+      .eq('id', editingFilm.id)
+      .select().single()
+
+    if (!error && data) {
+      setFilmography(filmography.map(f => f.id === editingFilm.id ? data : f))
+      setEditingFilm(null)
+    } else {
+      alert("Erreur : " + error?.message)
+    }
+    setEditSaving(false)
   }
 
   if (loading) {
@@ -800,6 +853,7 @@ export default function MemberDashboard() {
                             key={film.id} 
                             film={film} 
                             onDelete={handleDeleteFilm} 
+                            onEdit={handleOpenEdit}
                           />
                         ))}
                       </div>
@@ -807,6 +861,156 @@ export default function MemberDashboard() {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {/* ═══════════════════════════════════════════════════════════
+                  ✅ DIALOGUE DE MODIFICATION D'UN FILM
+                  ═══════════════════════════════════════════════════════════ */}
+              <Dialog open={!!editingFilm} onOpenChange={(open) => !open && setEditingFilm(null)}>
+                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Pencil className="h-5 w-5 text-primary" />
+                      Modifier le film
+                    </DialogTitle>
+                    <DialogDescription>
+                      Modifiez les informations de « {editingFilm?.title} »
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  {editingFilm && (
+                    <div className="space-y-4 mt-4">
+                      {/* Aperçu miniature actuelle */}
+                      {editingFilm.video_url && getVideoInfo(editingFilm.video_url).thumbnail && (
+                        <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
+                          <div className="relative w-28 aspect-video rounded overflow-hidden bg-muted flex-shrink-0">
+                            <img
+                              src={getVideoInfo(editingFilm.video_url).thumbnail}
+                              alt="Aperçu"
+                              className="h-full w-full object-cover"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                              <div className="flex size-8 items-center justify-center rounded-full bg-primary/90">
+                                <Play className="size-3 ml-0.5" fill="currentColor" />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-foreground">Miniature actuelle</p>
+                            <PlatformBadge platform={getVideoInfo(editingFilm.video_url).platform} />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Nom du film / Série *</Label>
+                          <Input 
+                            value={editingFilm.title || ""} 
+                            onChange={(e) => setEditingFilm({...editingFilm, title: e.target.value})} 
+                            className="mt-1" 
+                          />
+                        </div>
+                        <div>
+                          <Label>Format</Label>
+                          <Select 
+                            value={editingFilm.description || ""} 
+                            onValueChange={(value) => setEditingFilm({...editingFilm, description: value})}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="Sélectionnez..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {filmFormats.map(format => (
+                                <SelectItem key={format.value} value={format.value}>{format.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Production</Label>
+                          <Input 
+                            value={editingFilm.production_company || ""} 
+                            onChange={(e) => setEditingFilm({...editingFilm, production_company: e.target.value})} 
+                            className="mt-1" 
+                          />
+                        </div>
+                        <div>
+                          <Label>Année</Label>
+                          <Input 
+                            type="number" 
+                            value={editingFilm.year || ""} 
+                            onChange={(e) => setEditingFilm({...editingFilm, year: parseInt(e.target.value) || undefined})} 
+                            className="mt-1" 
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label>Votre poste / Rôle *</Label>
+                        <Input 
+                          value={editingFilm.role_in_production || ""} 
+                          onChange={(e) => setEditingFilm({...editingFilm, role_in_production: e.target.value})} 
+                          className="mt-1" 
+                        />
+                      </div>
+
+                      {/* ✅ Champs vidéo */}
+                      <div className="border-t border-border/50 pt-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Video className="h-4 w-4 text-primary" />
+                          <span className="text-sm font-semibold">Lien vidéo du projet</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <Label className="flex items-center gap-1.5">
+                              <Link2 className="h-3.5 w-3.5" />
+                              URL de la vidéo
+                            </Label>
+                            <Input 
+                              value={editingFilm.video_url || ""} 
+                              onChange={(e) => setEditingFilm({...editingFilm, video_url: e.target.value})} 
+                              placeholder="https://www.youtube.com/watch?v=..." 
+                              className="mt-1" 
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              YouTube, Vimeo ou Dailymotion
+                            </p>
+                          </div>
+                          <div>
+                            <Label>Titre du lien vidéo</Label>
+                            <Input 
+                              value={editingFilm.video_title || ""} 
+                              onChange={(e) => setEditingFilm({...editingFilm, video_title: e.target.value})} 
+                              placeholder="Ex: Bande-annonce officielle" 
+                              className="mt-1" 
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-2">
+                        <Button 
+                          onClick={handleUpdateFilm} 
+                          disabled={!editingFilm.title || !editingFilm.role_in_production || editSaving}
+                          className="flex-1"
+                        >
+                          {editSaving ? (
+                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sauvegarde...</>
+                          ) : (
+                            <><Save className="h-4 w-4 mr-2" />Enregistrer les modifications</>
+                          )}
+                        </Button>
+                        <Button variant="outline" onClick={() => setEditingFilm(null)}>
+                          Annuler
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
 
               {/* ═══════════════════════════════════════════════════════════
                   COTISATION TAB (inchangé)
