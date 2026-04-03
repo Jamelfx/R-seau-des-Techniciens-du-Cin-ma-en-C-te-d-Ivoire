@@ -1,40 +1,77 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { updateMemberStatus, updateMemberRole } from '@/lib/supabase/server'
-import type { MemberStatus, MemberRole } from '@/lib/supabase/types'
+import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
 
 export async function PATCH(
-  request: NextRequest,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.json({ success: false, error: 'Variables Supabase non configurees.' }, { status: 500 })
+  }
+
+  // Lire le jeton depuis les cookies
+  const cookieStore = await cookies()
+  let accessToken = ''
+  for (const [name, value] of cookieStore.getAll()) {
+    if (name.includes('-auth-token')) {
+      try {
+        const parsed = JSON.parse(value)
+        accessToken = Array.isArray(parsed) ? (parsed[0] || '') : value
+      } catch {
+        accessToken = value
+      }
+      break
+    }
+  }
+
+  // Créer le client avec service_role ou jeton utilisateur
+  const options: { global?: { headers?: { Authorization?: string } } } = {}
+  if (serviceRoleKey) {
+    options.global = { headers: { Authorization: `Bearer ${serviceRoleKey}` } }
+  } else if (accessToken) {
+    options.global = { headers: { Authorization: `Bearer ${accessToken}` } }
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, options)
+
   try {
     const { id } = await params
     const body = await request.json()
-    const { status, role } = body as { status?: MemberStatus; role?: MemberRole }
+    const { status, role } = body
 
-    if (!status && !role) {
-      return NextResponse.json(
-        { error: 'Parametres manquants: status ou role requis' },
-        { status: 400 }
-      )
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'ID manquant.' }, { status: 400 })
     }
 
-    if (status) {
-      const result = await updateMemberStatus(id, status)
-      if (!result.success) {
-        return NextResponse.json({ error: result.error }, { status: 500 })
-      }
+    const updates: Record<string, unknown> = {}
+    if (status) updates.status = status
+    if (role) updates.role = role
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ success: false, error: 'Aucune donnee a mettre a jour.' }, { status: 400 })
     }
 
-    if (role) {
-      const result = await updateMemberRole(id, role)
-      if (!result.success) {
-        return NextResponse.json({ error: result.error }, { status: 500 })
-      }
+    const { data, error } = await supabase
+      .from('members')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Erreur API members PATCH:', error)
+      return NextResponse.json({ success: false, error: `Supabase: ${error.message}` }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true })
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Erreur lors de la mise a jour'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ success: true, member: data })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Erreur serveur.'
+    console.error('Erreur API members PATCH catch:', message)
+    return NextResponse.json({ success: false, error: message }, { status: 500 })
   }
 }
