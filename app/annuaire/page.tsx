@@ -5,7 +5,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Partners } from "@/components/partners"
 import { useI18n } from "@/lib/i18n"
-import { Search, MapPin, Star, Mail, ChevronDown, ChevronUp, Phone, ExternalLink } from "lucide-react"
+import { Search, MapPin, Star, Mail, ChevronDown, ChevronUp, Phone, ExternalLink, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -411,7 +411,7 @@ export default function DirectoryPage() {
     locations: "Rechercher un décor..."
   }
 
-  // Fetch real technicians from Supabase — version corrigée
+  // Fetch real technicians from Supabase
   useEffect(() => {
     const fetchTechnicians = async () => {
       const { createClient } = await import("@/lib/supabase/client")
@@ -539,20 +539,19 @@ export default function DirectoryPage() {
         {/* Tab Content */}
         <section className="px-6 lg:px-20 py-12">
 
-          {/* Technicians Tab */}
+          {/* ═══════════════════════════════════════════════════════════
+              TECHNICIANS TAB — CARDES AVEC PHOTO PAYSAGE
+              ═══════════════════════════════════════════════════════════ */}
           {activeTab === "technicians" && (
             loadingTechnicians ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="bg-card border border-border rounded-xl p-6 animate-pulse">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-14 h-14 rounded-full bg-secondary" />
-                      <div className="flex-1">
-                        <div className="h-4 bg-secondary rounded w-24 mb-2" />
-                        <div className="h-3 bg-secondary rounded w-32" />
-                      </div>
+                  <div key={i} className="bg-card border border-border rounded-xl overflow-hidden animate-pulse">
+                    <div className="aspect-[4/3] bg-secondary" />
+                    <div className="p-4 space-y-3">
+                      <div className="h-4 bg-secondary rounded w-24" />
+                      <div className="h-10 bg-secondary rounded" />
                     </div>
-                    <div className="h-10 bg-secondary rounded" />
                   </div>
                 ))}
               </div>
@@ -571,47 +570,90 @@ export default function DirectoryPage() {
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredTechnicians.map((tech) => (
-                  <div key={tech.id} className="bg-card border border-border rounded-xl p-6 hover:border-primary/50 transition-colors">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="relative h-12 w-12 rounded-full overflow-hidden bg-secondary">
-                          {tech.image ? (
-                            <Image src={tech.image} alt={tech.name} fill className="object-cover" />
-                          ) : (
-                            <div className="h-full w-full flex items-center justify-center text-muted-foreground font-semibold">
-                              {tech.name.split(" ").map(n => n[0]).join("")}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredTechnicians.map((tech) => {
+                  const initials = tech.name.split(" ").map(n => n[0]).join("")
+                  return (
+                    <div key={tech.id} className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-all duration-300 group">
+                      {/* ── Photo de profil paysage ── */}
+                      <div className="relative aspect-[4/3] w-full overflow-hidden">
+                        {tech.image ? (
+                          <Image 
+                            src={tech.image} 
+                            alt={`Photo de ${tech.name}`} 
+                            fill 
+                            className="object-cover transition-transform duration-700 group-hover:scale-105" 
+                          />
+                        ) : (
+                          <div className="absolute inset-0 bg-gradient-to-br from-secondary via-muted to-secondary flex flex-col items-center justify-center gap-2">
+                            <div className="flex size-20 items-center justify-center rounded-2xl bg-primary/10">
+                              <span className="text-2xl font-bold text-primary/60">{initials}</span>
                             </div>
-                          )}
+                            <span className="text-xs text-muted-foreground/50 font-medium">Photo de profil</span>
+                          </div>
+                        )}
+
+                        {/* Badge niveau — haut gauche */}
+                        <div className="absolute top-3 left-3">
+                          <span className="inline-flex items-center gap-1 bg-black/50 text-white border border-white/20 backdrop-blur-md text-[11px] font-semibold px-2.5 py-1 rounded">
+                            <Star className="size-3 fill-amber-400 text-amber-400" />
+                            {getLevelText(tech.level)}
+                          </span>
                         </div>
-                        <div>
-                          <h3 className="font-semibold text-foreground">{tech.name}</h3>
-                          <p className="text-sm text-primary">{tech.role}</p>
-                          <div className="flex items-center gap-1 mt-1">
-                            <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-                            <span className="text-xs text-muted-foreground">{getLevelText(tech.level)}</span>
+
+                        {/* Badge disponibilité — haut droite */}
+                        <div className="absolute top-3 right-3">
+                          <span className={`text-[11px] font-semibold px-2.5 py-1 rounded backdrop-blur-md border ${
+                            tech.status === "available"
+                              ? "bg-green-500/90 text-white border-green-600/30"
+                              : tech.status === "filming"
+                              ? "bg-amber-500/90 text-white border-amber-600/30"
+                              : "bg-red-500/90 text-white border-red-600/30"
+                          }`}>
+                            {getStatusText(tech.status)}
+                          </span>
+                        </div>
+
+                        {/* Dégradé + Nom/Fonction en bas de la photo */}
+                        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                        <div className="absolute bottom-0 inset-x-0 px-4 pb-4 pt-12">
+                          <h3 className="text-xl font-bold text-white leading-tight drop-shadow-lg">{tech.name}</h3>
+                          <p className="text-sm text-primary font-semibold mt-0.5 drop-shadow-lg">{tech.role}</p>
+                        </div>
+                      </div>
+
+                      {/* ── Corps de la carte ── */}
+                      <div className="px-4 py-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <Star className="size-3.5 fill-amber-500 text-amber-500" />
+                            <span className="text-xs font-medium">{getLevelText(tech.level)}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className={`size-2 rounded-full ${
+                              tech.status === "available" ? "bg-green-500" :
+                              tech.status === "filming" ? "bg-amber-500" : "bg-red-500"
+                            }`} />
+                            <span className="text-xs text-muted-foreground font-medium">{getStatusText(tech.status)}</span>
                           </div>
                         </div>
-                      </div>
-                      <div className={`px-2 py-1 rounded text-xs font-medium ${
-                        tech.status === "available" ? "bg-green-500/20 text-green-500" :
-                        tech.status === "filming" ? "bg-amber-500/20 text-amber-500" :
-                        "bg-red-500/20 text-red-500"
-                      }`}>
-                        {getStatusText(tech.status)}
+                        <Link href={`/membre/${tech.id}`}>
+                          <Button className="w-full bg-primary hover:bg-primary/90 gap-2 h-9 text-sm font-medium">
+                            {t("directory.viewProfile")}
+                            <ArrowRight className="size-3.5" />
+                          </Button>
+                        </Link>
                       </div>
                     </div>
-                    <Link href={`/membre/${tech.id}`}>
-                      <Button variant="outline" className="w-full">{t("directory.viewProfile")}</Button>
-                    </Link>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )
           )}
 
-          {/* Companies Tab */}
+          {/* ═══════════════════════════════════════════════════════════
+              COMPANIES TAB
+              ═══════════════════════════════════════════════════════════ */}
           {activeTab === "companies" && (
             <div className="space-y-6">
               {companies.map((company) => (
@@ -664,7 +706,9 @@ export default function DirectoryPage() {
             </div>
           )}
 
-          {/* Costumes Tab */}
+          {/* ═══════════════════════════════════════════════════════════
+              COSTUMES TAB
+              ═══════════════════════════════════════════════════════════ */}
           {activeTab === "costumes" && (
             <div className="space-y-8">
               {costumeServices.map((service) => (
@@ -738,7 +782,9 @@ export default function DirectoryPage() {
             </div>
           )}
 
-          {/* Locations Tab */}
+          {/* ═══════════════════════════════════════════════════════════
+              LOCATIONS TAB
+              ═══════════════════════════════════════════════════════════ */}
           {activeTab === "locations" && (
             <div className="grid lg:grid-cols-2 gap-8">
               <div className="space-y-4">
