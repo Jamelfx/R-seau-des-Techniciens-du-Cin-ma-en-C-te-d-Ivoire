@@ -418,16 +418,17 @@ export default function MemberDashboard() {
   // ✅ État des mois payés
   const [paidMonths, setPaidMonths] = useState<number[]>([0, 1, 2, 3]) // Jan-Avr payés
 
-  useEffect(() => {
+    useEffect(() => {
     const fetchMemberData = async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/connexion'); return }
 
+      // ✅ Requête simplifiée — uniquement par email
       const { data: memberData, error } = await supabase
         .from('members')
         .select('*')
-        .or(`email.eq.${user.email},auth_user_id.eq.${user.id}`)
+        .eq('email', user.email!)
         .maybeSingle()
 
       const isAdmin = user.email && (
@@ -448,9 +449,9 @@ export default function MemberDashboard() {
           profession: memberData.profession || "",
           experience_years: memberData.years_experience || 0,
           gender: memberData.gender || "",
-          birth_date: memberData.birth_date || "",
-          birth_place: memberData.birth_place || "",
-          biography: memberData.biography || "",
+          birth_date: memberData.birth_date || memberData.date_of_birth || "",
+          birth_place: memberData.birth_place || memberData.place_of_birth || "",
+          biography: memberData.biography || memberData.bio || "",
           availability: memberData.availability || "available"
         })
         setProfilePhoto(memberData.profile_photo)
