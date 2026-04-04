@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 
 export async function GET() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
@@ -11,27 +10,9 @@ export async function GET() {
     return NextResponse.json({ members: [], error: 'Variables Supabase non configurees.' })
   }
 
-  // Essayer d'abord avec le jeton authentifié depuis les cookies
-  const cookieStore = await cookies()
-  let accessToken = ''
-  for (const [name, value] of cookieStore.getAll()) {
-    if (name.includes('-auth-token')) {
-      try {
-        const parsed = JSON.parse(value)
-        accessToken = Array.isArray(parsed) ? (parsed[0] || '') : value
-      } catch {
-        accessToken = value
-      }
-      break
-    }
-  }
-
-  // Créer le client Supabase avec le jeton utilisateur ou la clé service_role
   const options: { global?: { headers?: { Authorization?: string } } } = {}
   if (serviceRoleKey) {
     options.global = { headers: { Authorization: `Bearer ${serviceRoleKey}` } }
-  } else if (accessToken) {
-    options.global = { headers: { Authorization: `Bearer ${accessToken}` } }
   }
 
   const supabase = createClient(supabaseUrl, supabaseAnonKey, options)
@@ -40,7 +21,6 @@ export async function GET() {
     const { data, error } = await supabase
       .from('members')
       .select('*')
-      .order('date', { ascending: false })
 
     if (error) {
       console.error('Erreur API members GET:', error)
