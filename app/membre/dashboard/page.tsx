@@ -975,7 +975,20 @@ export default function MemberDashboard() {
                       <div><Label>Email</Label><Input value={member.email} disabled className="mt-1 bg-secondary/50" /></div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div><Label>Profession / Métier</Label><Input value={formData.profession} onChange={(e) => setFormData({...formData, profession: e.target.value})} placeholder="Ex: Chef Opérateur" className="mt-1" /></div>
+                      <div><Label>Profession / Métier</Label><Input
+  value={formData.profession}
+  onChange={(e) => setFormData({...formData, profession: e.target.value})}
+  placeholder="Tapez ou choisissez votre métier..."
+  className="mt-1"
+  list="professions-datalist"
+  autoComplete="off"
+/>
+<datalist id="professions-datalist">
+  {AUDIOVISUAL_PROFESSIONS.map(p => (
+    <option key={p} value={p} />
+  ))}
+</datalist>
+<p className="text-xs text-muted-foreground mt-1">Saisissez librement ou choisissez dans la liste</p></div>
                       <div><Label>Années d&apos;expérience</Label><Input type="number" value={formData.experience_years} onChange={(e) => setFormData({...formData, experience_years: parseInt(e.target.value) || 0})} className="mt-1" /></div>
                     </div>
                     <div>
