@@ -425,62 +425,80 @@ export default function MemberDashboard() {
       if (!user) { router.push('/connexion'); return }
 
       const { data: memberData, error } = await supabase
-  .from('members')
-  .select('*')
-  .or(`email.eq.${user.email},auth_user_id.eq.${user.id}`)
-  .maybeSingle()
-
-// Permettre l'acces aux administrateurs meme s'ils ne sont pas dans la table members
-const isAdmin = user.email && (
-  user.email.includes('directeur') ||
-  user.email.includes('president') ||
-  user.email.includes('tresorier') ||
-  user.email.includes('admin')
-)
-
-if (!memberData && !isAdmin) { router.push('/connexion'); return }
-
-if (memberData) {
-  setMember(memberData)
-} else if (isAdmin) {
-  // Creer un profil temporaire pour l'admin
-  setMember({
-    id: user.id,
-    email: user.email || '',
-    first_name: user.user_metadata?.full_name?.split(' ')[0] || 'Admin',
-    last_name: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
-    phone: '',
-    profession: '',
-    years_experience: 0,
-    gender: '',
-    birth_date: '',
-    role: 'director' as const,
-    status: 'active' as const,
-    date: new Date().toISOString(),
-  })
-}
-      setMember(memberData)
-      setFormData({
-        first_name: memberData.first_name || "",
-        last_name: memberData.last_name || "",
-        phone: memberData.phone || "",
-        profession: memberData.profession || "",
-        experience_years: memberData.years_experience || 0,
-        gender: memberData.gender || "",
-        birth_date: memberData.birth_date || "",
-        birth_place: memberData.birth_place || "",
-        biography: memberData.biography || "",
-        availability: memberData.availability || "available"
-      })
-      setProfilePhoto(memberData.profile_photo)
-
-      const { data: filmoData } = await supabase
-        .from('filmography')
+        .from('members')
         .select('*')
-        .eq('member_id', memberData.id)
-        .order('year', { ascending: false })
+        .or(`email.eq.${user.email},auth_user_id.eq.${user.id}`)
+        .maybeSingle()
 
-      if (filmoData) setFilmography(filmoData)
+      const isAdmin = user.email && (
+        user.email.includes('directeur') ||
+        user.email.includes('president') ||
+        user.email.includes('tresorier') ||
+        user.email.includes('admin')
+      )
+
+      if (!memberData && !isAdmin) { router.push('/connexion'); return }
+
+      if (memberData) {
+        setMember(memberData)
+        setFormData({
+          first_name: memberData.first_name || "",
+          last_name: memberData.last_name || "",
+          phone: memberData.phone || "",
+          profession: memberData.profession || "",
+          experience_years: memberData.years_experience || 0,
+          gender: memberData.gender || "",
+          birth_date: memberData.birth_date || "",
+          birth_place: memberData.birth_place || "",
+          biography: memberData.biography || "",
+          availability: memberData.availability || "available"
+        })
+        setProfilePhoto(memberData.profile_photo)
+
+        const { data: filmoData } = await supabase
+          .from('filmography')
+          .select('*')
+          .eq('member_id', memberData.id)
+          .order('year', { ascending: false })
+
+        if (filmoData) setFilmography(filmoData)
+      } else if (isAdmin) {
+        const adminProfile = {
+          id: user.id,
+          member_id: '',
+          first_name: user.user_metadata?.full_name?.split(' ')[0] || 'Directeur',
+          last_name: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
+          email: user.email || '',
+          phone: '',
+          profession: '',
+          years_experience: 0,
+          profile_photo: null,
+          availability: 'available',
+          status: 'active',
+          role: 'director',
+          gender: '',
+          birth_date: '',
+          birth_place: '',
+          biography: '',
+          membership_level: '',
+          created_at: new Date().toISOString(),
+          category: '',
+        } as MemberData
+        setMember(adminProfile)
+        setFormData({
+          first_name: adminProfile.first_name,
+          last_name: adminProfile.last_name,
+          phone: '',
+          profession: '',
+          experience_years: 0,
+          gender: '',
+          birth_date: '',
+          birth_place: '',
+          biography: '',
+          availability: 'available'
+        })
+      }
+
       setLoading(false)
     }
     fetchMemberData()
@@ -539,7 +557,6 @@ if (memberData) {
       if (uploaded) photoUrl = uploaded
     }
 
-    // ✅ Construire le payload — gender inclus si rempli
     const updatePayload: Record<string, unknown> = {
       first_name: formData.first_name,
       last_name: formData.last_name,
@@ -561,7 +578,6 @@ if (memberData) {
       .update(updatePayload)
       .eq('id', member.id)
 
-    // ✅ Si erreur liée à la colonne gender (n'existe pas encore), réessayer sans
     if (error && error.message.includes('gender')) {
       const { gender: _g, ...payloadWithoutGender } = updatePayload
       const retry = await supabase
@@ -1331,7 +1347,6 @@ if (memberData) {
                           memberName={`${formData.first_name} ${formData.last_name}`}
                           memberId={member.member_id || member.id}
                           onSuccess={() => {
-                            // Simuler l'ajout de mois payés après un paiement réussi
                             const currentMonth = new Date().getMonth()
                             setPaidMonths(prev => [...prev, currentMonth])
                           }}
@@ -1369,7 +1384,7 @@ if (memberData) {
                       </div>
                     )}
 
-                    {/* ✅ Alerte URGENGTE si 1 mois avant suspension */}
+                    {/* ✅ Alerte URGENTE si 1 mois avant suspension */}
                     {unpaidCount >= MONTHS_SUSPEND_AFTER - 1 && unpaidCount < MONTHS_SUSPEND_AFTER && (
                       <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
                         <Ban className="h-4 w-4 text-red-500 shrink-0" />
