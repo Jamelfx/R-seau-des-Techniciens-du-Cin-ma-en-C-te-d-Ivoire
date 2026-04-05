@@ -1,28 +1,30 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import React, { useState, useEffect, useCallback } from "react"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Crown, CheckCircle, Clock, XCircle, AlertTriangle, Loader2,
+  Mail, Phone, Briefcase, CalendarDays, MapPin, FileText,
+  Shield, ChevronDown, ChevronUp, Users, Scale,
+  RotateCcw, Bell, PenLine,
+} from "lucide-react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { 
-  Users, TrendingUp, FileText, Eye, Calendar, 
-  BarChart3, Award, Building, CheckCircle, Clock, 
-  XCircle, Send, AlertTriangle, ChevronRight, Gavel,
-  Shield, Vote, History, LogOut, Plus, CalendarDays,
-  MapPin, UserCheck, UserX, Mail, TrendingDown, Receipt,
-  Loader2, RefreshCw
-} from "lucide-react"
-import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
+
+// ═══════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════
 
 interface AdhesionRequest {
   id: string
@@ -35,710 +37,840 @@ interface AdhesionRequest {
   motivation: string
   status: string
   created_at: string
+  reviewed_at: string | null
+  rejection_reason: string | null
   signature_data: string | null
 }
 
 interface Meeting {
   id: string
   title: string
-  description: string
+  type: string
+  description: string | null
   date: string
-  location: string
-  type: string
-  agenda: string
-  online_link: string
-}
-
-interface Member {
-  id: string
-  member_id: string
-  first_name: string
-  last_name: string
-  email: string
+  time: string | null
+  location: string | null
+  agenda: string | null
   status: string
 }
 
-interface Payment {
-  id: string
-  amount: number
-  type: string
-  status: string
-  payment_date: string
+// ═══════════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════
+
+const MEETING_TYPE_LABELS: Record<string, string> = {
+  ca: "Conseil d'Administration",
+  ag: "Assemblée Générale",
+  ag_extra: "Assemblée Générale Extraordinaire",
+  ordinary: "Assemblée Générale Ordinaire",
+  extraordinary: "Assemblée Générale Extraordinaire",
+  electoral: "Assemblée Élective",
 }
 
-interface Expense {
-  id: string
-  description: string
-  amount: number
-  category: string
-  expense_date: string
-  approved: boolean
+const MEETING_TYPE_COLORS: Record<string, string> = {
+  ca: "bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 border-purple-300 dark:border-purple-800",
+  ag: "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-800",
+  ag_extra: "bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 border-orange-300 dark:border-orange-800",
+  ordinary: "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-800",
+  extraordinary: "bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 border-purple-300 dark:border-purple-800",
+  electoral: "bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 border-orange-300 dark:border-orange-800",
 }
 
-export default function PresidentDashboard() {
-  const router = useRouter()
-  const supabase = createClient()
-  
-  const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [selectedTab, setSelectedTab] = useState("validations")
-  const [selectedRequest, setSelectedRequest] = useState<AdhesionRequest | null>(null)
-  const [rejectionReason, setRejectionReason] = useState("")
-  const [showConvocationModal, setShowConvocationModal] = useState(false)
-  const [newMeeting, setNewMeeting] = useState({
-    title: "",
-    type: "ca",
-    date: "",
-    time: "",
-    location: "",
-    description: "",
-    agenda: ""
-  })
+const MEETING_STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
+  upcoming: { label: "À venir", color: "bg-blue-500 text-white", icon: Clock },
+  ongoing: { label: "En cours", color: "bg-yellow-500 text-white", icon: Loader2 },
+  completed: { label: "Terminée", color: "bg-green-500 text-white", icon: CheckCircle },
+  cancelled: { label: "Annulée", color: "bg-red-500 text-white", icon: XCircle },
+}
 
-  // Data states
-  const [adhesionRequests, setAdhesionRequests] = useState<AdhesionRequest[]>([])
-  const [meetings, setMeetings] = useState<Meeting[]>([])
-  const [members, setMembers] = useState<Member[]>([])
-  const [payments, setPayments] = useState<Payment[]>([])
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [stats, setStats] = useState({
-    totalMembers: 0,
-    pendingValidations: 0,
-    upcomingMeetings: 0,
-    balance: 0,
-    totalCotisations: 0,
-    totalExpenses: 0
-  })
+// ═══════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════
 
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
-    setLoading(true)
-    try {
-      // Fetch adhesion requests sent to president
-      const { data: adhesions } = await supabase
-        .from('adhesion_requests')
-        .select('*')
-        .eq('status', 'sent_to_president')
-        .order('created_at', { ascending: false })
-      
-      // Fetch meetings
-      const { data: meetingsData } = await supabase
-        .from('meetings')
-        .select('*')
-        .gte('date', new Date().toISOString())
-        .order('date', { ascending: true })
-      
-      // Fetch all members
-      const { data: membersData } = await supabase
-        .from('members')
-        .select('*')
-        .eq('status', 'active')
-      
-      // Fetch payments this year
-      const currentYear = new Date().getFullYear()
-      const { data: paymentsData } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('year', currentYear)
-        .eq('status', 'completed')
-      
-      // Fetch expenses
-      const { data: expensesData } = await supabase
-        .from('expenses')
-        .select('*')
-        .order('expense_date', { ascending: false })
-        .limit(20)
-
-      setAdhesionRequests(adhesions || [])
-      setMeetings(meetingsData || [])
-      setMembers(membersData || [])
-      setPayments(paymentsData || [])
-      setExpenses(expensesData || [])
-
-      // Calculate stats
-      const totalCotisations = paymentsData?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0
-      const totalExpensesAmount = expensesData?.filter(e => e.approved).reduce((sum, e) => sum + (e.amount || 0), 0) || 0
-
-      setStats({
-        totalMembers: membersData?.length || 0,
-        pendingValidations: adhesions?.length || 0,
-        upcomingMeetings: meetingsData?.length || 0,
-        balance: totalCotisations - totalExpensesAmount,
-        totalCotisations,
-        totalExpenses: totalExpensesAmount
-      })
-
-    } catch (error) {
-      console.error("Error fetching data:", error)
-    }
-    setLoading(false)
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "—"
+  try {
+    const d = new Date(dateStr)
+    return d.toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    })
+  } catch {
+    return dateStr
   }
+}
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push("/admin")
+function formatShortDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "—"
+  try {
+    const d = new Date(dateStr)
+    return d.toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+  } catch {
+    return dateStr
   }
+}
 
-  const handleApprove = async (request: AdhesionRequest) => {
-    setActionLoading(request.id)
-    try {
-      const { error } = await supabase
-        .from('adhesion_requests')
-        .update({ 
-          status: 'approved',
-          reviewed_at: new Date().toISOString()
-        })
-        .eq('id', request.id)
-      
-      if (error) throw error
-      
-      alert(`Adhesion approuvee pour ${request.first_name} ${request.last_name}. Le Directeur Executif pourra envoyer le lien d'activation.`)
-      setSelectedRequest(null)
-      await fetchData()
-    } catch (error) {
-      console.error("Error:", error)
-      alert("Erreur lors de l'approbation")
-    }
-    setActionLoading(null)
-  }
+function getInitials(req: AdhesionRequest): string {
+  if (req.first_name && req.last_name)
+    return `${req.first_name[0]}${req.last_name[0]}`.toUpperCase()
+  if (req.first_name) return req.first_name[0].toUpperCase()
+  return "?"
+}
 
-  const handleReject = async (request: AdhesionRequest) => {
-    if (!rejectionReason) {
-      alert("Veuillez indiquer un motif de refus")
-      return
-    }
-    
-    setActionLoading(request.id)
-    try {
-      const { error } = await supabase
-        .from('adhesion_requests')
-        .update({ 
-          status: 'rejected',
-          notes: rejectionReason,
-          reviewed_at: new Date().toISOString()
-        })
-        .eq('id', request.id)
-      
-      if (error) throw error
-      
-      alert("Demande refusee. Le candidat sera notifie.")
-      setSelectedRequest(null)
-      setRejectionReason("")
-      await fetchData()
-    } catch (error) {
-      console.error("Error:", error)
-      alert("Erreur lors du refus")
-    }
-    setActionLoading(null)
-  }
+function getFullName(req: AdhesionRequest): string {
+  if (req.first_name && req.last_name) return `${req.first_name} ${req.last_name}`
+  if (req.first_name) return req.first_name
+  if (req.last_name) return req.last_name
+  return req.email || "Sans nom"
+}
 
-  const handleCreateMeeting = async () => {
-    if (!newMeeting.title || !newMeeting.date || !newMeeting.location) {
-      alert("Veuillez remplir tous les champs obligatoires")
-      return
-    }
-    
-    setActionLoading('meeting')
-    try {
-      const meetingDate = new Date(`${newMeeting.date}T${newMeeting.time || '10:00'}`)
-      
-      const { error } = await supabase
-        .from('meetings')
-        .insert({
-          title: newMeeting.title,
-          type: newMeeting.type,
-          date: meetingDate.toISOString(),
-          location: newMeeting.location,
-          description: newMeeting.description,
-          agenda: newMeeting.agenda
-        })
-      
-      if (error) throw error
-      
-      alert(`Reunion creee. Les convocations seront envoyees a ${newMeeting.type === "ag" ? "tous les membres" : "tous les membres du CA"}.`)
-      setShowConvocationModal(false)
-      setNewMeeting({ title: "", type: "ca", date: "", time: "", location: "", description: "", agenda: "" })
-      await fetchData()
-    } catch (error) {
-      console.error("Error:", error)
-      alert("Erreur lors de la creation")
-    }
-    setActionLoading(null)
-  }
+// ═══════════════════════════════════════════════════════════════════════
+// COMPOSANT : RejectDialog
+// ═══════════════════════════════════════════════════════════════════════
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA'
-  }
+function RejectDialog({
+  open,
+  onClose,
+  onConfirm,
+  loading = false,
+}: {
+  open: boolean
+  onClose: () => void
+  onConfirm: (reason: string) => void
+  loading?: boolean
+}) {
+  const [reason, setReason] = useState("")
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Chargement des donnees...</p>
-        </div>
-      </div>
-    )
+  const handleConfirm = () => {
+    if (!reason.trim()) return
+    onConfirm(reason.trim())
+    setReason("")
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <main className="pt-8 px-6 lg:px-20 py-12">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { setReason(""); onClose() } }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <XCircle className="h-5 w-5 text-destructive" />
+            Refuser la demande d&apos;adhésion
+          </DialogTitle>
+          <DialogDescription>
+            Veuillez indiquer la raison du refus. Cette information sera transmise au Directeur Exécutif.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-2">
+          <div>
+            <Label htmlFor="rejection-reason">Raison du refus *</Label>
+            <Textarea
+              id="rejection-reason"
+              placeholder="Ex : Profil incomplet, expérience insuffisante dans le domaine audiovisuel..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="mt-1"
+              rows={4}
+            />
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => { setReason(""); onClose() }}
+              disabled={loading}
+              className="flex-1"
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={loading || !reason.trim()}
+              className="flex-1 bg-destructive hover:bg-destructive/90 text-white"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Confirmer le refus"
+              )}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// COMPOSANT : RequestCard (expandable)
+// ═══════════════════════════════════════════════════════════════════════
+
+function RequestCard({
+  request,
+  expanded,
+  onToggle,
+  onApprove,
+  onReject,
+  approving = false,
+}: {
+  request: AdhesionRequest
+  expanded: boolean
+  onToggle: () => void
+  onApprove: () => void
+  onReject: () => void
+  approving?: boolean
+}) {
+  const fullName = getFullName(request)
+  const initials = getInitials(request)
+  const createdLabel = formatShortDate(request.created_at)
+
+  return (
+    <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+      {/* Summary row — always visible */}
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center gap-3 p-3 sm:p-4 hover:bg-muted/30 transition-colors text-left"
+      >
+        <Avatar className="h-10 w-10 shrink-0">
+          <AvatarFallback className="text-xs bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-400 font-medium">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium text-sm truncate">{fullName}</span>
+            <Badge className="bg-yellow-500 text-white text-[10px] gap-1 px-1.5">
+              <Clock className="h-3 w-3" />
+              En attente
+            </Badge>
+          </div>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-xs text-muted-foreground truncate">{request.email}</span>
+            <span className="text-muted-foreground/40 hidden sm:inline">·</span>
+            <span className="text-xs text-muted-foreground truncate hidden sm:inline">{request.profession}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-muted-foreground hidden sm:block">{createdLabel}</span>
+          {expanded ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
+        </div>
+      </button>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="border-t border-border/60 p-4 sm:p-6 space-y-5 bg-muted/10">
+          {/* Personal info grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <InfoField icon={Briefcase} label="Profession" value={request.profession} />
+            <InfoField icon={CalendarDays} label="Expérience" value={`${request.years_experience} an${request.years_experience > 1 ? "s" : ""}`} />
+            <InfoField icon={Mail} label="Email" value={request.email} />
+            <InfoField icon={Phone} label="Téléphone" value={request.phone || "Non renseigné"} />
+          </div>
+
+          {/* Motivation */}
+          <div>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground">Motivation</span>
+            </div>
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-background/50 rounded-lg p-3 border border-border/40">
+              {request.motivation || "Non renseigné"}
+            </p>
+          </div>
+
+          {/* Signature */}
+          {request.signature_data && (
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Badge className="bg-amber-500/20 text-amber-600 border-amber-500/30">
-                  <Award className="h-3 w-3 mr-1" />
-                  President du Conseil d&apos;Administration
-                </Badge>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <PenLine className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">Signature</span>
               </div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
-                Gouvernance du RETECHCI
-              </h1>
-              <p className="text-muted-foreground">
-                Validations, convocations et suivi financier
-              </p>
+              <div className="bg-background/50 rounded-lg p-3 border border-border/40 inline-block">
+                <img
+                  src={request.signature_data}
+                  alt="Signature du candidat"
+                  className="max-h-24 max-w-full object-contain"
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" onClick={fetchData}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Actualiser
-              </Button>
-              <Dialog open={showConvocationModal} onOpenChange={setShowConvocationModal}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Convoquer une reunion
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Nouvelle convocation</DialogTitle>
-                    <DialogDescription>
-                      Convoquez une reunion du CA ou une Assemblee Generale
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div>
-                      <Label>Type de reunion</Label>
-                      <Select value={newMeeting.type} onValueChange={(v) => setNewMeeting({...newMeeting, type: v})}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ca">Conseil d&apos;Administration</SelectItem>
-                          <SelectItem value="ag">Assemblee Generale</SelectItem>
-                          <SelectItem value="ag_extra">AG Extraordinaire</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Titre *</Label>
-                      <Input 
-                        placeholder="Ex: Conseil d'Administration Q1 2024"
-                        value={newMeeting.title}
-                        onChange={(e) => setNewMeeting({...newMeeting, title: e.target.value})}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Date *</Label>
-                        <Input 
-                          type="date"
-                          value={newMeeting.date}
-                          onChange={(e) => setNewMeeting({...newMeeting, date: e.target.value})}
-                        />
-                      </div>
-                      <div>
-                        <Label>Heure</Label>
-                        <Input 
-                          type="time"
-                          value={newMeeting.time}
-                          onChange={(e) => setNewMeeting({...newMeeting, time: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label>Lieu *</Label>
-                      <Input 
-                        placeholder="Ex: Siege RETECHCI, Abidjan"
-                        value={newMeeting.location}
-                        onChange={(e) => setNewMeeting({...newMeeting, location: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <Label>Ordre du jour</Label>
-                      <Textarea 
-                        placeholder="Points a aborder lors de cette reunion..."
-                        value={newMeeting.agenda}
-                        onChange={(e) => setNewMeeting({...newMeeting, agenda: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowConvocationModal(false)}>Annuler</Button>
-                    <Button onClick={handleCreateMeeting} disabled={actionLoading === 'meeting'}>
-                      {actionLoading === 'meeting' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                      Envoyer les convocations
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-              <Button variant="outline" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Deconnexion
-              </Button>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex gap-3 pt-2">
+            <Button
+              onClick={onApprove}
+              disabled={approving}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+            >
+              {approving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-1.5" />
+                  Approuver
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={onReject}
+              disabled={approving}
+              variant="outline"
+              className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/5"
+            >
+              <XCircle className="h-4 w-4 mr-1.5" />
+              Refuser
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// COMPOSANT : InfoField
+// ═══════════════════════════════════════════════════════════════════════
+
+function InfoField({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Mail
+  label: string
+  value: string
+}) {
+  return (
+    <div className="flex items-start gap-2">
+      <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+      <div>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm font-medium">{value}</p>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// COMPOSANT : HistoryCard (approved or rejected)
+// ═══════════════════════════════════════════════════════════════════════
+
+function HistoryCard({ request }: { request: AdhesionRequest }) {
+  const fullName = getFullName(request)
+  const initials = getInitials(request)
+  const isApproved = request.status === "approved_by_president" || request.status === "invitation_sent"
+  const isRejected = request.status === "rejected_by_president"
+
+  return (
+    <div className="flex items-start gap-3 p-3 sm:p-4 rounded-xl border border-border/60 bg-card">
+      <Avatar className="h-9 w-9 shrink-0 mt-0.5">
+        <AvatarFallback className={`text-[10px] font-medium ${
+          isApproved
+            ? "bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400"
+            : "bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400"
+        }`}>
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium text-sm">{fullName}</span>
+          {isApproved ? (
+            <Badge className="bg-green-500 text-white text-[10px] gap-1 px-1.5">
+              <CheckCircle className="h-3 w-3" />
+              Approuvée
+            </Badge>
+          ) : isRejected ? (
+            <Badge className="bg-red-500 text-white text-[10px] gap-1 px-1.5">
+              <XCircle className="h-3 w-3" />
+              Refusée
+            </Badge>
+          ) : null}
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5 truncate">{request.email}</p>
+        {isRejected && request.rejection_reason && (
+          <div className="mt-2 p-2 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40">
+            <p className="text-xs text-red-700 dark:text-red-400">
+              <span className="font-semibold">Raison : </span>
+              {request.rejection_reason}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="shrink-0 text-right">
+        <span className="text-xs text-muted-foreground">
+          {formatShortDate(request.reviewed_at)}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// COMPOSANT : MeetingCard (read-only)
+// ═══════════════════════════════════════════════════════════════════════
+
+function MeetingCard({ meeting }: { meeting: Meeting }) {
+  const typeLabel = MEETING_TYPE_LABELS[meeting.type] || meeting.type
+  const typeColor = MEETING_TYPE_COLORS[meeting.type] || "bg-muted text-muted-foreground border-border"
+  const statusConf = MEETING_STATUS_CONFIG[meeting.status] || MEETING_STATUS_CONFIG.upcoming
+  const StatusIcon = statusConf.icon
+
+  return (
+    <div className="rounded-xl border border-border/60 bg-card p-4 sm:p-5 hover:bg-muted/20 transition-colors">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-sm sm:text-base">{meeting.title}</h3>
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <Badge variant="outline" className={`text-[10px] border ${typeColor}`}>
+              {typeLabel}
+            </Badge>
+            <Badge className={`${statusConf.color} text-[10px] gap-1 px-1.5`}>
+              <StatusIcon className="h-3 w-3" />
+              {statusConf.label}
+            </Badge>
+          </div>
+        </div>
+      </div>
+
+      {/* Details */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+        <InfoField icon={CalendarDays} label="Date" value={formatDate(meeting.date)} />
+        {meeting.time && (
+          <InfoField icon={Clock} label="Heure" value={meeting.time} />
+        )}
+        {meeting.location && (
+          <InfoField icon={MapPin} label="Lieu" value={meeting.location} />
+        )}
+      </div>
+
+      {/* Agenda */}
+      {meeting.agenda && (
+        <div className="mt-4">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground">Ordre du jour</span>
+          </div>
+          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/30 rounded-lg p-3">
+            {meeting.agenda}
+          </p>
+        </div>
+      )}
+
+      {/* Description */}
+      {meeting.description && (
+        <div className="mt-3">
+          <p className="text-xs text-muted-foreground leading-relaxed">{meeting.description}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MAIN PAGE COMPONENT
+// ═══════════════════════════════════════════════════════════════════════
+
+export default function PresidentDashboard() {
+  const { toast } = useToast()
+
+  // Data state
+  const [pendingRequests, setPendingRequests] = useState<AdhesionRequest[]>([])
+  const [approvedRequests, setApprovedRequests] = useState<AdhesionRequest[]>([])
+  const [rejectedRequests, setRejectedRequests] = useState<AdhesionRequest[]>([])
+  const [meetings, setMeetings] = useState<Meeting[]>([])
+
+  // UI state
+  const [loading, setLoading] = useState(true)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [approvingId, setApprovingId] = useState<string | null>(null)
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
+  const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
+
+  // ═══════════════════════════════════════════════════════════════════
+  // FETCH DATA
+  // ═══════════════════════════════════════════════════════════════════
+
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const supabase = createClient()
+
+      // Fetch pending requests (sent_to_president)
+      const { data: pendingData, error: pendingError } = await supabase
+        .from("adhesion_requests")
+        .select("*")
+        .eq("status", "sent_to_president")
+        .order("created_at", { ascending: false })
+
+      if (pendingError) throw pendingError
+
+      // Fetch approved requests
+      const { data: approvedData, error: approvedError } = await supabase
+        .from("adhesion_requests")
+        .select("*")
+        .in("status", ["approved_by_president", "invitation_sent"])
+        .order("reviewed_at", { ascending: false })
+
+      if (approvedError) throw approvedError
+
+      // Fetch rejected requests
+      const { data: rejectedData, error: rejectedError } = await supabase
+        .from("adhesion_requests")
+        .select("*")
+        .eq("status", "rejected_by_president")
+        .order("reviewed_at", { ascending: false })
+
+      if (rejectedError) throw rejectedError
+
+      // Fetch upcoming meetings
+      const { data: meetingsData, error: meetingsError } = await supabase
+        .from("meetings")
+        .select("*")
+        .in("status", ["upcoming", "ongoing"])
+        .order("date", { ascending: true })
+
+      if (meetingsError) throw meetingsError
+
+      setPendingRequests(pendingData || [])
+      setApprovedRequests(approvedData || [])
+      setRejectedRequests(rejectedData || [])
+      setMeetings(meetingsData || [])
+    } catch (err) {
+      console.error("Erreur de chargement:", err)
+      toast({
+        title: "Erreur de chargement",
+        description: "Impossible de charger les données. Veuillez réessayer.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }, [toast])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  // ═══════════════════════════════════════════════════════════════════
+  // ACTIONS
+  // ═══════════════════════════════════════════════════════════════════
+
+  const handleApprove = async (requestId: string) => {
+    setApprovingId(requestId)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("adhesion_requests")
+        .update({
+          status: "approved_by_president",
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", requestId)
+
+      if (error) throw error
+
+      toast({
+        title: "Demande approuvée",
+        description: "Le Directeur Exécutif sera notifié.",
+        variant: "default",
+      })
+
+      // Refresh data
+      await fetchData()
+      setExpandedId(null)
+    } catch (err) {
+      console.error("Erreur d'approbation:", err)
+      toast({
+        title: "Erreur",
+        description: "Impossible d'approuver la demande. Veuillez réessayer.",
+        variant: "destructive",
+      })
+    } finally {
+      setApprovingId(null)
+    }
+  }
+
+  const handleReject = async (reason: string) => {
+    if (!rejectTargetId) return
+    setApprovingId(rejectTargetId)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("adhesion_requests")
+        .update({
+          status: "rejected_by_president",
+          reviewed_at: new Date().toISOString(),
+          rejection_reason: reason,
+        })
+        .eq("id", rejectTargetId)
+
+      if (error) throw error
+
+      toast({
+        title: "Demande refusée",
+        description: "La raison du refus a été enregistrée.",
+        variant: "default",
+      })
+
+      setRejectDialogOpen(false)
+      setRejectTargetId(null)
+      await fetchData()
+      setExpandedId(null)
+    } catch (err) {
+      console.error("Erreur de refus:", err)
+      toast({
+        title: "Erreur",
+        description: "Impossible de refuser la demande. Veuillez réessayer.",
+        variant: "destructive",
+      })
+    } finally {
+      setApprovingId(null)
+    }
+  }
+
+  const openRejectDialog = (requestId: string) => {
+    setRejectTargetId(requestId)
+    setRejectDialogOpen(true)
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // COMPUTED VALUES
+  // ═══════════════════════════════════════════════════════════════════
+
+  const pendingCount = pendingRequests.length
+  const approvedCount = approvedRequests.length
+  const rejectedCount = rejectedRequests.length
+
+  // ═══════════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════════
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <Header />
+
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-6 sm:py-10">
+        {/* Page header */}
+        <div className="mb-6 sm:mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="h-10 w-10 rounded-xl bg-purple-100 dark:bg-purple-950/40 flex items-center justify-center">
+              <Crown className="h-5 w-5 text-purple-700 dark:text-purple-400" />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold">Tableau de bord du Président</h1>
+              <p className="text-sm text-muted-foreground">Président du Conseil d&apos;Administration — RETECHCI</p>
             </div>
           </div>
+        </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                    <Users className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{stats.totalMembers}</p>
-                    <p className="text-sm text-muted-foreground">Membres actifs</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className={stats.pendingValidations > 0 ? "border-amber-500/30 bg-amber-500/5" : ""}>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center">
-                    <Shield className="h-6 w-6 text-amber-500" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{stats.pendingValidations}</p>
-                    <p className="text-sm text-muted-foreground">Validations en attente</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center">
-                    <CalendarDays className="h-6 w-6 text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">{stats.upcomingMeetings}</p>
-                    <p className="text-sm text-muted-foreground">Reunions a venir</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center">
-                    <TrendingUp className="h-6 w-6 text-green-500" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold text-foreground">{formatCurrency(stats.balance)}</p>
-                    <p className="text-sm text-muted-foreground">Solde actuel</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-3 text-sm text-muted-foreground">Chargement des données...</span>
           </div>
-
-          <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="validations" className="relative">
-                Validations
-                {stats.pendingValidations > 0 && (
-                  <span className="ml-2 w-5 h-5 bg-amber-500 text-white text-xs rounded-full flex items-center justify-center">
-                    {stats.pendingValidations}
-                  </span>
+        ) : (
+          <Tabs defaultValue="validations" className="w-full">
+            <TabsList className="w-full grid grid-cols-3 mb-6">
+              <TabsTrigger value="validations" className="gap-1.5 text-xs sm:text-sm">
+                <Scale className="h-4 w-4" />
+                <span className="hidden sm:inline">Validations</span>
+                {pendingCount > 0 && (
+                  <Badge className="bg-yellow-500 text-white text-[10px] ml-1 px-1.5 py-0 min-w-[18px] h-[18px] flex items-center justify-center rounded-full">
+                    {pendingCount}
+                  </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="meetings">Reunions & AG</TabsTrigger>
-              <TabsTrigger value="finances">Suivi Financier</TabsTrigger>
+              <TabsTrigger value="historique" className="gap-1.5 text-xs sm:text-sm">
+                <RotateCcw className="h-4 w-4" />
+                <span className="hidden sm:inline">Historique</span>
+              </TabsTrigger>
+              <TabsTrigger value="convocations" className="gap-1.5 text-xs sm:text-sm">
+                <Bell className="h-4 w-4" />
+                <span className="hidden sm:inline">Convocations</span>
+                {meetings.length > 0 && (
+                  <Badge className="bg-blue-500 text-white text-[10px] ml-1 px-1.5 py-0 min-w-[18px] h-[18px] flex items-center justify-center rounded-full">
+                    {meetings.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
             </TabsList>
 
-            {/* Validations Tab */}
-            <TabsContent value="validations">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Demandes d&apos;adhesion a valider</CardTitle>
-                      <CardDescription>
-                        Dossiers transmis par le Directeur Executif pour approbation finale
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {adhesionRequests.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <CheckCircle className="h-12 w-12 mx-auto mb-3 text-green-500" />
-                          <p>Aucune demande en attente de validation</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          {adhesionRequests.map((request) => (
-                            <div 
-                              key={request.id} 
-                              className={`flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-colors ${
-                                selectedRequest?.id === request.id 
-                                  ? "bg-primary/10 border border-primary/30" 
-                                  : "bg-secondary/30 hover:bg-secondary/50"
-                              }`}
-                              onClick={() => setSelectedRequest(request)}
-                            >
-                              <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                                <Users className="h-6 w-6 text-primary" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-medium text-foreground">{request.first_name} {request.last_name}</h4>
-                                  {request.signature_data && (
-                                    <Badge variant="outline" className="text-xs text-green-600 border-green-500/30">
-                                      <CheckCircle className="h-3 w-3 mr-1" />
-                                      Signe
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm text-primary">{request.profession}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {request.years_experience} ans d&apos;experience - {request.email}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline">
-                                  <Clock className="h-3 w-3 mr-1" />
-                                  {new Date(request.created_at).toLocaleDateString('fr-FR')}
-                                </Badge>
-                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+            {/* ───────────── TAB 1: VALIDATIONS ───────────── */}
+            <TabsContent value="validations" className="space-y-6">
+              {/* Stats cards */}
+              <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                <Card className="bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900/40">
+                  <CardContent className="p-4 text-center">
+                    <div className="flex items-center justify-center gap-1.5 mb-1">
+                      <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                    </div>
+                    <p className="text-2xl sm:text-3xl font-bold text-yellow-700 dark:text-yellow-400">{pendingCount}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">En attente</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/40">
+                  <CardContent className="p-4 text-center">
+                    <div className="flex items-center justify-center gap-1.5 mb-1">
+                      <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    </div>
+                    <p className="text-2xl sm:text-3xl font-bold text-green-700 dark:text-green-400">{approvedCount}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Approuvées</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40">
+                  <CardContent className="p-4 text-center">
+                    <div className="flex items-center justify-center gap-1.5 mb-1">
+                      <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                    </div>
+                    <p className="text-2xl sm:text-3xl font-bold text-red-700 dark:text-red-400">{rejectedCount}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Refusées</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Pending requests list */}
+              <div>
+                <h2 className="text-base font-semibold mb-3 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-yellow-500" />
+                  Demandes à traiter
+                  {pendingCount === 0 && (
+                    <span className="text-sm font-normal text-muted-foreground">— Aucune demande en attente</span>
+                  )}
+                </h2>
+
+                {pendingCount === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="p-8 text-center">
+                      <CheckCircle className="h-10 w-10 text-green-400 mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground">
+                        Toutes les demandes ont été traitées. Aucune demande en attente de validation.
+                      </p>
                     </CardContent>
                   </Card>
-                </div>
-
-                {/* Detail Panel */}
-                <div>
-                  {selectedRequest ? (
-                    <Card className="sticky top-24">
-                      <CardHeader>
-                        <CardTitle className="text-lg">Details du dossier</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
-                            <Users className="h-8 w-8 text-primary" />
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-lg">{selectedRequest.first_name} {selectedRequest.last_name}</h3>
-                            <p className="text-primary">{selectedRequest.profession}</p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3 pt-4 border-t border-border">
-                          <div>
-                            <Label className="text-xs text-muted-foreground">Experience</Label>
-                            <p className="font-medium">{selectedRequest.years_experience} ans</p>
-                          </div>
-                          <div>
-                            <Label className="text-xs text-muted-foreground">Contact</Label>
-                            <p className="text-sm">{selectedRequest.email}</p>
-                            <p className="text-sm">{selectedRequest.phone}</p>
-                          </div>
-                          <div>
-                            <Label className="text-xs text-muted-foreground">Motivation</Label>
-                            <p className="text-sm p-3 bg-secondary/50 rounded-lg">{selectedRequest.motivation || "Non renseignee"}</p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3 pt-4 border-t border-border">
-                          <div>
-                            <Label className="text-xs text-muted-foreground">Motif de refus (si applicable)</Label>
-                            <Textarea 
-                              placeholder="Expliquez le motif si vous refusez..."
-                              value={rejectionReason}
-                              onChange={(e) => setRejectionReason(e.target.value)}
-                              className="mt-1"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <Button 
-                              variant="destructive" 
-                              className="w-full"
-                              onClick={() => handleReject(selectedRequest)}
-                              disabled={actionLoading === selectedRequest.id}
-                            >
-                              {actionLoading === selectedRequest.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
-                              Refuser
-                            </Button>
-                            <Button 
-                              className="w-full bg-green-600 hover:bg-green-700"
-                              onClick={() => handleApprove(selectedRequest)}
-                              disabled={actionLoading === selectedRequest.id}
-                            >
-                              {actionLoading === selectedRequest.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                              Approuver
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <Card className="sticky top-24">
-                      <CardContent className="py-12 text-center text-muted-foreground">
-                        <Eye className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                        <p>Selectionnez une demande pour voir les details</p>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
+                ) : (
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+                    {pendingRequests.map((req) => (
+                      <RequestCard
+                        key={req.id}
+                        request={req}
+                        expanded={expandedId === req.id}
+                        onToggle={() => setExpandedId(expandedId === req.id ? null : req.id)}
+                        onApprove={() => handleApprove(req.id)}
+                        onReject={() => openRejectDialog(req.id)}
+                        approving={approvingId === req.id}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </TabsContent>
 
-            {/* Meetings Tab */}
-            <TabsContent value="meetings">
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Reunions planifiees</CardTitle>
-                    <CardDescription>Prochaines reunions du CA et Assemblees Generales</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {meetings.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <CalendarDays className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                        <p>Aucune reunion planifiee</p>
-                        <Button className="mt-4" onClick={() => setShowConvocationModal(true)}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Convoquer une reunion
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {meetings.map((meeting) => (
-                          <div key={meeting.id} className="p-4 bg-secondary/30 rounded-xl">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <h4 className="font-bold">{meeting.title}</h4>
-                                  <Badge variant="outline">
-                                    {meeting.type === 'ca' ? 'CA' : meeting.type === 'ag' ? 'AG' : 'AG Extra'}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground mb-2">{meeting.description}</p>
-                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="h-4 w-4" />
-                                    {new Date(meeting.date).toLocaleDateString('fr-FR', { 
-                                      weekday: 'long',
-                                      day: 'numeric', 
-                                      month: 'long', 
-                                      year: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <MapPin className="h-4 w-4" />
-                                    {meeting.location}
-                                  </span>
-                                </div>
-                                {meeting.agenda && (
-                                  <div className="mt-3 p-3 bg-background rounded-lg">
-                                    <Label className="text-xs text-muted-foreground">Ordre du jour</Label>
-                                    <p className="text-sm mt-1">{meeting.agenda}</p>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+            {/* ───────────── TAB 2: HISTORIQUE ───────────── */}
+            <TabsContent value="historique" className="space-y-8">
+              {/* Approved */}
+              <div>
+                <h2 className="text-base font-semibold mb-3 flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  Demandes approuvées
+                  <span className="text-sm font-normal text-muted-foreground">({approvedCount})</span>
+                </h2>
+
+                {approvedCount === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="p-6 text-center">
+                      <p className="text-sm text-muted-foreground">Aucune demande approuvée pour le moment.</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                    {approvedRequests.map((req) => (
+                      <HistoryCard key={req.id} request={req} />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Rejected */}
+              <div>
+                <h2 className="text-base font-semibold mb-3 flex items-center gap-2">
+                  <XCircle className="h-4 w-4 text-red-500" />
+                  Demandes refusées
+                  <span className="text-sm font-normal text-muted-foreground">({rejectedCount})</span>
+                </h2>
+
+                {rejectedCount === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="p-6 text-center">
+                      <p className="text-sm text-muted-foreground">Aucune demande refusée pour le moment.</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                    {rejectedRequests.map((req) => (
+                      <HistoryCard key={req.id} request={req} />
+                    ))}
+                  </div>
+                )}
               </div>
             </TabsContent>
 
-            {/* Finances Tab */}
-            <TabsContent value="finances">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <TrendingUp className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-green-600">{formatCurrency(stats.totalCotisations)}</p>
-                      <p className="text-sm text-muted-foreground">Cotisations recues</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <TrendingDown className="h-8 w-8 text-red-500 mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-red-600">{formatCurrency(stats.totalExpenses)}</p>
-                      <p className="text-sm text-muted-foreground">Depenses</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="bg-primary/5 border-primary/20">
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <Receipt className="h-8 w-8 text-primary mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-primary">{formatCurrency(stats.balance)}</p>
-                      <p className="text-sm text-muted-foreground">Solde</p>
-                    </div>
-                  </CardContent>
-                </Card>
+            {/* ───────────── TAB 3: CONVOCATIONS ───────────── */}
+            <TabsContent value="convocations" className="space-y-6">
+              <div className="flex items-center gap-2 mb-2">
+                <h2 className="text-base font-semibold flex items-center gap-2">
+                  <Bell className="h-4 w-4 text-primary" />
+                  Prochaines réunions et assemblées
+                </h2>
+                <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20">
+                  <Shield className="h-3 w-3 mr-0.5" />
+                  Lecture seule
+                </Badge>
               </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Les convocations sont créées par le Directeur Exécutif. Vous pouvez consulter les détails ci-dessous.
+              </p>
 
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle>Dernieres depenses</CardTitle>
-                  <CardDescription>Depenses recentes de l&apos;organisation</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {expenses.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">Aucune depense enregistree</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {expenses.slice(0, 10).map((expense) => (
-                        <div key={expense.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
-                          <div>
-                            <p className="font-medium">{expense.description}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(expense.expense_date).toLocaleDateString('fr-FR')} - {expense.category}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold text-red-600">-{formatCurrency(expense.amount)}</p>
-                            <Badge variant={expense.approved ? "default" : "outline"}>
-                              {expense.approved ? "Approuve" : "En attente"}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              {meetings.length === 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="p-8 text-center">
+                    <CalendarDays className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      Aucune réunion ou assemblée à venir.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {meetings.map((meeting) => (
+                    <MeetingCard key={meeting.id} meeting={meeting} />
+                  ))}
+                </div>
+              )}
             </TabsContent>
           </Tabs>
-        </div>
+        )}
       </main>
+
+      {/* Reject dialog */}
+      <RejectDialog
+        open={rejectDialogOpen}
+        onClose={() => { setRejectDialogOpen(false); setRejectTargetId(null) }}
+        onConfirm={handleReject}
+        loading={approvingId !== null}
+      />
+
       <Footer />
     </div>
   )
