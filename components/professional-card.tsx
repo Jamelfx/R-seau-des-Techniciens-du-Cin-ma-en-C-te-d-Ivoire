@@ -1,8 +1,9 @@
 "use client"
 
-import { useRef, useEffect, useState } from "react"
+import { useRef, useSyncExternalStore } from "react"
 import { Download, Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import Image from "next/image"
 
 interface ProfessionalCardProps {
@@ -16,13 +17,16 @@ interface ProfessionalCardProps {
   memberId?: string
   name?: string
   role?: string
-  function?: string
+  function_?: string
   category?: string
   title?: string
   photo?: string
   image?: string
   showActions?: boolean
   size?: "sm" | "md" | "lg"
+  status?: string
+  bureauPosition?: string | null
+  caPosition?: string | null
 }
 
 function RetechciLogo({ className }: { className?: string }) {
@@ -40,29 +44,37 @@ export function ProfessionalCard({
   memberId,
   name: propName,
   role: propRole,
-  function: propFunction,
+  function_: propFunction,
   title: propTitle,
   photo: propPhoto,
   image: propImage,
   showActions = true, 
-  size = "md" 
+  size = "md",
+  status: propStatus,
+  bureauPosition,
+  caPosition,
 }: ProfessionalCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
-  const [qrDataUrl, setQrDataUrl] = useState<string>("")
+  const qrCacheRef = useRef<Record<string, string>>({})
   
   const id = member?.id || memberId || "CI-0000-0000"
   const name = member?.name || propName || ""
   const role = member?.role || propFunction || propRole || ""
   const title = member?.title || propTitle
   const photo = member?.photo || propPhoto || propImage
+  const isActive = propStatus === "active"
 
-  // ✅ QR code via API externe — aucune librairie nécessaire
-  useEffect(() => {
-    if (!id || id === "CI-0000-0000") return
-    const profileUrl = `https://retechci.org/membre/${id}`
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(profileUrl)}`
-    setQrDataUrl(qrUrl)
-  }, [id])
+  const qrDataUrl = useSyncExternalStore(
+    () => () => {},
+    () => {
+      if (!id || id === "CI-0000-0000") return ""
+      if (qrCacheRef.current[id]) return qrCacheRef.current[id]
+      const profileUrl = `https://retechci.org/membre/${id}`
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(profileUrl)}`
+      qrCacheRef.current[id] = qrUrl
+      return qrUrl
+    }
+  )
 
   const sizeClasses = {
     sm: "w-[200px] h-[320px]",
@@ -177,12 +189,29 @@ export function ProfessionalCard({
           )}
         </div>
 
+        {/* Positions Bureau/CA */}
+        {(bureauPosition || caPosition) && (
+          <div className="px-4 mt-2 space-y-1">
+            {bureauPosition && (
+              <p className="text-[10px] text-yellow-400 font-medium text-center truncate">★ {bureauPosition}</p>
+            )}
+            {caPosition && (
+              <p className="text-[10px] text-purple-400 font-medium text-center truncate">◆ {caPosition}</p>
+            )}
+          </div>
+        )}
+
         {/* QR Code + ID */}
         <div className="absolute bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm p-4 rounded-b-2xl">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] text-gray-400 uppercase tracking-wider">ID Membre</p>
               <p className={`${textSizes[size].id} text-red-500 font-mono font-bold`}>{id}</p>
+              {propStatus && (
+                <p className={`text-[9px] font-semibold mt-0.5 ${isActive ? 'text-emerald-400' : 'text-yellow-400'}`}>
+                  ✓ {isActive ? 'Membre Actif' : 'En attente'}
+                </p>
+              )}
             </div>
             <div className="w-12 h-12 bg-white p-0.5 rounded">
               {qrDataUrl ? (
