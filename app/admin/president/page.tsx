@@ -15,12 +15,13 @@ import {
   Crown, CheckCircle, Clock, XCircle, AlertTriangle, Loader2,
   Mail, Phone, Briefcase, CalendarDays, MapPin, FileText,
   Shield, ChevronDown, ChevronUp, Users, Scale,
-  RotateCcw, Bell, PenLine,
+  RotateCcw, Bell, PenLine, Wallet,
 } from "lucide-react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { FinanceView } from "@/components/finance-view"
 
 // ═══════════════════════════════════════════════════════════════════════
 // TYPES
@@ -682,7 +683,7 @@ export default function PresidentDashboard() {
           </div>
         ) : (
           <Tabs defaultValue="validations" className="w-full">
-            <TabsList className="w-full grid grid-cols-3 mb-6">
+            <TabsList className="w-full grid grid-cols-4 mb-6">
               <TabsTrigger value="validations" className="gap-1.5 text-xs sm:text-sm">
                 <Scale className="h-4 w-4" />
                 <span className="hidden sm:inline">Validations</span>
@@ -704,6 +705,10 @@ export default function PresidentDashboard() {
                     {meetings.length}
                   </Badge>
                 )}
+              </TabsTrigger>
+              <TabsTrigger value="finances" className="gap-1.5 text-xs sm:text-sm">
+                <Wallet className="h-4 w-4" />
+                <span className="hidden sm:inline">Finances</span>
               </TabsTrigger>
             </TabsList>
 
@@ -858,6 +863,24 @@ export default function PresidentDashboard() {
                   ))}
                 </div>
               )}
+            </TabsContent>
+
+            {/* ───────────── TAB 4: FINANCES (lecture seule) ───────────── */}
+            <TabsContent value="finances" className="space-y-6">
+              <div className="flex items-center gap-2 mb-2">
+                <h2 className="text-base font-semibold flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-primary" />
+                  Suivi financier
+                </h2>
+                <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20">
+                  <Shield className="h-3 w-3 mr-0.5" />
+                  Lecture seule
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Les données financières sont gérées par la Trésorière. Vous pouvez consulter les dépenses et cotisations ci-dessous.
+              </p>
+              <FinanceView readOnly />
             </TabsContent>
           </Tabs>
         )}
