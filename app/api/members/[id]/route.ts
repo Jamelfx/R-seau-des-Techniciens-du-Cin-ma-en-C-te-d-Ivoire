@@ -1,57 +1,63 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from 'next/server'
+import { updateMemberStatus, updateMemberRole, updateMemberPositions } from '@/lib/supabase/server'
+import type { MemberStatus, MemberRole } from '@/lib/supabase/types'
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return NextResponse.json({ success: false, error: 'Variables non configurees.' }, { status: 500 })
-  }
-
-  const options: { global?: { headers?: { Authorization?: string } } } = {}
-  if (serviceRoleKey) {
-    options.global = { headers: { Authorization: `Bearer ${serviceRoleKey}` } }
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, options)
-
   try {
     const { id } = await params
     const body = await request.json()
-    const { status, role } = body
-
-    if (!id) {
-      return NextResponse.json({ success: false, error: 'ID manquant.' }, { status: 400 })
+    const { status, role, bureau_position, ca_position } = body as {
+      status?: MemberStatus
+      role?: MemberRole
+      bureau_position?: string | null
+      ca_position?: string | null
     }
 
-    const updates: Record<string, unknown> = {}
-    if (status) updates.status = status
-    if (role) updates.role = role
-
-    if (Object.keys(updates).length === 0) {
-      return NextResponse.json({ success: false, error: 'Aucune donnee.' }, { status: 400 })
+    if (!status && !role && bureau_position === undefined && ca_position === undefined) {
+      return NextResponse.json(
+        { error: 'Paramètres manquants: status, role, bureau_position ou ca_position requis' },
+        { status: 400 }
+      )
     }
 
-    const { data, error } = await supabase
-      .from('members')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Erreur PATCH:', error)
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    // Changer le statut
+    if (status) {
+      const result = await updateMemberStatus(id, status)
+      if (!result.success) {
+        return NextResponse.json({ error: result.error }, { status: 500 })
+      }
     }
 
-    return NextResponse.json({ success: true, member: data })
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Erreur serveur.'
-    return NextResponse.json({ success: false, error: message }, { status: 500 })
+    // Changer le rôle
+    if (role) {
+      const result = await updateMemberRole(id, role)
+      if (!result.success) {
+        return NextResponse.json({ error: result.error }, { status: 500 })
+      }
+    }
+
+    // Changer les positions bureau/CA
+    if (bureau_position !== undefined || ca_position !== undefined) {
+      const result = await updateMemberPositions(
+        id,
+        bureau_position !== undefined ? bureau_position : null,
+        ca_position !== undefined ? ca_position : null,
+      )
+      if (!result.success) {
+        return NextResponse.json({ error: result.error }, { status: 500 })
+      }
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Erreur lors de la mise à jour'
+    console.error('PATCH /api/members/[id] error:', error)
+    return NextResponse.json(
+      { error: message },
+      { status: 500 }
+    )
   }
 }
