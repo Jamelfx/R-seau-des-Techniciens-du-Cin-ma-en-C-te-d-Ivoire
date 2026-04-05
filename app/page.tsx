@@ -1,6 +1,7 @@
 import { Header } from "@/components/header"
 import { Hero } from "@/components/hero"
 import { FeaturedTalents } from "@/components/featured-talents"
+import { JoinSection } from "@/components/join-section"
 import { DigitalCard } from "@/components/digital-card"
 import { SitechSection } from "@/components/sitech-section"
 import { Partners } from "@/components/partners"
