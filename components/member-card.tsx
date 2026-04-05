@@ -1,9 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from "react"
-import QRCode from "qrcode"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   Download, Printer, Loader2, CheckCircle,
   CreditCard, User, Briefcase, Shield
@@ -27,17 +25,24 @@ interface MemberCardData {
   ca_position: string | null
 }
 
+// ─── QR Code via API externe (aucun paquet npm requis) ───────────────────────
+
+function getQrCodeUrl(data: string, size = 280): string {
+  const encoded = encodeURIComponent(data)
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encoded}&margin=10&color=1a1a2e&bgcolor=ffffff&ecc=H`
+}
+
 // ─── Composant Principal ─────────────────────────────────────────────────────
 
 export function MemberCard() {
   const cardRef = useRef<HTMLDivElement>(null)
   const [member, setMember] = useState<MemberCardData | null>(null)
-  const [qrDataUrl, setQrDataUrl] = useState<string>("")
+  const [qrUrl, setQrUrl] = useState<string>("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
 
-  // Charger les données du membre + générer le QR
+  // Charger les données du membre + générer le QR via API externe
   useEffect(() => {
     async function loadCardData() {
       try {
@@ -80,24 +85,14 @@ export function MemberCard() {
 
         setMember(cardData)
 
-        // Générer le QR code
+        // Générer le QR code via API externe (aucun paquet npm)
         const qrPayload = JSON.stringify({
           mid: cardData.member_id,
           n: `${cardData.first_name} ${cardData.last_name}`.trim(),
           e: cardData.email,
         })
 
-        const qrUrl = await QRCode.toDataURL(qrPayload, {
-          width: 280,
-          margin: 1,
-          color: {
-            dark: "#1a1a2e",
-            light: "#ffffff",
-          },
-          errorCorrectionLevel: "H",
-        })
-
-        setQrDataUrl(qrUrl)
+        setQrUrl(getQrCodeUrl(qrPayload))
       } catch (err) {
         console.error("Erreur chargement carte:", err)
         setError("Erreur lors du chargement de la carte.")
@@ -124,8 +119,6 @@ export function MemberCard() {
 
     const cardHtml = cardRef.current.innerHTML
     const fullName = `${member.first_name} ${member.last_name}`.trim()
-    const bureauPos = member.bureau_position
-    const caPos = member.ca_position
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -336,38 +329,17 @@ export function MemberCard() {
     setPrinting(false)
   }, [member])
 
-  // ─── Télécharger comme image ──────────────────────────────────────────────
+  // ─── Télécharger comme image (via URL du QR) ───────────────────────────────
 
-  const handleDownload = useCallback(async () => {
-    if (!cardRef.current || !member) return
+  const handleDownload = useCallback(() => {
+    if (!member) return
 
-    toast.info("Génération de l'image en cours...")
-
-    try {
-      const html2canvas = (await import("html2canvas")).default
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 3,
-        backgroundColor: null,
-        useCORS: true,
-        logging: false,
-      })
-
-      const link = document.createElement("a")
-      link.download = `carte-retechci-${member.member_id}.png`
-      link.href = canvas.toDataURL("image/png")
-      link.click()
-
-      toast.success("Carte téléchargée avec succès !")
-    } catch {
-      if (qrDataUrl) {
-        const link = document.createElement("a")
-        link.download = `qr-retechci-${member.member_id}.png`
-        link.href = qrDataUrl
-        link.click()
-        toast.success("QR code téléchargé !")
-      }
+    // Ouvrir le QR code dans un nouvel onglet pour sauvegarder
+    if (qrUrl) {
+      window.open(qrUrl, "_blank")
+      toast.success("Cliquez droit sur l'image → Enregistrer sous...")
     }
-  }, [member, qrDataUrl])
+  }, [member, qrUrl])
 
   // ─── Loading ───────────────────────────────────────────────────────────────
 
@@ -520,10 +492,10 @@ export function MemberCard() {
           </div>
 
           {/* QR Code */}
-          {qrDataUrl && (
+          {qrUrl && (
             <div className="bg-white rounded-xl p-1.5 shadow-lg">
               <img
-                src={qrDataUrl}
+                src={qrUrl}
                 alt="QR Code"
                 className="w-[68px] h-[68px] sm:w-[76px] sm:h-[76px]"
               />
@@ -552,7 +524,7 @@ export function MemberCard() {
           className="bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 gap-2 px-6"
         >
           <Download className="h-4 w-4" />
-          Télécharger
+          Télécharger QR
         </Button>
       </div>
 
