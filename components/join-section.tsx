@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ArrowRight, Users, UserPlus, CheckCircle } from "lucide-react"
+import { Users, UserPlus, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 
@@ -37,7 +37,7 @@ export function JoinSection() {
 
   return (
     <section className="relative overflow-hidden border-t border-border">
-      {/* ── Background ── */}
+      {/* ── Background noir + image ── */}
       <div
         className="absolute inset-0 z-0"
         style={{
@@ -47,7 +47,7 @@ export function JoinSection() {
           opacity: 0.1,
         }}
       />
-      <div className="absolute inset-0 z-0 bg-red-950" />
+      <div className="absolute inset-0 z-0 bg-black" style={{ opacity: 0.92 }} />
 
       {/* ── Content ── */}
       <div className="relative z-10 px-4 py-16 md:py-24">
@@ -59,9 +59,8 @@ export function JoinSection() {
                 <Users className="h-4 w-4 inline mr-1.5 -mt-0.5" />
                 Communauté
               </span>
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 leading-tight">
-                Rejoignez notre réseau de{" "}
-                <span className="text-red-300">techniciens</span>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 leading-tight whitespace-nowrap">
+                Rejoignez notre réseau de <span className="text-primary">techniciens</span>
               </h2>
               <p className="text-white/70 max-w-2xl mx-auto text-base md:text-lg leading-relaxed">
                 RETECHCI rassemble les meilleurs techniciens du cinéma et de l&apos;audiovisuel en Côte d&apos;Ivoire.
@@ -127,33 +126,22 @@ export function JoinSection() {
                   key={idx}
                   className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10"
                 >
-                  <benefit.icon className="h-6 w-6 text-red-300" />
+                  <benefit.icon className="h-6 w-6 text-primary" />
                   <span className="text-sm font-medium text-white/90">{benefit.text}</span>
                 </div>
               ))}
             </div>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            {/* CTA Button — centré */}
+            <div className="flex items-center justify-center">
               <Button
                 asChild
                 size="lg"
-                className="bg-white text-red-800 hover:bg-white/90 font-bold px-8 py-6 text-base shadow-xl"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 py-6 text-base shadow-xl"
               >
                 <Link href="/adhesion">
                   <UserPlus className="h-5 w-5 mr-2" />
                   Devenir membre
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="border-white/30 text-white hover:bg-white/10 hover:text-white px-8 py-6 text-base"
-              >
-                <Link href="/annuaire">
-                  Voir l&apos;annuaire
-                  <ArrowRight className="h-4 w-4 ml-2" />
                 </Link>
               </Button>
             </div>
