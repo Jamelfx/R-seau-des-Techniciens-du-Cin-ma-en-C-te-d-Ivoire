@@ -18,7 +18,7 @@ import {
   Plus, Trash2, Save, CheckCircle, AlertCircle,
   Wallet, Smartphone, Loader2, Calendar, MapPin, Video, Link2,
   Play, ExternalLink, Film, Clapperboard, Award, Pencil, X,
-  CalendarDays, Clock, XCircle, IdCard
+  CalendarDays, Clock, XCircle
 } from "lucide-react"
 // MemberCard supprimé en v7.1 — la carte professionnelle est dans la sidebar
 import Image from "next/image"
@@ -639,9 +639,6 @@ export default function MembreDashboardPage() {
                 <TabsTrigger value="payments" className="text-xs md:text-sm">
                   <CreditCard className="h-4 w-4 mr-1 md:mr-2" /><span className="hidden md:inline">Cotisation</span>
                 </TabsTrigger>
-                <TabsTrigger value="card" className="text-xs md:text-sm">
-                  <IdCard className="h-4 w-4 mr-1 md:mr-2" /><span className="hidden md:inline">Ma Carte</span>
-                </TabsTrigger>
                 <TabsTrigger value="settings" className="text-xs md:text-sm">
                   <Settings className="h-4 w-4 mr-1 md:mr-2" /><span className="hidden md:inline">Paramètres</span>
                 </TabsTrigger>
@@ -1002,15 +999,6 @@ export default function MembreDashboardPage() {
                   </CardContent>
                 </Card>
                 <ChangePasswordSection />
-              </TabsContent>
-              {/* ═══════════════════════════════════════════════════════════
-                  MA CARTE TAB — Carte membre avec QR
-                  ═══════════════════════════════════════════════════════════ */}
-              <TabsContent value="card" className="mt-6">
-                <div className="text-center py-12 text-muted-foreground">
-                  <IdCard className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">Votre carte professionnelle est affichée dans la colonne de droite →</p>
-                </div>
               </TabsContent>
 
               {/* ═══════════════════════════════════════════════════════════
