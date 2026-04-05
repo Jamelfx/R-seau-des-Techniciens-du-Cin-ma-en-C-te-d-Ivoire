@@ -1,134 +1,72 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
+const supabase = (supabaseUrl && supabaseAnonKey)
+  ? createSupabaseClient(supabaseUrl, supabaseAnonKey)
+  : null
 
 export type SiteContent = {
   [key: string]: string | null
 }
 
+export type SectionContent = SiteContent
+
 export type SiteContentJson = {
   [key: string]: any
 }
 
-/**
- * Fetch content for a specific section from Supabase
- * Use this in Server Components to get dynamic content
- */
 export async function getSectionContent(section: string): Promise<SiteContent> {
-  const supabase = await createClient()
-  
+  if (!supabase) return {}
   const { data, error } = await supabase
     .from('site_content')
     .select('key, value')
     .eq('section', section)
     .eq('active', true)
     .order('order_index', { ascending: true })
-  
-  if (error || !data) {
-    console.error(`Error fetching content for section ${section}:`, error)
-    return {}
-  }
-  
-  // Convert array to object for easier access
+  if (error || !data) return {}
   const content: SiteContent = {}
-  data.forEach((item) => {
-    content[item.key] = item.value
-  })
-  
+  data.forEach((item) => { content[item.key] = item.value })
   return content
 }
 
-/**
- * Fetch content with JSON values for complex data
- */
 export async function getSectionContentWithJson(section: string): Promise<{
   content: SiteContent
   jsonContent: SiteContentJson
 }> {
-  const supabase = await createClient()
-  
+  if (!supabase) return { content: {}, jsonContent: {} }
   const { data, error } = await supabase
     .from('site_content')
     .select('key, value, value_json')
     .eq('section', section)
     .eq('active', true)
     .order('order_index', { ascending: true })
-  
-  if (error || !data) {
-    console.error(`Error fetching content for section ${section}:`, error)
-    return { content: {}, jsonContent: {} }
-  }
-  
+  if (error || !data) return { content: {}, jsonContent: {} }
   const content: SiteContent = {}
   const jsonContent: SiteContentJson = {}
-  
   data.forEach((item) => {
     content[item.key] = item.value
-    if (item.value_json) {
-      jsonContent[item.key] = item.value_json
-    }
+    if (item.value_json) jsonContent[item.key] = item.value_json
   })
-  
   return { content, jsonContent }
 }
 
-/**
- * Fetch multiple sections at once
- */
 export async function getMultipleSections(sections: string[]): Promise<{
   [section: string]: SiteContent
 }> {
-  const supabase = await createClient()
-  
+  if (!supabase) return {}
   const { data, error } = await supabase
     .from('site_content')
     .select('section, key, value')
     .in('section', sections)
     .eq('active', true)
     .order('order_index', { ascending: true })
-  
-  if (error || !data) {
-    console.error(`Error fetching content for sections:`, error)
-    return {}
-  }
-  
+  if (error || !data) return {}
   const result: { [section: string]: SiteContent } = {}
-  
   data.forEach((item) => {
-    if (!result[item.section]) {
-      result[item.section] = {}
-    }
+    if (!result[item.section]) result[item.section] = {}
     result[item.section][item.key] = item.value
   })
-  
   return result
-}
-
-// Default content fallbacks (used when database is empty or unavailable)
-export const defaultContent = {
-  hero: {
-    title: "Reseau des Techniciens du Cinema en Cote d'Ivoire",
-    subtitle: "Unissons nos talents pour faire rayonner le cinema ivoirien",
-    image: "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=1920&h=1080&fit=crop",
-    cta_primary_text: "Rejoindre le reseau",
-    cta_primary_link: "/adhesion",
-    cta_secondary_text: "Decouvrir nos membres",
-    cta_secondary_link: "/annuaire",
-    stat_members: "500+",
-    stat_members_label: "Techniciens",
-    stat_productions: "150+",
-    stat_productions_label: "Productions",
-    stat_experience: "25+",
-    stat_experience_label: "Annees"
-  },
-  about: {
-    title: "A Propos du RETECHCI",
-    subtitle: "Une organisation professionnelle au service du cinema ivoirien",
-    description: "Le RETECHCI est une organisation professionnelle qui regroupe les techniciens du cinema ivoirien."
-  },
-  sitech: {
-    title: "SITECH 2027",
-    subtitle: "Salon International des Techniciens du Cinema",
-    description: "Le plus grand rassemblement des professionnels techniques du cinema en Afrique de l'Ouest.",
-    date: "15-20 Mars 2027",
-    location: "Abidjan, Cote d'Ivoire"
-  }
 }
