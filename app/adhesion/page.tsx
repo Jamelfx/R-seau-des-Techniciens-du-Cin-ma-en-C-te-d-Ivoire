@@ -29,9 +29,9 @@ import {
 
 const TECHNICIAN_FUNCTIONS: string[] = [
   // Réalisation & Direction
+  "Réalisateur",
   "Assistant Réalisateur",
   "Régisseur Général",
-  "Régisseur Fixeur",
   "Scripte",
   // Image
   "Chef Opérateur / Directeur Photo",
@@ -347,7 +347,7 @@ export default function AdhesionPage() {
           opacity: 0.08,
         }}
       />
-      <div className="fixed inset-0 z-0 bg-red-950" style={{ opacity: 0.85 }} />
+      <div className="fixed inset-0 z-0 bg-black" style={{ opacity: 0.9 }} />
 
       {/* ── Content ── */}
       <div className="relative z-10">
@@ -367,6 +367,7 @@ export default function AdhesionPage() {
                 Remplissez ce formulaire pour rejoindre RETECHCI. Votre demande sera examinée
                 par le Directeur Exécutif puis par le Conseil d&apos;Administration.
               </p>
+              <p className="text-white/40 text-xs mt-3">(*) Tous les champs marqués d&apos;une étoile sont obligatoires</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
