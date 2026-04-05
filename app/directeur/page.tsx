@@ -15,17 +15,20 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
 import {
   Shield, User, Crown, Wallet, CheckCircle, Search,
   UserCheck, UserX, AlertTriangle, Loader2,
   Mail, Clock, Ban, Users, Database,
   Calendar, QrCode, Send, Copy, XCircle, MapPin,
   FileText, Plus, Trash2, Eye, Check, ExternalLink,
-  ScanLine, Phone, Link2, Hash, Briefcase, Settings, Upload, Image as ImageIcon, Trash2 as TrashIcon, CheckCircle as CheckIcon,
+  ChevronDown, ScanLine, Phone, Link2, Hash, Briefcase, Settings, Upload, Image as ImageIcon, Trash2 as TrashIcon, CheckCircle as CheckIcon,
 } from "lucide-react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import type { Member, MemberStatus, MemberRole } from "@/lib/supabase/types"
+import { createClient as createSupabaseClient } from "@/lib/supabase/client"
+import { FinanceView } from "@/components/finance-view"
 
 // ═══════════════════════════════════════════════════════════════════════
 // TYPES
@@ -88,6 +91,22 @@ interface ScanResult {
   member?: Member | null
   search_type?: string
   error?: string
+}
+
+interface AdhesionRequest {
+  id: string
+  first_name: string
+  last_name: string
+  email: string
+  phone: string
+  profession: string
+  years_experience: number
+  motivation: string
+  status: string
+  created_at: string
+  reviewed_at: string | null
+  rejection_reason: string | null
+  signature_data: string | null
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1976,6 +1995,15 @@ export default function DirectorDashboardPage() {
   })
   const [roleDialogMember, setRoleDialogMember] = useState<Member | null>(null)
 
+  // ── Adhésions state ──
+  const [adhesions, setAdhesions] = useState<AdhesionRequest[]>([])
+  const [adhesionsLoading, setAdhesionsLoading] = useState(false)
+  const [adhesionsError, setAdhesionsError] = useState<string | null>(null)
+  const [adhesionActionLoading, setAdhesionActionLoading] = useState(false)
+  const [adhesionSuccessMessage, setAdhesionSuccessMessage] = useState<string | null>(null)
+  const [rejectDialogAdhesion, setRejectDialogAdhesion] = useState<AdhesionRequest | null>(null)
+  const [rejectReason, setRejectReason] = useState("")
+
   // ═══════════════════════════════════════════════════════════════════
   // CHARGEMENT DES MEMBRES
   // ═══════════════════════════════════════════════════════════════════
@@ -2061,6 +2089,39 @@ export default function DirectorDashboardPage() {
   }, [activeTab, invitations.length, loadInvitations])
 
   // ═══════════════════════════════════════════════════════════════════
+  // CHARGEMENT DES ADHÉSIONS
+  // ═══════════════════════════════════════════════════════════════════
+
+  const loadAdhesions = useCallback(async () => {
+    setAdhesionsLoading(true)
+    setAdhesionsError(null)
+    try {
+      const supabase = createSupabaseClient()
+      const { data, error } = await supabase
+        .from("adhesion_requests")
+        .select("*")
+        .order("created_at", { ascending: false })
+      if (error) throw new Error(error.message)
+      setAdhesions((data as AdhesionRequest[]) || [])
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Erreur lors du chargement des demandes d'adhésion."
+      setAdhesionsError(message)
+    } finally {
+      setAdhesionsLoading(false)
+    }
+  }, [])
+
+  // Load adhesions when tab becomes active
+  useEffect(() => {
+    if (activeTab === "adhesions" && adhesions.length === 0) {
+      loadAdhesions()
+    }
+  }, [activeTab, adhesions.length, loadAdhesions])
+
+  // ═══════════════════════════════════════════════════════════════════
   // IDENTIFIER LE DIRECTEUR
   // ═══════════════════════════════════════════════════════════════════
 
@@ -2117,6 +2178,29 @@ export default function DirectorDashboardPage() {
     })
     return map
   }, [members])
+
+  // ── Adhésions computed lists ──
+  const pendingAdhesions = useMemo(
+    () => adhesions.filter((a) => a.status === "pending"),
+    [adhesions]
+  )
+  const sentToPresidentAdhesions = useMemo(
+    () => adhesions.filter((a) => a.status === "sent_to_president"),
+    [adhesions]
+  )
+  const approvedAdhesions = useMemo(
+    () => adhesions.filter((a) => a.status === "approved_by_president"),
+    [adhesions]
+  )
+  const historyAdhesions = useMemo(
+    () =>
+      adhesions.filter((a) =>
+        ["rejected", "rejected_by_president", "invitation_sent"].includes(
+          a.status
+        )
+      ),
+    [adhesions]
+  )
 
   // ═══════════════════════════════════════════════════════════════════
   // ACTIONS MEMBRES
@@ -2253,6 +2337,99 @@ export default function DirectorDashboardPage() {
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  // ACTIONS ADHÉSIONS
+  // ═══════════════════════════════════════════════════════════════════
+
+  const handleTransferToPresident = async (req: AdhesionRequest) => {
+    setAdhesionActionLoading(true)
+    setAdhesionSuccessMessage(null)
+    try {
+      const supabase = createSupabaseClient()
+      const { error } = await supabase
+        .from("adhesion_requests")
+        .update({
+          status: "sent_to_president",
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", req.id)
+      if (error) throw new Error(error.message)
+      await loadAdhesions()
+      setAdhesionSuccessMessage(
+        `Demande de ${req.first_name} ${req.last_name} transférée au Président avec succès.`
+      )
+      setTimeout(() => setAdhesionSuccessMessage(null), 4000)
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Erreur lors du transfert."
+      alert(message)
+    } finally {
+      setAdhesionActionLoading(false)
+    }
+  }
+
+  const handleRejectAdhesion = async () => {
+    if (!rejectDialogAdhesion) return
+    if (!rejectReason.trim()) return
+    setAdhesionActionLoading(true)
+    try {
+      const supabase = createSupabaseClient()
+      const { error } = await supabase
+        .from("adhesion_requests")
+        .update({
+          status: "rejected",
+          reviewed_at: new Date().toISOString(),
+          rejection_reason: rejectReason.trim(),
+        })
+        .eq("id", rejectDialogAdhesion.id)
+      if (error) throw new Error(error.message)
+      await loadAdhesions()
+      setRejectDialogAdhesion(null)
+      setRejectReason("")
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Erreur lors du refus."
+      alert(message)
+    } finally {
+      setAdhesionActionLoading(false)
+    }
+  }
+
+  const handleSendInvitation = async (req: AdhesionRequest) => {
+    setAdhesionActionLoading(true)
+    setAdhesionSuccessMessage(null)
+    try {
+      await createInvitation({
+        email: req.email,
+        first_name: req.first_name,
+        last_name: req.last_name,
+        phone: req.phone || null,
+      })
+      const supabase = createSupabaseClient()
+      const { error } = await supabase
+        .from("adhesion_requests")
+        .update({
+          status: "invitation_sent",
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", req.id)
+      if (error) throw new Error(error.message)
+      await loadAdhesions()
+      setAdhesionSuccessMessage(
+        `Invitation envoyée à ${req.first_name} ${req.last_name} avec succès !`
+      )
+      setTimeout(() => setAdhesionSuccessMessage(null), 4000)
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Erreur lors de l'envoi de l'invitation."
+      alert(message)
+    } finally {
+      setAdhesionActionLoading(false)
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════════
 
@@ -2303,6 +2480,10 @@ export default function DirectorDashboardPage() {
               <Calendar className="h-4 w-4" />
               <span className="hidden sm:inline">Réunions</span>
             </TabsTrigger>
+            <TabsTrigger value="adhesions" className="gap-1.5">
+              <Mail className="h-4 w-4" />
+              <span className="hidden sm:inline">Adhésions</span>
+            </TabsTrigger>
             <TabsTrigger value="invitations" className="gap-1.5">
               <Send className="h-4 w-4" />
               <span className="hidden sm:inline">Invitations</span>
@@ -2314,6 +2495,10 @@ export default function DirectorDashboardPage() {
             <TabsTrigger value="parametres" className="gap-1.5">
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">Paramètres</span>
+            </TabsTrigger>
+            <TabsTrigger value="finances" className="gap-1.5">
+              <Wallet className="h-4 w-4" />
+              <span className="hidden sm:inline">Finances</span>
             </TabsTrigger>
           </TabsList>
 
@@ -2697,6 +2882,369 @@ export default function DirectorDashboardPage() {
           </TabsContent>
 
           {/* ═══════════════════════════════════════════════════════════
+              TAB : ADHÉSIONS
+              ═══════════════════════════════════════════════════════════ */}
+          <TabsContent value="adhesions" className="space-y-6 mt-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-primary" />
+                  Gestion des adhésions
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Examinez les demandes d&apos;adhésion et validez les processus
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={loadAdhesions}
+                disabled={adhesionsLoading}
+              >
+                Actualiser
+              </Button>
+            </div>
+
+            {/* Loading */}
+            {adhesionsLoading && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-3 text-muted-foreground">
+                  Chargement des demandes...
+                </span>
+              </div>
+            )}
+
+            {/* Error */}
+            {adhesionsError && (
+              <Card className="border-destructive/30">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                    <p className="text-sm text-destructive">{adhesionsError}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {!adhesionsLoading && !adhesionsError && (
+              <>
+                {/* Section 1: Demandes en attente */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-yellow-500" />
+                          Demandes en attente
+                        </CardTitle>
+                        <CardDescription>
+                          {pendingAdhesions.length} demande
+                          {pendingAdhesions.length > 1 ? "s" : ""} à
+                          traiter
+                        </CardDescription>
+                      </div>
+                      <Badge className="bg-yellow-500 text-white">
+                        {pendingAdhesions.length}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {pendingAdhesions.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">
+                        Aucune demande en attente
+                      </p>
+                    ) : (
+                      <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                        {pendingAdhesions.map((req) => (
+                          <div
+                            key={req.id}
+                            className="p-4 rounded-xl border border-border/60 bg-card space-y-3"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm">
+                                  {req.first_name} {req.last_name}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {req.email}
+                                </p>
+                              </div>
+                              <Badge className="bg-yellow-500 text-white text-[10px] shrink-0 gap-1">
+                                <Clock className="h-3 w-3" />
+                                En attente
+                              </Badge>
+                            </div>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                              {req.profession && (
+                                <span className="flex items-center gap-1">
+                                  <Briefcase className="h-3 w-3" />
+                                  {req.profession}
+                                </span>
+                              )}
+                              {req.years_experience > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <FileText className="h-3 w-3" />
+                                  {req.years_experience} an
+                                  {req.years_experience > 1 ? "s" : ""} d&apos;expérience
+                                </span>
+                              )}
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {formatShortDate(req.created_at)}
+                              </span>
+                            </div>
+                            {req.motivation && (
+                              <p className="text-xs text-muted-foreground line-clamp-2 italic">
+                                &ldquo;{req.motivation}&rdquo;
+                              </p>
+                            )}
+                            <div className="flex gap-2 pt-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 text-xs gap-1 text-purple-700 dark:text-purple-400 border-purple-300 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+                                onClick={() => handleTransferToPresident(req)}
+                                disabled={adhesionActionLoading}
+                              >
+                                <Send className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">
+                                  Transférer au Président
+                                </span>
+                                <span className="sm:hidden">Transférer</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/5"
+                                onClick={() => setRejectDialogAdhesion(req)}
+                                disabled={adhesionActionLoading}
+                              >
+                                <XCircle className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">Refuser</span>
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Section 2: Transférées au Président */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Send className="h-4 w-4 text-blue-500" />
+                          Transférées au Président
+                        </CardTitle>
+                        <CardDescription>
+                          {sentToPresidentAdhesions.length} demande
+                          {sentToPresidentAdhesions.length > 1
+                            ? "s"
+                            : ""}{" "}
+                          en attente de validation
+                        </CardDescription>
+                      </div>
+                      <Badge className="bg-blue-500 text-white">
+                        {sentToPresidentAdhesions.length}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {sentToPresidentAdhesions.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">
+                        Aucune demande transférée
+                      </p>
+                    ) : (
+                      <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                        {sentToPresidentAdhesions.map((req) => (
+                          <div
+                            key={req.id}
+                            className="flex items-center gap-3 p-4 rounded-xl border border-border/60 bg-card"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm">
+                                {req.first_name} {req.last_name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {req.email}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                Transférée le{" "}
+                                {formatShortDate(req.reviewed_at)}
+                              </p>
+                            </div>
+                            <Badge className="bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 text-[10px] gap-1 shrink-0">
+                              <Clock className="h-3 w-3" />
+                              En attente de validation
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Section 3: Validées par le Président */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          Validées par le Président
+                        </CardTitle>
+                        <CardDescription>
+                          {approvedAdhesions.length} demande
+                          {approvedAdhesions.length > 1 ? "s" : ""} prête
+                          {approvedAdhesions.length > 1 ? "s" : ""} pour
+                          invitation
+                        </CardDescription>
+                      </div>
+                      <Badge className="bg-green-500 text-white">
+                        {approvedAdhesions.length}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {approvedAdhesions.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">
+                        Aucune demande validée par le Président
+                      </p>
+                    ) : (
+                      <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                        {approvedAdhesions.map((req) => (
+                          <div
+                            key={req.id}
+                            className="p-4 rounded-xl border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/10 space-y-2"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm">
+                                  {req.first_name} {req.last_name}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {req.email}
+                                </p>
+                              </div>
+                              <Badge className="bg-green-500 text-white text-[10px] gap-1 shrink-0">
+                                <CheckCircle className="h-3 w-3" />
+                                Validée
+                              </Badge>
+                            </div>
+                            {req.profession && (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Briefcase className="h-3 w-3" />
+                                {req.profession}
+                              </p>
+                            )}
+                            <Button
+                              size="sm"
+                              className="h-8 text-xs gap-1"
+                              onClick={() => handleSendInvitation(req)}
+                              disabled={adhesionActionLoading}
+                            >
+                              {adhesionActionLoading ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Send className="h-3.5 w-3.5" />
+                              )}
+                              Envoyer un lien d&apos;invitation
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Success message */}
+                {adhesionSuccessMessage && (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 border border-green-300 dark:border-green-800 rounded-lg">
+                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+                    <p className="text-sm text-green-700 dark:text-green-400 font-medium">
+                      {adhesionSuccessMessage}
+                    </p>
+                  </div>
+                )}
+
+                {/* Section 4: Historique */}
+                {historyAdhesions.length > 0 && (
+                  <Collapsible>
+                    <Card>
+                      <CardHeader className="pb-0">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            Historique
+                          </CardTitle>
+                          <CollapsibleTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-xs gap-1"
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                              {historyAdhesions.length} entrée
+                              {historyAdhesions.length > 1 ? "s" : ""}
+                            </Button>
+                          </CollapsibleTrigger>
+                        </div>
+                      </CardHeader>
+                      <CollapsibleContent>
+                        <CardContent className="pt-3">
+                          <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                            {historyAdhesions.map((req) => {
+                              const isRejected =
+                                req.status === "rejected" ||
+                                req.status === "rejected_by_president"
+                              return (
+                                <div
+                                  key={req.id}
+                                  className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card"
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-sm font-medium truncate">
+                                        {req.first_name} {req.last_name}
+                                      </p>
+                                      <Badge
+                                        className={`${isRejected ? "bg-red-500" : "bg-green-500"} text-white text-[10px]`}
+                                      >
+                                        {isRejected ? "Refusée" : "Invitation envoyée"}
+                                      </Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {req.email}
+                                    </p>
+                                    {req.rejection_reason && (
+                                      <p className="text-[10px] text-destructive mt-0.5">
+                                        Raison : {req.rejection_reason}
+                                      </p>
+                                    )}
+                                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                                      {formatShortDate(req.reviewed_at || req.created_at)}
+                                    </p>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
+                )}
+              </>
+            )}
+          </TabsContent>
+
+          {/* ═══════════════════════════════════════════════════════════
               TAB : INVITATIONS
               ═══════════════════════════════════════════════════════════ */}
           <TabsContent value="invitations" className="space-y-6 mt-6">
@@ -2813,6 +3361,26 @@ export default function DirectorDashboardPage() {
           <TabsContent value="parametres" className="space-y-6 mt-6">
             <SiteSettings />
           </TabsContent>
+
+          {/* ═══════════════════════════════════════════════════════════
+              TAB : FINANCES (lecture seule)
+              ═══════════════════════════════════════════════════════════ */}
+          <TabsContent value="finances" className="space-y-6 mt-6">
+            <div className="flex items-center gap-2 mb-2">
+              <h2 className="text-base font-semibold flex items-center gap-2">
+                <Wallet className="h-4 w-4 text-primary" />
+                Suivi financier
+              </h2>
+              <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20">
+                <Shield className="h-3 w-3 mr-0.5" />
+                Lecture seule
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              Les données financières sont gérées par la Trésorière. Vous pouvez consulter les dépenses et cotisations ci-dessous.
+            </p>
+            <FinanceView readOnly />
+          </TabsContent>
         </Tabs>
 
         {/* ═══ SQL d'installation ═══ */}
@@ -2877,6 +3445,75 @@ export default function DirectorDashboardPage() {
           }
         />
       )}
+
+      {/* ═══════ DIALOG : Refuser adhésion ═══════ */}
+      <Dialog
+        open={!!rejectDialogAdhesion}
+        onOpenChange={(v) => {
+          if (!v) {
+            setRejectDialogAdhesion(null)
+            setRejectReason("")
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Refuser la demande d&apos;adhésion
+            </DialogTitle>
+            <DialogDescription>
+              {rejectDialogAdhesion && (
+                <>
+                  Vous allez refuser la demande de{" "}
+                  <strong>
+                    {rejectDialogAdhesion.first_name}{" "}
+                    {rejectDialogAdhesion.last_name}
+                  </strong>
+                  .
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label htmlFor="reject-reason">Motif du refus *</Label>
+              <Textarea
+                id="reject-reason"
+                placeholder="Expliquez la raison du refus..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="mt-1"
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRejectDialogAdhesion(null)
+                  setRejectReason("")
+                }}
+                disabled={adhesionActionLoading}
+                className="flex-1"
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={handleRejectAdhesion}
+                disabled={adhesionActionLoading || !rejectReason.trim()}
+                className="flex-1 bg-destructive hover:bg-destructive/90"
+              >
+                {adhesionActionLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Confirmer le refus"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
