@@ -20,7 +20,7 @@ import {
   Play, ExternalLink, Film, Clapperboard, Award, Pencil, X,
   CalendarDays, Clock, XCircle, IdCard
 } from "lucide-react"
-import { MemberCard } from "@/components/member-card"
+// MemberCard supprimé en v7.1 — la carte professionnelle est dans la sidebar
 import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import { ChangePasswordSection } from "@/components/change-password"
@@ -1007,7 +1007,10 @@ export default function MembreDashboardPage() {
                   MA CARTE TAB — Carte membre avec QR
                   ═══════════════════════════════════════════════════════════ */}
               <TabsContent value="card" className="mt-6">
-                <MemberCard />
+                <div className="text-center py-12 text-muted-foreground">
+                  <IdCard className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">Votre carte professionnelle est affichée dans la colonne de droite →</p>
+                </div>
               </TabsContent>
 
               {/* ═══════════════════════════════════════════════════════════
