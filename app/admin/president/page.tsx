@@ -15,13 +15,14 @@ import {
   Crown, CheckCircle, Clock, XCircle, AlertTriangle, Loader2,
   Mail, Phone, Briefcase, CalendarDays, MapPin, FileText,
   Shield, ChevronDown, ChevronUp, Users, Scale,
-  RotateCcw, Bell, PenLine, Wallet,
+  RotateCcw, Bell, PenLine, Wallet, Settings,
 } from "lucide-react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { FinanceView } from "@/components/finance-view"
+import { ChangePasswordSection } from "@/components/change-password"
 
 // ═══════════════════════════════════════════════════════════════════════
 // TYPES
@@ -710,6 +711,10 @@ export default function PresidentDashboard() {
                 <Wallet className="h-4 w-4" />
                 <span className="hidden sm:inline">Finances</span>
               </TabsTrigger>
+              <TabsTrigger value="parametres" className="gap-1.5 text-xs sm:text-sm">
+                <Settings className="h-4 w-4" />
+                <span className="hidden sm:inline">Paramètres</span>
+              </TabsTrigger>
             </TabsList>
 
             {/* ───────────── TAB 1: VALIDATIONS ───────────── */}
@@ -881,6 +886,11 @@ export default function PresidentDashboard() {
                 Les données financières sont gérées par la Trésorière. Vous pouvez consulter les dépenses et cotisations ci-dessous.
               </p>
               <FinanceView readOnly />
+            </TabsContent>
+
+            {/* ───────────── TAB 5: PARAMÈTRES ───────────── */}
+            <TabsContent value="parametres" className="space-y-6">
+              <ChangePasswordSection />
             </TabsContent>
           </Tabs>
         )}
