@@ -28,6 +28,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import type { Member, MemberStatus, MemberRole } from "@/lib/supabase/types"
 import { createClient as createSupabaseClient } from "@/lib/supabase/client"
+import { FinanceView } from "@/components/finance-view"
 
 // ═══════════════════════════════════════════════════════════════════════
 // TYPES
@@ -2495,6 +2496,10 @@ export default function DirectorDashboardPage() {
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">Paramètres</span>
             </TabsTrigger>
+            <TabsTrigger value="finances" className="gap-1.5">
+              <Wallet className="h-4 w-4" />
+              <span className="hidden sm:inline">Finances</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* ═══════════════════════════════════════════════════════════
@@ -3355,6 +3360,26 @@ export default function DirectorDashboardPage() {
               ═══════════════════════════════════════════════════════════ */}
           <TabsContent value="parametres" className="space-y-6 mt-6">
             <SiteSettings />
+          </TabsContent>
+
+          {/* ═══════════════════════════════════════════════════════════
+              TAB : FINANCES (lecture seule)
+              ═══════════════════════════════════════════════════════════ */}
+          <TabsContent value="finances" className="space-y-6 mt-6">
+            <div className="flex items-center gap-2 mb-2">
+              <h2 className="text-base font-semibold flex items-center gap-2">
+                <Wallet className="h-4 w-4 text-primary" />
+                Suivi financier
+              </h2>
+              <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20">
+                <Shield className="h-3 w-3 mr-0.5" />
+                Lecture seule
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              Les données financières sont gérées par la Trésorière. Vous pouvez consulter les dépenses et cotisations ci-dessous.
+            </p>
+            <FinanceView readOnly />
           </TabsContent>
         </Tabs>
 
