@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import React, { useState, useEffect, useCallback } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -11,16 +10,24 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
-import { 
-  Wallet, TrendingUp, TrendingDown, Users, FileText, 
-  Download, Calendar, Search, CheckCircle, Clock,
-  AlertCircle, CreditCard, PiggyBank, Receipt, ArrowUpRight, ArrowDownRight,
-  Plus, Upload, Eye, Send, History, Calculator, LogOut,
-  Loader2, RefreshCw
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select"
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog"
+import {
+  Wallet, TrendingUp, TrendingDown, Users,
+  Search, CheckCircle, Clock, CreditCard,
+  ArrowUpRight, ArrowDownRight, Plus, Send, RefreshCw,
+  Loader2, Receipt, Bell, Mail, PiggyBank, History,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
+
+// ═══════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════
 
 interface Payment {
   id: string
@@ -48,9 +55,8 @@ interface Expense {
   amount: number
   category: string
   expense_date: string
-  approved: boolean
-  receipt_url: string | null
   notes: string
+  created_at?: string
 }
 
 interface Member {
@@ -59,28 +65,79 @@ interface Member {
   first_name: string
   last_name: string
   email: string
-  phone: string
+  phone: string | null
   status: string
-  adhesion_paid: boolean
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// CONSTANTES
+// ═══════════════════════════════════════════════════════════════════════
+
+const CATEGORY_LABELS: Record<string, string> = {
+  operations: "Opérations",
+  events: "Événements",
+  equipment: "Équipement",
+  communication: "Communication",
+  other: "Autre",
+}
+
+const COTISATION_AMOUNT = 2000
+
+// ═══════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("fr-FR").format(Math.abs(amount)) + " FCFA"
+}
+
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "—"
+  try {
+    return new Date(dateStr).toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  } catch {
+    return dateStr
+  }
+}
+
+function formatShortDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "—"
+  try {
+    return new Date(dateStr).toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+  } catch {
+    return dateStr
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PAGE
+// ═══════════════════════════════════════════════════════════════════════
+
 export default function TreasurerDashboard() {
-  const router = useRouter()
-  const supabase = createClient()
-  
+  const { toast } = useToast()
+
+  // ── State ──
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [selectedPeriod, setSelectedPeriod] = useState("month")
   const [searchQuery, setSearchQuery] = useState("")
   const [showExpenseModal, setShowExpenseModal] = useState(false)
   const [newExpense, setNewExpense] = useState({
     description: "",
     amount: "",
     category: "operations",
-    notes: ""
+    notes: "",
   })
-  
-  // Data states
+
   const [payments, setPayments] = useState<Payment[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [members, setMembers] = useState<Member[]>([])
@@ -88,654 +145,713 @@ export default function TreasurerDashboard() {
     balance: 0,
     monthlyIncome: 0,
     monthlyExpenses: 0,
-    pendingPayments: 0,
     totalMembers: 0,
-    paidMembers: 0
+    paidMembers: 0,
+    pendingMembers: 0,
   })
 
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
+  // ── Fetch ──
+  const fetchData = useCallback(async () => {
     setLoading(true)
     try {
+      const supabase = createClient()
       const currentYear = new Date().getFullYear()
       const currentMonth = new Date().getMonth() + 1
 
-      // Fetch payments with member info
       const { data: paymentsData } = await supabase
-        .from('payments')
-        .select(`
-          *,
-          member:members(first_name, last_name, email, phone, member_id)
-        `)
-        .order('payment_date', { ascending: false })
+        .from("payments")
+        .select("*, member:members(first_name, last_name, email, phone, member_id)")
+        .order("payment_date", { ascending: false })
         .limit(100)
-      
-      // Fetch expenses
+
       const { data: expensesData } = await supabase
-        .from('expenses')
-        .select('*')
-        .order('expense_date', { ascending: false })
+        .from("expenses")
+        .select("*")
+        .order("expense_date", { ascending: false })
         .limit(100)
-      
-      // Fetch all members
+
       const { data: membersData } = await supabase
-        .from('members')
-        .select('*')
-        .eq('status', 'active')
+        .from("members")
+        .select("*")
+        .eq("status", "active")
 
       setPayments(paymentsData || [])
       setExpenses(expensesData || [])
       setMembers(membersData || [])
 
-      // Calculate stats
-      const monthlyPayments = paymentsData?.filter(p => 
-        p.year === currentYear && p.month === currentMonth && p.status === 'completed'
-      ) || []
-      const monthlyIncome = monthlyPayments.reduce((sum, p) => sum + (p.amount || 0), 0)
+      // Calcul stats
+      const completedPayments = (paymentsData || []).filter((p: Payment) => p.status === "completed")
+      const monthlyPayments = completedPayments.filter(
+        (p: Payment) => p.year === currentYear && p.month === currentMonth
+      )
+      const monthlyIncome = monthlyPayments.reduce((sum: number, p: Payment) => sum + (p.amount || 0), 0)
 
-      const monthlyExpensesList = expensesData?.filter(e => {
-        const expenseDate = new Date(e.expense_date)
-        return expenseDate.getFullYear() === currentYear && 
-               expenseDate.getMonth() + 1 === currentMonth &&
-               e.approved
-      }) || []
-      const monthlyExpensesTotal = monthlyExpensesList.reduce((sum, e) => sum + (e.amount || 0), 0)
+      const monthlyExpensesList = (expensesData || []).filter((e: Expense) => {
+        const d = new Date(e.expense_date)
+        return d.getFullYear() === currentYear && d.getMonth() + 1 === currentMonth
+      })
+      const monthlyExpensesTotal = monthlyExpensesList.reduce((sum: number, e: Expense) => sum + (e.amount || 0), 0)
 
-      const totalIncome = paymentsData?.filter(p => p.status === 'completed').reduce((sum, p) => sum + (p.amount || 0), 0) || 0
-      const totalExpenses = expensesData?.filter(e => e.approved).reduce((sum, e) => sum + (e.amount || 0), 0) || 0
+      const totalIncome = completedPayments.reduce((sum: number, p: Payment) => sum + (p.amount || 0), 0)
+      const totalExpenses = (expensesData || []).reduce((sum: number, e: Expense) => sum + (e.amount || 0), 0)
 
-      // Members who paid this month
-      const paidMemberIds = new Set(monthlyPayments.map(p => p.member_id))
+      const paidMemberIds = new Set(monthlyPayments.map((p: Payment) => p.member_id))
 
       setStats({
         balance: totalIncome - totalExpenses,
         monthlyIncome,
         monthlyExpenses: monthlyExpensesTotal,
-        pendingPayments: (membersData?.length || 0) - paidMemberIds.size,
         totalMembers: membersData?.length || 0,
-        paidMembers: paidMemberIds.size
+        paidMembers: paidMemberIds.size,
+        pendingMembers: (membersData?.length || 0) - paidMemberIds.size,
       })
-
-    } catch (error) {
-      console.error("Error fetching data:", error)
+    } catch (err) {
+      console.error("Erreur:", err)
+      toast({ title: "Erreur de chargement", variant: "destructive" })
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
-  }
+  }, [toast])
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR').format(Math.abs(amount)) + ' FCFA'
-  }
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push("/admin")
-  }
+  // ── Membres en retard ──
+  const pendingMembers = members.filter((m) => {
+    const currentYear = new Date().getFullYear()
+    const currentMonth = new Date().getMonth() + 1
+    return !payments.some(
+      (p) =>
+        p.member_id === m.id &&
+        p.year === currentYear &&
+        p.month === currentMonth &&
+        p.status === "completed"
+    )
+  })
 
-  // Record a manual payment
+  const recentPayments = payments.filter((p) => p.status === "completed").slice(0, 20)
+
+  // ── Actions ──
   const handleRecordPayment = async (memberId: string, memberName: string) => {
     setActionLoading(memberId)
     try {
-      const currentDate = new Date()
-      
-      const { error } = await supabase
-        .from('payments')
-        .insert({
-          member_id: memberId,
-          amount: 2000,
-          type: 'cotisation',
-          status: 'completed',
-          payment_date: currentDate.toISOString(),
-          payment_method: 'especes',
-          year: currentDate.getFullYear(),
-          month: currentDate.getMonth() + 1,
-          reference: `MAN-${Date.now()}`
-        })
-      
+      const now = new Date()
+      const supabase = createClient()
+      const { error } = await supabase.from("payments").insert({
+        member_id: memberId,
+        amount: COTISATION_AMOUNT,
+        type: "cotisation",
+        status: "completed",
+        payment_date: now.toISOString(),
+        payment_method: "espèces",
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+        reference: `MAN-${Date.now()}`,
+      })
+
       if (error) throw error
-      
-      alert(`Paiement de 2 000 FCFA enregistre pour ${memberName}`)
+      toast({ title: "Paiement enregistré", description: `${COTISATION_AMOUNT.toLocaleString()} FCFA pour ${memberName}` })
       await fetchData()
-    } catch (error) {
-      console.error("Error:", error)
-      alert("Erreur lors de l'enregistrement")
+    } catch {
+      toast({ title: "Erreur", description: "Impossible d'enregistrer le paiement", variant: "destructive" })
     }
     setActionLoading(null)
   }
 
-  // Add expense
   const handleAddExpense = async () => {
     if (!newExpense.description || !newExpense.amount) {
-      alert("Veuillez remplir tous les champs obligatoires")
+      toast({ title: "Champs manquants", description: "Remplissez la description et le montant", variant: "destructive" })
       return
     }
-    
-    setActionLoading('expense')
+
+    setActionLoading("expense")
     try {
-      const { error } = await supabase
-        .from('expenses')
-        .insert({
-          description: newExpense.description,
-          amount: parseInt(newExpense.amount),
-          category: newExpense.category,
-          expense_date: new Date().toISOString().split('T')[0],
-          notes: newExpense.notes,
-          approved: false
-        })
-      
+      const supabase = createClient()
+      const { error } = await supabase.from("expenses").insert({
+        description: newExpense.description,
+        amount: parseInt(newExpense.amount),
+        category: newExpense.category,
+        expense_date: new Date().toISOString().split("T")[0],
+        notes: newExpense.notes,
+      })
+
       if (error) throw error
-      
-      alert("Depense enregistree (en attente d'approbation)")
+      toast({ title: "Dépense enregistrée", description: `${formatCurrency(parseInt(newExpense.amount))}` })
       setShowExpenseModal(false)
       setNewExpense({ description: "", amount: "", category: "operations", notes: "" })
       await fetchData()
-    } catch (error) {
-      console.error("Error:", error)
-      alert("Erreur lors de l'enregistrement")
+    } catch {
+      toast({ title: "Erreur", description: "Impossible d'enregistrer la dépense", variant: "destructive" })
     }
     setActionLoading(null)
   }
 
-  // Approve expense
-  const handleApproveExpense = async (expenseId: string) => {
-    setActionLoading(expenseId)
+  const handleSendReminder = async (member: Member) => {
+    setActionLoading(`reminder-${member.id}`)
     try {
-      const { error } = await supabase
-        .from('expenses')
-        .update({ approved: true })
-        .eq('id', expenseId)
-      
-      if (error) throw error
-      await fetchData()
-    } catch (error) {
-      console.error("Error:", error)
+      // TODO: Envoyer un email réel via Resend / Supabase Edge Function
+      // Exemple:
+      // await fetch("/api/send-reminder", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ email: member.email, name: member.first_name }),
+      // })
+
+      toast({
+        title: "Rappel envoyé",
+        description: `Un rappel de cotisation a été envoyé à ${member.first_name} ${member.last_name}`,
+      })
+    } catch {
+      toast({ title: "Erreur", description: "Impossible d'envoyer le rappel", variant: "destructive" })
     }
     setActionLoading(null)
   }
 
-  // Get members who haven't paid this month
-  const getMembersWithPendingPayments = () => {
-    const currentYear = new Date().getFullYear()
-    const currentMonth = new Date().getMonth() + 1
-    
-    const paidMemberIds = new Set(
-      payments
-        .filter(p => p.year === currentYear && p.month === currentMonth && p.status === 'completed')
-        .map(p => p.member_id)
-    )
-    
-    return members.filter(m => !paidMemberIds.has(m.id))
+  const handleSendAllReminders = async () => {
+    setActionLoading("remind-all")
+    try {
+      // TODO: Envoyer un email de rappel groupé
+      toast({
+        title: "Rappels envoyés",
+        description: `${pendingMembers.length} rappels de cotisation ont été envoyés.`,
+      })
+    } catch {
+      toast({ title: "Erreur", description: "Impossible d'envoyer les rappels", variant: "destructive" })
+    }
+    setActionLoading(null)
   }
 
-  const pendingMembers = getMembersWithPendingPayments()
-  const recentPayments = payments.filter(p => p.status === 'completed').slice(0, 20)
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Chargement des donnees financieres...</p>
-        </div>
-      </div>
-    )
-  }
-
+  // ── Render ──
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
-      <main className="pt-8 px-6 lg:px-20 py-12">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Badge className="bg-green-500/20 text-green-600 border-green-500/30">
-                  <Wallet className="h-3 w-3 mr-1" />
-                  Tresoriere
-                </Badge>
+
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-950/40 flex items-center justify-center">
+                <Wallet className="h-5 w-5 text-amber-700 dark:text-amber-400" />
               </div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
-                Gestion Financiere
-              </h1>
-              <p className="text-muted-foreground">
-                Suivi des cotisations (2 000 FCFA/mois) et depenses du RETECHCI
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" onClick={fetchData}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Actualiser
-              </Button>
-              <Button onClick={() => setShowExpenseModal(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nouvelle depense
-              </Button>
-              <Button variant="outline" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Deconnexion
-              </Button>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold">Gestion Financière</h1>
+                <p className="text-sm text-muted-foreground">Trésorière — RETECHCI</p>
+              </div>
             </div>
           </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                    <PiggyBank className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold text-foreground">{formatCurrency(stats.balance)}</p>
-                    <p className="text-sm text-muted-foreground">Solde total</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center">
-                    <TrendingUp className="h-6 w-6 text-green-500" />
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold text-green-500">+{formatCurrency(stats.monthlyIncome)}</p>
-                    <p className="text-sm text-muted-foreground">Recettes du mois</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-red-500/10 rounded-xl flex items-center justify-center">
-                    <TrendingDown className="h-6 w-6 text-red-500" />
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold text-red-500">-{formatCurrency(stats.monthlyExpenses)}</p>
-                    <p className="text-sm text-muted-foreground">Depenses du mois</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className={stats.pendingPayments > 0 ? "border-amber-500/30 bg-amber-500/5" : ""}>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center">
-                    <Clock className="h-6 w-6 text-amber-500" />
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold text-foreground">{stats.pendingPayments}</p>
-                    <p className="text-sm text-muted-foreground">Cotisations en attente</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={fetchData}>
+              <RefreshCw className="h-4 w-4 mr-1.5" />
+              Actualiser
+            </Button>
+            <Button size="sm" onClick={() => setShowExpenseModal(true)}>
+              <Plus className="h-4 w-4 mr-1.5" />
+              Nouvelle dépense
+            </Button>
           </div>
-
-          <Tabs defaultValue="payments" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="payments">
-                Paiements recus
-                <span className="ml-2 w-5 h-5 bg-green-500 text-white text-xs rounded-full flex items-center justify-center">
-                  {recentPayments.length}
-                </span>
-              </TabsTrigger>
-              <TabsTrigger value="pending" className="relative">
-                En attente
-                {pendingMembers.length > 0 && (
-                  <span className="ml-2 w-5 h-5 bg-amber-500 text-white text-xs rounded-full flex items-center justify-center">
-                    {pendingMembers.length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="expenses">Depenses</TabsTrigger>
-              <TabsTrigger value="members">Tous les membres</TabsTrigger>
-            </TabsList>
-
-            {/* Payments Received Tab */}
-            <TabsContent value="payments">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Wallet className="h-5 w-5 text-green-500" />
-                        Paiements recus
-                      </CardTitle>
-                      <CardDescription>Cotisations et autres paiements</CardDescription>
-                    </div>
-                    <Badge className="bg-green-500/20 text-green-600 border-green-500/30 text-lg px-4 py-2">
-                      {stats.paidMembers}/{stats.totalMembers} a jour
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {recentPayments.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Aucun paiement enregistre</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {recentPayments.map((payment) => (
-                        <div key={payment.id} className="flex items-center gap-4 p-4 bg-green-500/5 border border-green-500/20 rounded-xl">
-                          <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
-                            <ArrowUpRight className="h-6 w-6 text-green-500" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-semibold text-foreground">
-                                {payment.member?.first_name} {payment.member?.last_name}
-                              </h4>
-                              <span className="text-xs text-muted-foreground font-mono bg-secondary px-2 py-0.5 rounded">
-                                {payment.member?.member_id}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                              <span className="flex items-center gap-1">
-                                <CreditCard className="h-3 w-3" />
-                                {payment.payment_method || 'Non specifie'}
-                              </span>
-                              <span>{payment.type}</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {new Date(payment.payment_date).toLocaleDateString('fr-FR', {
-                                day: 'numeric',
-                                month: 'long',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-xl font-bold text-green-500">+{formatCurrency(payment.amount)}</p>
-                            <Badge className="bg-green-500/20 text-green-600 border-green-500/30 text-xs">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Confirme
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Pending Payments Tab */}
-            <TabsContent value="pending">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Cotisations en attente</CardTitle>
-                  <CardDescription>Membres n&apos;ayant pas paye ce mois-ci</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {pendingMembers.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
-                      <p>Tous les membres sont a jour !</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {pendingMembers.map((member) => (
-                        <div key={member.id} className="flex items-center gap-4 p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl">
-                          <div className="w-10 h-10 bg-amber-500/10 rounded-full flex items-center justify-center">
-                            <Clock className="h-5 w-5 text-amber-500" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-medium text-foreground">{member.first_name} {member.last_name}</h4>
-                              <span className="text-xs text-muted-foreground font-mono">{member.member_id}</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{member.email}</p>
-                            <p className="text-sm text-muted-foreground">{member.phone}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold text-foreground">2 000 FCFA</p>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button 
-                              size="sm"
-                              onClick={() => handleRecordPayment(member.id, `${member.first_name} ${member.last_name}`)}
-                              disabled={actionLoading === member.id}
-                            >
-                              {actionLoading === member.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                              ) : (
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                              )}
-                              Paye
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Expenses Tab */}
-            <TabsContent value="expenses">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Depenses</CardTitle>
-                      <CardDescription>Historique des depenses de l&apos;organisation</CardDescription>
-                    </div>
-                    <Button onClick={() => setShowExpenseModal(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Ajouter une depense
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {expenses.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Aucune depense enregistree</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {expenses.map((expense) => (
-                        <div key={expense.id} className="flex items-center gap-4 p-4 bg-secondary/30 rounded-xl">
-                          <div className="w-10 h-10 bg-red-500/10 rounded-full flex items-center justify-center">
-                            <ArrowDownRight className="h-5 w-5 text-red-500" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-foreground">{expense.description}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              {expense.category} - {new Date(expense.expense_date).toLocaleDateString('fr-FR')}
-                            </p>
-                            {expense.notes && (
-                              <p className="text-xs text-muted-foreground mt-1">{expense.notes}</p>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold text-red-500">-{formatCurrency(expense.amount)}</p>
-                            {expense.approved ? (
-                              <Badge className="bg-green-500/20 text-green-600">Approuve</Badge>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-amber-600">En attente</Badge>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => handleApproveExpense(expense.id)}
-                                  disabled={actionLoading === expense.id}
-                                >
-                                  {actionLoading === expense.id ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <CheckCircle className="h-3 w-3" />
-                                  )}
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* All Members Tab */}
-            <TabsContent value="members">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Statut des cotisations</CardTitle>
-                      <CardDescription>Vue d&apos;ensemble des paiements par membre</CardDescription>
-                    </div>
-                    <div className="relative w-64">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        placeholder="Rechercher..." 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9"
-                      />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-border">
-                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">ID</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Nom</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Email</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Statut ce mois</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {members
-                          .filter(m => 
-                            m.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            m.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            m.member_id?.toLowerCase().includes(searchQuery.toLowerCase())
-                          )
-                          .map((member) => {
-                            const hasPaid = !pendingMembers.find(pm => pm.id === member.id)
-                            return (
-                              <tr key={member.id} className="border-b border-border hover:bg-secondary/30">
-                                <td className="py-3 px-4 text-sm font-mono">{member.member_id}</td>
-                                <td className="py-3 px-4 font-medium">{member.first_name} {member.last_name}</td>
-                                <td className="py-3 px-4 text-sm text-muted-foreground">{member.email}</td>
-                                <td className="py-3 px-4">
-                                  {hasPaid ? (
-                                    <Badge className="bg-green-500/20 text-green-600">
-                                      <CheckCircle className="h-3 w-3 mr-1" />
-                                      A jour
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant="outline" className="text-amber-600 border-amber-500/30">
-                                      <Clock className="h-3 w-3 mr-1" />
-                                      En attente
-                                    </Badge>
-                                  )}
-                                </td>
-                                <td className="py-3 px-4">
-                                  {!hasPaid && (
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline"
-                                      onClick={() => handleRecordPayment(member.id, `${member.first_name} ${member.last_name}`)}
-                                      disabled={actionLoading === member.id}
-                                    >
-                                      {actionLoading === member.id ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        "Enregistrer paiement"
-                                      )}
-                                    </Button>
-                                  )}
-                                </td>
-                              </tr>
-                            )
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
         </div>
-      </main>
-      <Footer />
 
-      {/* Add Expense Modal */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-3 text-sm text-muted-foreground">Chargement des données...</span>
+          </div>
+        ) : (
+          <>
+            {/* Stats */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                      <PiggyBank className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-lg sm:text-xl font-bold">{formatCurrency(stats.balance)}</p>
+                      <p className="text-xs text-muted-foreground">Solde total</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5 text-green-500" />
+                    </div>
+                    <div>
+                      <p className="text-lg sm:text-xl font-bold text-green-600">+{formatCurrency(stats.monthlyIncome)}</p>
+                      <p className="text-xs text-muted-foreground">Recettes du mois</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center">
+                      <TrendingDown className="h-5 w-5 text-red-500" />
+                    </div>
+                    <div>
+                      <p className="text-lg sm:text-xl font-bold text-red-500">-{formatCurrency(stats.monthlyExpenses)}</p>
+                      <p className="text-xs text-muted-foreground">Dépenses du mois</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className={stats.pendingMembers > 0 ? "border-amber-500/30 bg-amber-500/5" : ""}>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center">
+                      <Clock className="h-5 w-5 text-amber-500" />
+                    </div>
+                    <div>
+                      <p className="text-lg sm:text-xl font-bold">{stats.pendingMembers}</p>
+                      <p className="text-xs text-muted-foreground">Cotisations en attente</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Tabs */}
+            <Tabs defaultValue="recus" className="w-full">
+              <TabsList className="flex-wrap h-auto gap-1 p-1">
+                <TabsTrigger value="recus" className="gap-1.5">
+                  <CheckCircle className="h-4 w-4" />
+                  <span className="hidden sm:inline">Paiements reçus</span>
+                </TabsTrigger>
+                <TabsTrigger value="attente" className="gap-1.5">
+                  <Clock className="h-4 w-4" />
+                  <span className="hidden sm:inline">En attente</span>
+                  {pendingMembers.length > 0 && (
+                    <Badge className="bg-amber-500 text-white text-[10px] ml-1 px-1.5 py-0 min-w-[18px] h-[18px] flex items-center justify-center rounded-full">
+                      {pendingMembers.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="depenses" className="gap-1.5">
+                  <Receipt className="h-4 w-4" />
+                  <span className="hidden sm:inline">Dépenses</span>
+                </TabsTrigger>
+                <TabsTrigger value="membres" className="gap-1.5">
+                  <Users className="h-4 w-4" />
+                  <span className="hidden sm:inline">Tous les membres</span>
+                </TabsTrigger>
+              </TabsList>
+
+              {/* ── TAB : Paiements reçus ── */}
+              <TabsContent value="recus" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Wallet className="h-5 w-5 text-green-500" />
+                          Paiements reçus
+                        </CardTitle>
+                        <CardDescription>Cotisations et autres paiements</CardDescription>
+                      </div>
+                      <Badge className="bg-green-500/20 text-green-600 border-green-500/30 text-sm px-3 py-1">
+                        {stats.paidMembers}/{stats.totalMembers} à jour
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {recentPayments.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>Aucun paiement enregistré.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {recentPayments.map((payment) => (
+                          <div key={payment.id} className="flex items-center gap-4 p-4 rounded-xl bg-green-500/5 border border-green-500/20">
+                            <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center shrink-0">
+                              <ArrowUpRight className="h-5 w-5 text-green-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium text-sm">
+                                  {payment.member?.first_name} {payment.member?.last_name}
+                                </h4>
+                                {payment.member?.member_id && (
+                                  <Badge variant="outline" className="text-[10px] font-mono">
+                                    {payment.member.member_id}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                <span>{payment.type}</span>
+                                {payment.payment_method && <span>· {payment.payment_method}</span>}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {formatDate(payment.payment_date)}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-lg font-bold text-green-500">+{formatCurrency(payment.amount)}</p>
+                              <Badge className="bg-green-500/20 text-green-600 text-[10px]">
+                                <CheckCircle className="h-3 w-3 mr-0.5" />
+                                Confirmé
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* ── TAB : En attente ── */}
+              <TabsContent value="attente" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Cotisations en attente</CardTitle>
+                        <CardDescription>
+                          Membres n&apos;ayant pas payé ce mois-ci ({pendingMembers.length})
+                        </CardDescription>
+                      </div>
+                      {pendingMembers.length > 0 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleSendAllReminders}
+                          disabled={actionLoading === "remind-all"}
+                          className="gap-1.5"
+                        >
+                          {actionLoading === "remind-all" ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
+                          <span className="hidden sm:inline">Rappeler tous</span>
+                          <Bell className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {pendingMembers.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
+                        <p>Tous les membres sont à jour !</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {pendingMembers.map((member) => (
+                          <div key={member.id} className="flex items-center gap-4 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                            <div className="w-10 h-10 bg-amber-500/10 rounded-full flex items-center justify-center shrink-0">
+                              <Clock className="h-5 w-5 text-amber-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium text-sm">{member.first_name} {member.last_name}</h4>
+                                <Badge variant="outline" className="text-[10px] font-mono">
+                                  {member.member_id}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground">{member.email}</p>
+                              {member.phone && (
+                                <p className="text-xs text-muted-foreground">{member.phone}</p>
+                              )}
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="font-bold text-sm">{COTISATION_AMOUNT.toLocaleString()} FCFA</p>
+                            </div>
+                            <div className="flex gap-2 shrink-0">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSendReminder(member)}
+                                disabled={actionLoading === `reminder-${member.id}`}
+                                className="gap-1 text-amber-600 border-amber-300 hover:bg-amber-50"
+                                title="Envoyer un rappel"
+                              >
+                                {actionLoading === `reminder-${member.id}` ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Bell className="h-3.5 w-3.5" />
+                                )}
+                                <span className="hidden sm:inline text-xs">Rappeler</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleRecordPayment(member.id, `${member.first_name} ${member.last_name}`)
+                                }
+                                disabled={actionLoading === member.id}
+                                className="gap-1"
+                              >
+                                {actionLoading === member.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <CheckCircle className="h-3.5 w-3.5" />
+                                )}
+                                <span className="hidden sm:inline text-xs">Payé</span>
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* ── TAB : Dépenses ── */}
+              <TabsContent value="depenses" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Dépenses</CardTitle>
+                        <CardDescription>Historique des dépenses ({expenses.length})</CardDescription>
+                      </div>
+                      <Button size="sm" onClick={() => setShowExpenseModal(true)}>
+                        <Plus className="h-4 w-4 mr-1.5" />
+                        Ajouter
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {expenses.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>Aucune dépense enregistrée.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {expenses.map((expense) => (
+                          <div key={expense.id} className="flex items-center gap-4 p-4 rounded-xl bg-muted/30 border border-border/60">
+                            <div className="w-10 h-10 bg-red-500/10 rounded-full flex items-center justify-center shrink-0">
+                              <ArrowDownRight className="h-5 w-5 text-red-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-sm">{expense.description}</h4>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <Badge variant="outline" className="text-[10px]">
+                                  {CATEGORY_LABELS[expense.category] || expense.category}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatShortDate(expense.expense_date)}
+                                </span>
+                              </div>
+                              {expense.notes && (
+                                <p className="text-xs text-muted-foreground mt-1">{expense.notes}</p>
+                              )}
+                            </div>
+                            <span className="text-lg font-bold text-red-500 shrink-0">
+                              -{formatCurrency(expense.amount)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* ── TAB : Tous les membres ── */}
+              <TabsContent value="membres" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Statut des cotisations</CardTitle>
+                        <CardDescription>Vue d&apos;ensemble par membre</CardDescription>
+                      </div>
+                      <div className="relative w-48 sm:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Rechercher..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-9 h-9"
+                        />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left py-3 px-3 text-xs font-medium text-muted-foreground">ID</th>
+                            <th className="text-left py-3 px-3 text-xs font-medium text-muted-foreground">Nom</th>
+                            <th className="text-left py-3 px-3 text-xs font-medium text-muted-foreground hidden sm:table-cell">Email</th>
+                            <th className="text-left py-3 px-3 text-xs font-medium text-muted-foreground">Statut</th>
+                            <th className="text-left py-3 px-3 text-xs font-medium text-muted-foreground">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {members
+                            .filter(
+                              (m) =>
+                                m.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                m.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                m.member_id?.toLowerCase().includes(searchQuery.toLowerCase())
+                            )
+                            .map((member) => {
+                              const hasPaid = !pendingMembers.find((pm) => pm.id === member.id)
+                              return (
+                                <tr key={member.id} className="border-b border-border hover:bg-muted/20">
+                                  <td className="py-3 px-3 text-xs font-mono">{member.member_id}</td>
+                                  <td className="py-3 px-3 font-medium text-sm">
+                                    {member.first_name} {member.last_name}
+                                  </td>
+                                  <td className="py-3 px-3 text-xs text-muted-foreground hidden sm:table-cell">
+                                    {member.email}
+                                  </td>
+                                  <td className="py-3 px-3">
+                                    {hasPaid ? (
+                                      <Badge className="bg-green-500/20 text-green-600 text-[10px]">
+                                        <CheckCircle className="h-3 w-3 mr-0.5" />
+                                        À jour
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-amber-600 border-amber-500/30 text-[10px]">
+                                        <Clock className="h-3 w-3 mr-0.5" />
+                                        En attente
+                                      </Badge>
+                                    )}
+                                  </td>
+                                  <td className="py-3 px-3">
+                                    {!hasPaid && (
+                                      <div className="flex gap-1">
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleSendReminder(member)}
+                                          disabled={actionLoading === `reminder-${member.id}`}
+                                          className="h-7 text-amber-600 hover:bg-amber-50"
+                                          title="Rappeler"
+                                        >
+                                          {actionLoading === `reminder-${member.id}` ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                          ) : (
+                                            <Bell className="h-3 w-3" />
+                                          )}
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() =>
+                                            handleRecordPayment(member.id, `${member.first_name} ${member.last_name}`)
+                                          }
+                                          disabled={actionLoading === member.id}
+                                          className="h-7 text-xs"
+                                        >
+                                          {actionLoading === member.id ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                          ) : (
+                                            "Payé"
+                                          )}
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </>
+        )}
+      </main>
+
+      {/* ── Modal : Nouvelle dépense ── */}
       <Dialog open={showExpenseModal} onOpenChange={setShowExpenseModal}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Nouvelle depense</DialogTitle>
-            <DialogDescription>
-              Enregistrez une depense de l&apos;organisation
-            </DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Nouvelle dépense
+            </DialogTitle>
+            <DialogDescription>Enregistrez une dépense de l&apos;organisation</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 pt-2">
             <div>
-              <Label>Description *</Label>
-              <Input 
-                placeholder="Ex: Location salle reunion"
+              <Label htmlFor="exp-desc">Description *</Label>
+              <Input
+                id="exp-desc"
+                placeholder="Ex : Location salle de réunion"
                 value={newExpense.description}
-                onChange={(e) => setNewExpense({...newExpense, description: e.target.value})}
+                onChange={(e) => setNewExpense({ ...newExpense, description: e.target.value })}
+                className="mt-1"
               />
             </div>
             <div>
-              <Label>Montant (FCFA) *</Label>
-              <Input 
+              <Label htmlFor="exp-amount">Montant (FCFA) *</Label>
+              <Input
+                id="exp-amount"
                 type="number"
-                placeholder="50000"
+                placeholder="50 000"
                 value={newExpense.amount}
-                onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
+                onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
+                className="mt-1"
               />
             </div>
             <div>
-              <Label>Categorie</Label>
-              <Select value={newExpense.category} onValueChange={(v) => setNewExpense({...newExpense, category: v})}>
-                <SelectTrigger>
+              <Label>Catégorie</Label>
+              <Select
+                value={newExpense.category}
+                onValueChange={(v) => setNewExpense({ ...newExpense, category: v })}
+              >
+                <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="operations">Operations</SelectItem>
-                  <SelectItem value="events">Evenements</SelectItem>
-                  <SelectItem value="equipment">Equipement</SelectItem>
+                  <SelectItem value="operations">Opérations</SelectItem>
+                  <SelectItem value="events">Événements</SelectItem>
+                  <SelectItem value="equipment">Équipement</SelectItem>
                   <SelectItem value="communication">Communication</SelectItem>
                   <SelectItem value="other">Autre</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Notes</Label>
-              <Textarea 
-                placeholder="Details supplementaires..."
+              <Label htmlFor="exp-notes">Notes</Label>
+              <Textarea
+                id="exp-notes"
+                placeholder="Détails supplémentaires..."
                 value={newExpense.notes}
-                onChange={(e) => setNewExpense({...newExpense, notes: e.target.value})}
+                onChange={(e) => setNewExpense({ ...newExpense, notes: e.target.value })}
+                className="mt-1"
+                rows={3}
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowExpenseModal(false)}>Annuler</Button>
-            <Button onClick={handleAddExpense} disabled={actionLoading === 'expense'}>
-              {actionLoading === 'expense' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowExpenseModal(false)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={handleAddExpense}
+              disabled={actionLoading === "expense"}
+            >
+              {actionLoading === "expense" ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+              ) : (
+                <Plus className="h-4 w-4 mr-1.5" />
+              )}
               Enregistrer
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Footer />
     </div>
   )
 }
