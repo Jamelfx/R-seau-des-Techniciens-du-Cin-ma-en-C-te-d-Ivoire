@@ -1,3 +1,13 @@
+import { Header } from "@/components/header"
+import { Hero } from "@/components/hero"
+import { FeaturedTalents } from "@/components/featured-talents"
+import { DigitalCard } from "@/components/digital-card"
+import { SitechSection } from "@/components/sitech-section"
+import { Partners } from "@/components/partners"
+import { Footer } from "@/components/footer"
+import { BirthdayPopup } from "@/components/birthday-popup"
+import { getMultipleSections } from "@/lib/content"
+
 export default async function Home() {
   const sections = await getMultipleSections(['hero', 'sitech', 'featured'])
   return (
