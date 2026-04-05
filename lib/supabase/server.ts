@@ -13,6 +13,14 @@ function isConfigured(): boolean {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Export createClient pour compatibilité avec les pages existantes
+// (actualites, etc.)
+// ═══════════════════════════════════════════════════════════════════════
+export function createClient() {
+  return supabase
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Récupérer tous les membres
 // ═══════════════════════════════════════════════════════════════════════
 export async function getAllMembers(): Promise<Member[]> {
