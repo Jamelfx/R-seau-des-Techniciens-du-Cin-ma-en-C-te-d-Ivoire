@@ -18,8 +18,9 @@ import {
   Plus, Trash2, Save, CheckCircle, AlertCircle,
   Wallet, Smartphone, Loader2, Calendar, MapPin, Video, Link2,
   Play, ExternalLink, Film, Clapperboard, Award, Pencil, X,
-  CalendarDays, Clock, XCircle
+  CalendarDays, Clock, XCircle, IdCard
 } from "lucide-react"
+import { MemberCard } from "@/components/member-card"
 import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import { ChangePasswordSection } from "@/components/change-password"
@@ -30,13 +31,15 @@ import { useRouter } from "next/navigation"
 // ═══════════════════════════════════════════════════════════════════════
 const AUDIOVISUAL_PROFESSIONS = [
   // --- Réalisation & Direction ---
+  "Réalisateur / Réalisatrice",
   "Régisseur Général",
-  "Régisseur Fixeur",
-  "Répereur",
-  "Clapman",
   "Assistant Réalisateur",
+  "Directeur de Production",
   "Directeur de Post-Production",
   "Directeur Artistique",
+  "Scénariste",
+  "Dialoguiste",
+  "Script Doctor",
   "Chef Décorateur",
   "Accessoiriste",
   // --- Image ---
@@ -66,14 +69,28 @@ const AUDIOVISUAL_PROFESSIONS = [
   "Coiffeur Plateau",
   "Costumier",
   "Chef Costumier",
+  // --- Administration ---
+  "Producteur / Productrice",
+  "Chargé de Production",
+  "Administrateur de Production",
+  "Responsable Communication",
+  "Attaché de Presse",
+  "Distributeur",
+  "Agent Artistique",
   // --- Techniques ---
   "Projectionniste",
   "Technicien de Maintenance",
   "Dolby Technician",
   "Stream Engineer",
+  "Community Manager",
   // --- Autres ---
   "Photographe de Plateau",
+  "Journaliste Reporter",
+  "Présentateur / Animatrice TV",
+  "Commentateur",
+  "Casting Director",
   "Coach Acteur",
+  "Chorégraphe",
   "Stuntman / Cascadeur",
   "Pilote Drone",
   "Compositeur Musical",
@@ -102,6 +119,8 @@ interface MemberData {
   membership_level: string
   created_at: string
   category: string
+  bureau_position: string | null
+  ca_position: string | null
 }
 
 interface FilmographyItem {
@@ -573,7 +592,6 @@ export default function MembreDashboardPage() {
   const upcomingMeetings = meetings.filter(m => m.status === 'upcoming')
   const pastMeetings = meetings.filter(m => m.status !== 'upcoming')
   const displayName = member ? `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.email.split('@')[0] : 'Membre'
-  const memberCategory = member ? (member.category || ((member.years_experience || 0) >= 10 ? "A" : (member.years_experience || 0) >= 5 ? "B" : "C")) : "C"
 
   // ─── Loading ───
   if (loading) {
@@ -605,7 +623,7 @@ export default function MembreDashboardPage() {
         <div className="grid lg:grid-cols-[1fr_320px] gap-8">
           <div className="space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-5 w-full">
+              <TabsList className="grid grid-cols-6 w-full">
                 <TabsTrigger value="profile" className="text-xs md:text-sm">
                   <User className="h-4 w-4 mr-1 md:mr-2" /><span className="hidden md:inline">Profil</span>
                 </TabsTrigger>
@@ -620,6 +638,9 @@ export default function MembreDashboardPage() {
                 </TabsTrigger>
                 <TabsTrigger value="payments" className="text-xs md:text-sm">
                   <CreditCard className="h-4 w-4 mr-1 md:mr-2" /><span className="hidden md:inline">Cotisation</span>
+                </TabsTrigger>
+                <TabsTrigger value="card" className="text-xs md:text-sm">
+                  <IdCard className="h-4 w-4 mr-1 md:mr-2" /><span className="hidden md:inline">Ma Carte</span>
                 </TabsTrigger>
                 <TabsTrigger value="settings" className="text-xs md:text-sm">
                   <Settings className="h-4 w-4 mr-1 md:mr-2" /><span className="hidden md:inline">Paramètres</span>
@@ -983,6 +1004,13 @@ export default function MembreDashboardPage() {
                 <ChangePasswordSection />
               </TabsContent>
               {/* ═══════════════════════════════════════════════════════════
+                  MA CARTE TAB — Carte membre avec QR
+                  ═══════════════════════════════════════════════════════════ */}
+              <TabsContent value="card" className="mt-6">
+                <MemberCard />
+              </TabsContent>
+
+              {/* ═══════════════════════════════════════════════════════════
                   DIALOGUE DE MODIFICATION D'UN FILM
                   ═══════════════════════════════════════════════════════════ */}
               <Dialog open={!!editingFilm} onOpenChange={(open) => !open && setEditingFilm(null)}>
@@ -1053,9 +1081,11 @@ export default function MembreDashboardPage() {
                   name={displayName}
                   role={formData.profession || "Technicien"}
                   title={member.role === 'director' ? 'Directeur Exécutif' : undefined}
-                  category={memberCategory}
+                  status={member.status || 'pending'}
                   memberId={member.member_id || 'N/A'}
                   image={profilePhoto || undefined}
+                  bureauPosition={member.bureau_position}
+                  caPosition={member.ca_position}
                 />
               </CardContent>
             </Card>
