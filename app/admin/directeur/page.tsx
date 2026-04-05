@@ -23,6 +23,7 @@ import {
   Calendar, QrCode, Send, Copy, XCircle, MapPin,
   FileText, Plus, Trash2, Eye, Check, ExternalLink,
   ChevronDown, ScanLine, Phone, Link2, Hash, Briefcase, Settings, Upload, Image as ImageIcon, Trash2 as TrashIcon, CheckCircle as CheckIcon,
+  Star, Gem, Save,
 } from "lucide-react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
@@ -295,7 +296,7 @@ async function fetchMembers(): Promise<Member[]> {
 
 async function patchMember(
   id: string,
-  data: { status?: MemberStatus; role?: MemberRole }
+  data: { status?: MemberStatus; role?: MemberRole; bureau_position?: string | null; ca_position?: string | null }
 ): Promise<boolean> {
   const res = await fetch(`/api/members/${id}`, {
     method: "PATCH",
@@ -648,6 +649,119 @@ function RoleAssignDialog({
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// COMPOSANT : PositionAssignDialog
+// ═══════════════════════════════════════════════════════════════════════
+
+function PositionAssignDialog({
+  member,
+  open,
+  onClose,
+  onSave,
+  loading = false,
+}: {
+  member: Member
+  open: boolean
+  onClose: () => void
+  onSave: (bureau_position: string | null, ca_position: string | null) => void
+  loading?: boolean
+}) {
+  const [bureauPos, setBureauPos] = useState(() => member.bureau_position || "")
+  const [caPos, setCaPos] = useState(() => member.ca_position || "")
+  const displayName = getDisplayName(member)
+
+  const handleSave = () => {
+    const bureau = bureauPos.trim() || null
+    const ca = caPos.trim() || null
+    onSave(bureau, ca)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Star className="h-5 w-5 text-yellow-500" />
+            Postes de {displayName}
+          </DialogTitle>
+          <DialogDescription>
+            Nommez la fonction du membre dans le Bureau Exécutif et/ou le Conseil d&apos;Administration.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-2">
+          {/* Bureau Exécutif */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-sm font-medium">
+              <span className="w-2 h-2 rounded-full bg-yellow-500" />
+              Bureau Exécutif
+            </Label>
+            <Input
+              value={bureauPos}
+              onChange={(e) => setBureauPos(e.target.value)}
+              placeholder="Ex: Secrétaire Général, Trésorier Adjoint..."
+              className="mt-1"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Laissez vide si le membre n&apos;est pas au bureau
+            </p>
+          </div>
+
+          {/* Conseil d'Administration */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-sm font-medium">
+              <span className="w-2 h-2 rounded-full bg-purple-500" />
+              Conseil d&apos;Administration
+            </Label>
+            <Input
+              value={caPos}
+              onChange={(e) => setCaPos(e.target.value)}
+              placeholder="Ex: Conseiller, Vice-Président du CA..."
+              className="mt-1"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Laissez vide si le membre n&apos;est pas au CA
+            </p>
+          </div>
+
+          {/* Info */}
+          <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+            <p className="text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed">
+              Les postes assignés apparaîtront sur la carte membre de {displayName}.
+            </p>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              disabled={loading}
+              className="flex-1"
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={loading}
+              className="flex-1"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-1" />
+                  Enregistrer
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // COMPOSANT : MemberRow
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -656,11 +770,13 @@ function MemberRow({
   directorId,
   onActivate,
   onRoleChange,
+  onPositionChange,
 }: {
   member: Member
   directorId: string
   onActivate: (m: Member) => void
   onRoleChange: (m: Member) => void
+  onPositionChange: (m: Member) => void
 }) {
   const isDirector = member.id === directorId
   const status = getMemberStatus(member)
@@ -672,6 +788,8 @@ function MemberRow({
   const displayName = getDisplayName(member)
   const isInvited = status === "invited"
   const isActive = status === "active"
+  const hasBureauPos = !!member.bureau_position
+  const hasCaPos = !!member.ca_position
 
   return (
     <div className="flex items-center gap-3 p-3 sm:p-4 rounded-xl border border-border/60 bg-card hover:bg-muted/30 transition-colors">
@@ -696,6 +814,20 @@ function MemberRow({
               Vous
             </Badge>
           )}
+          {hasBureauPos && (
+            <Badge className="bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border-yellow-500/30 border text-[10px] gap-1 px-1.5">
+              <Star className="h-3 w-3" />
+              <span className="hidden sm:inline truncate max-w-[120px]">{member.bureau_position}</span>
+              <span className="sm:hidden">Bureau</span>
+            </Badge>
+          )}
+          {hasCaPos && (
+            <Badge className="bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30 border text-[10px] gap-1 px-1.5">
+              <Gem className="h-3 w-3" />
+              <span className="hidden sm:inline truncate max-w-[120px]">{member.ca_position}</span>
+              <span className="sm:hidden">CA</span>
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-1.5 mt-0.5">
           <span className="text-xs text-muted-foreground truncate">
@@ -712,7 +844,7 @@ function MemberRow({
         </div>
       </div>
 
-      {/* Badges */}
+      {/* Status Badge */}
       <div className="flex items-center gap-1.5 shrink-0">
         <Badge
           className={`${statusConf.color} text-[10px] gap-1 px-1.5`}
@@ -746,15 +878,27 @@ function MemberRow({
             </Button>
           )}
           {isActive && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs gap-1 text-primary border-primary/30 hover:bg-primary/5"
-              onClick={() => onRoleChange(member)}
-            >
-              <Shield className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Rôle</span>
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs gap-1 text-primary border-primary/30 hover:bg-primary/5"
+                onClick={() => onRoleChange(member)}
+              >
+                <Shield className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Rôle</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs gap-1 text-yellow-700 dark:text-yellow-400 border-yellow-300 dark:border-yellow-800 hover:bg-yellow-50 dark:hover:bg-yellow-950/30"
+                onClick={() => onPositionChange(member)}
+                title="Gérer les postes Bureau/CA"
+              >
+                <Star className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Poste</span>
+              </Button>
+            </>
           )}
         </div>
       )}
@@ -1553,201 +1697,11 @@ function InvitationRow({ invitation }: { invitation: Invitation }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// COMPOSANT : ScannerSection
+// COMPOSANT : ScannerSection (importé)
 // ═══════════════════════════════════════════════════════════════════════
-
-function ScannerSection() {
-  const [code, setCode] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<ScanResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  const handleSearch = async () => {
-    if (!code.trim()) return
-    setLoading(true)
-    setError(null)
-    setResult(null)
-    try {
-      const data = await scanMember(code.trim())
-      setResult(data)
-      if (!data.found) {
-        setError(data.error || "Membre non trouvé.")
-      }
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Erreur lors de la recherche."
-      setError(message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleSearch()
-  }
-
-  const member = result?.member
-  const memberStatus = member ? getMemberStatus(member) : null
-  const memberRole = member ? getMemberRole(member) : null
-
-  return (
-    <div className="space-y-6">
-      {/* Recherche */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <ScanLine className="h-4 w-4" />
-            Scanner QR / Rechercher un membre
-          </CardTitle>
-          <CardDescription>
-            Entrez un numéro d&apos;adhérent (ex: CI-2026-2723) ou une adresse
-            email pour vérifier un membre.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <QrCode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="CI-2026-2723 ou email@example.com"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="pl-10"
-                disabled={loading}
-              />
-            </div>
-            <Button
-              onClick={handleSearch}
-              disabled={loading || !code.trim()}
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <Search className="h-4 w-4 mr-2" />
-                  Rechercher
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Erreur */}
-      {error && !member && (
-        <Card className="border-destructive/30">
-          <CardContent className="p-6">
-            <div className="flex items-start gap-3">
-              <XCircle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-destructive">
-                  Membre non trouvé
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">{error}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Résultat */}
-      {member && (
-        <Card className="border-primary/20">
-          <CardContent className="p-6">
-            <div className="flex items-start gap-4">
-              {/* Photo */}
-              <div className="shrink-0">
-                <Avatar className="h-20 w-20 border-2 border-primary/20">
-                  <AvatarImage src={member.profile_photo || undefined} />
-                  <AvatarFallback className="text-lg bg-primary/10 text-primary font-semibold">
-                    {getInitials(member)}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-
-              {/* Infos principales */}
-              <div className="flex-1 min-w-0 space-y-3">
-                <div>
-                  <h3 className="text-lg font-bold">
-                    {getDisplayName(member)}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    {memberStatus && (
-                      <Badge
-                        className={`${STATUS_CONFIG[memberStatus].color} text-[10px] gap-1 px-1.5`}
-                      >
-                        {STATUS_CONFIG[memberStatus].label}
-                      </Badge>
-                    )}
-                    {memberRole && memberRole !== "member" && (
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] gap-1 px-1.5 border ${ROLE_CONFIG[memberRole].bg} ${ROLE_CONFIG[memberRole].color} ${ROLE_CONFIG[memberRole].border}`}
-                      >
-                        {ROLE_CONFIG[memberRole].label}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-
-                {/* Détails */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Hash className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">N° Adhérent :</span>
-                    <span className="font-mono font-medium">
-                      {member.member_id}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground truncate">
-                      {member.email}
-                    </span>
-                  </div>
-                  {member.phone && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">
-                        {member.phone}
-                      </span>
-                    </div>
-                  )}
-                  {member.profession && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Briefcase className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">
-                        {member.profession}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Type de recherche */}
-                {result?.search_type && (
-                  <p className="text-[10px] text-muted-foreground">
-                    Recherché par :{" "}
-                    {result.search_type === "email"
-                      ? "adresse email"
-                      : "numéro d'adhérent"}
-                  </p>
-                )}
-              </div>
-
-              {/* Check */}
-              <div className="shrink-0">
-                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                  <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  )
-}
+// Ce composant a été déplacé dans src/components/scanner-section.tsx
+// pour une meilleure organisation et un scanning QR par caméra intégré.
+import { ScannerSection } from "@/components/scanner-section"
 
 // ═══════════════════════════════════════════════════════════════════════
 // COMPOSANT : SiteSettings (Paramètres du site)
@@ -1995,6 +1949,7 @@ export default function DirectorDashboardPage() {
     onConfirm: () => {},
   })
   const [roleDialogMember, setRoleDialogMember] = useState<Member | null>(null)
+  const [positionDialogMember, setPositionDialogMember] = useState<Member | null>(null)
 
   // ── Adhésions state ──
   const [adhesions, setAdhesions] = useState<AdhesionRequest[]>([])
@@ -2246,6 +2201,25 @@ export default function DirectorDashboardPage() {
       await patchMember(roleDialogMember.id, { role: newRole })
       await loadMembers()
       setRoleDialogMember(null)
+    } catch (err) {
+      console.error("Erreur:", err)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // ── Position Bureau/CA ──
+  const handlePositionChange = (member: Member) => {
+    setPositionDialogMember(member)
+  }
+
+  const executePositionChange = async (bureau_position: string | null, ca_position: string | null) => {
+    if (!positionDialogMember) return
+    setActionLoading(true)
+    try {
+      await patchMember(positionDialogMember.id, { bureau_position, ca_position })
+      await loadMembers()
+      setPositionDialogMember(null)
     } catch (err) {
       console.error("Erreur:", err)
     } finally {
@@ -2704,6 +2678,7 @@ export default function DirectorDashboardPage() {
                               directorId={directorId}
                               onActivate={handleActivate}
                               onRoleChange={handleRoleChange}
+                              onPositionChange={handlePositionChange}
                             />
                           ))
                         )}
@@ -3425,6 +3400,17 @@ export default function DirectorDashboardPage() {
           open={!!roleDialogMember}
           onClose={() => setRoleDialogMember(null)}
           onAssign={executeRoleChange}
+          loading={actionLoading}
+        />
+      )}
+
+      {positionDialogMember && (
+        <PositionAssignDialog
+          key={positionDialogMember.id}
+          member={positionDialogMember}
+          open={!!positionDialogMember}
+          onClose={() => setPositionDialogMember(null)}
+          onSave={executePositionChange}
           loading={actionLoading}
         />
       )}
