@@ -18,6 +18,7 @@ export default async function Home() {
       <main>
         <Hero content={sections.hero} />
         <FeaturedTalents content={sections.featured} />
+        <JoinSection />
         <DigitalCard />
         <SitechSection content={sections.sitech} />
         <Partners />
