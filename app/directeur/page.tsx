@@ -17,7 +17,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Shield, User, Crown, Wallet, CheckCircle, Search,
-  UserCheck, UserX, AlertTriangle, Loader2,
+  UserCheck, UserPlus, UserX, AlertTriangle, Loader2,
   Mail, Clock, Ban, Users, Database,
   Calendar, QrCode, Send, Copy, XCircle, MapPin,
   FileText, Plus, Trash2, Eye, Check, ExternalLink,
