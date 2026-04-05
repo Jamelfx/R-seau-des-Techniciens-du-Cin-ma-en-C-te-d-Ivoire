@@ -29,6 +29,7 @@ import { Footer } from "@/components/footer"
 import type { Member, MemberStatus, MemberRole } from "@/lib/supabase/types"
 import { createClient as createSupabaseClient } from "@/lib/supabase/client"
 import { FinanceView } from "@/components/finance-view"
+import { ChangePasswordSection } from "@/components/change-password"
 
 // ═══════════════════════════════════════════════════════════════════════
 // TYPES
@@ -3360,6 +3361,7 @@ export default function DirectorDashboardPage() {
               ═══════════════════════════════════════════════════════════ */}
           <TabsContent value="parametres" className="space-y-6 mt-6">
             <SiteSettings />
+            <ChangePasswordSection />
           </TabsContent>
 
           {/* ═══════════════════════════════════════════════════════════
